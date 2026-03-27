@@ -1,0 +1,10 @@
+{
+  "name": "MamaSquads",
+  "short_name": "MamaSquads",
+  "description": "The verified, moms-only playdate community",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#FFFBFC",
+  "theme_color": "#FF6B8A",
+  "orientation": "portrait"
+}
