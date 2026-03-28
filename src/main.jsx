@@ -215,11 +215,37 @@ function MamaSquadsApp() {
         setUser(null);
         setIsVerified(false);
         setScreen("welcome");
+      } else if (_event === 'SIGNED_IN') {
+        supabase.from('users').select('*').eq('id', session.user.id).single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              setUser(profile);
+              setIsVerified(profile.is_verified);
+              setIsBetaMember(profile.is_founding_member);
+              setScreen("main");
+            }
+          });
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // ─── Sign in handler (for existing users) ───
+  const handleSignIn = async (email, password) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) return { error: error.message };
+
+    // Fetch profile
+    const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+    if (profile) {
+      setUser(profile);
+      setIsVerified(profile.is_verified);
+      setIsBetaMember(profile.is_founding_member);
+      setScreen("main");
+    }
+    return { success: true };
+  };
 
   // ─── Signup handler (called when onboarding completes) ───
   const handleSignup = async (userData) => {
@@ -704,6 +730,7 @@ function MamaSquadsApp() {
     <AccessGateScreen
       onInviteCode={(code) => { setInviteCode(code); setIsBetaMember(true); navigate("screen", "onboard"); }}
       onPublicSignup={() => { setInviteCode(null); setIsBetaMember(false); navigate("screen", "onboard"); }}
+      onSignIn={handleSignIn}
       fadeIn={fadeIn}
     />
   );
@@ -905,8 +932,8 @@ function VerificationBlockedScreen({ onVerify }) {
 }
 
 // ─── Access Gate Screen (Beta Invite vs Public Signup) ───
-function AccessGateScreen({ onInviteCode, onPublicSignup, fadeIn }) {
-  const [mode, setMode] = useState(null); // null, "invite", "public"
+function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, fadeIn }) {
+  const [mode, setMode] = useState(null); // null, "invite", "public", "signin"
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState(false);
   const [codeSuccess, setCodeSuccess] = useState(false);
@@ -914,6 +941,12 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, fadeIn }) {
   useEffect(() => { setTimeout(() => setShow(true), 100); }, []);
 
   const [checking, setChecking] = useState(false);
+
+  // Sign in state
+  const [signInEmail, setSignInEmail] = useState("");
+  const [signInPassword, setSignInPassword] = useState("");
+  const [signInError, setSignInError] = useState(null);
+  const [signingIn, setSigningIn] = useState(false);
 
   const handleCodeSubmit = async () => {
     const trimmed = code.trim().toUpperCase();
@@ -1076,6 +1109,71 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, fadeIn }) {
             </div>
           )}
         </div>
+
+        {/* Sign In for existing users */}
+        <div style={{ marginTop: 16, textAlign: "center" }}>
+          <button
+            style={{ background: "none", border: "none", fontSize: 14, color: "#888", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", textDecoration: "underline" }}
+            onClick={() => setMode(mode === "signin" ? null : "signin")}
+          >
+            Already have an account? Sign In
+          </button>
+        </div>
+
+        {mode === "signin" && (
+          <div style={{ ...ags.optionCard, border: "2px solid #3B82F6", background: "#F0F7FF", marginTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <span style={{ fontSize: 24 }}>👋</span>
+              <div>
+                <h3 style={ags.optionTitle}>Welcome Back!</h3>
+                <p style={ags.optionDesc}>Sign in with your email and password</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input
+                style={styles.input}
+                type="email"
+                placeholder="Email address"
+                value={signInEmail}
+                onChange={e => { setSignInEmail(e.target.value); setSignInError(null); }}
+              />
+              <input
+                style={styles.input}
+                type="password"
+                placeholder="Password"
+                value={signInPassword}
+                onChange={e => { setSignInPassword(e.target.value); setSignInError(null); }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && signInEmail && signInPassword) {
+                    setSigningIn(true);
+                    setSignInError(null);
+                    onSignIn(signInEmail, signInPassword).then(result => {
+                      setSigningIn(false);
+                      if (result.error) setSignInError(result.error);
+                    });
+                  }
+                }}
+              />
+              {signInError && (
+                <p style={{ fontSize: 12, color: "#E53935", textAlign: "center" }}>{signInError}</p>
+              )}
+              <button
+                style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #3B82F6, #2563EB)", boxShadow: "0 4px 16px rgba(59,130,246,0.3)", opacity: signingIn ? 0.6 : 1 }}
+                disabled={signingIn}
+                onClick={async () => {
+                  if (!signInEmail || !signInPassword) return;
+                  setSigningIn(true);
+                  setSignInError(null);
+                  const result = await onSignIn(signInEmail, signInPassword);
+                  setSigningIn(false);
+                  if (result.error) setSignInError(result.error);
+                }}
+              >
+                {signingIn ? "Signing in..." : "Sign In"}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Divider info */}
         <div style={{ textAlign: "center", marginTop: 20 }}>
