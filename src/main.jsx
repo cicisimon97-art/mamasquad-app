@@ -168,6 +168,7 @@ function MamaSquadsApp() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
   const [groupRequests, setGroupRequests] = useState({});
+  const [groups, setGroups] = useState(SAMPLE_GROUPS);
   const [joinedGroups, setJoinedGroups] = useState([3, 5]);
   const [pendingJoins, setPendingJoins] = useState([]);
   const [onboardStep, setOnboardStep] = useState(0);
@@ -286,6 +287,159 @@ function MamaSquadsApp() {
     navigate("screen", "main");
   };
 
+  // ─── Load groups from Supabase ───
+  useEffect(() => {
+    const loadGroups = async () => {
+      const { data } = await supabase.from('groups').select('*, group_members(user_id, role)');
+      if (data && data.length > 0) {
+        const supaGroups = data.map(g => ({
+          id: g.id,
+          name: g.name,
+          emoji: g.emoji || '👥',
+          desc: g.description,
+          isPrivate: g.is_private,
+          admin: g.admin_name,
+          adminAvatar: g.admin_name ? g.admin_name.split(' ').map(w => w[0]).join('') : '??',
+          adminId: g.admin_id,
+          members: g.group_members?.length || 1,
+          maxMembers: g.max_members || 30,
+          ages: g.age_group || 'All Ages',
+          area: g.area || '',
+          rules: g.rules || [],
+          recentActivity: 'New group',
+          color: g.color || '#FF6B8A',
+          pendingRequests: [],
+          fromSupabase: true,
+        }));
+        setGroups(prev => [...SAMPLE_GROUPS, ...supaGroups]);
+      }
+    };
+    loadGroups();
+  }, []);
+
+  // ─── Load joined groups & pending joins from Supabase ───
+  useEffect(() => {
+    if (!user) return;
+    const loadMemberships = async () => {
+      // Groups the user is a member of
+      const { data: memberships } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('user_id', user.id);
+      if (memberships) {
+        setJoinedGroups(prev => [...new Set([...prev, ...memberships.map(m => m.group_id)])]);
+      }
+      // Pending join requests by this user
+      const { data: pendingReqs } = await supabase
+        .from('join_requests')
+        .select('group_id')
+        .eq('user_id', user.id)
+        .eq('status', 'pending');
+      if (pendingReqs) {
+        setPendingJoins(prev => [...new Set([...prev, ...pendingReqs.map(r => r.group_id)])]);
+      }
+    };
+    loadMemberships();
+  }, [user]);
+
+  // ─── Create group handler ───
+  const handleCreateGroup = async (groupData) => {
+    if (!user) return { error: 'Not logged in' };
+
+    const { data, error } = await supabase.from('groups').insert({
+      name: groupData.name,
+      description: groupData.description,
+      area: groupData.area,
+      age_group: groupData.ageGroup,
+      max_members: groupData.maxMembers || 30,
+      is_private: groupData.isPrivate,
+      rules: groupData.rules,
+      emoji: groupData.emoji || '👥',
+      color: groupData.color || '#FF6B8A',
+      admin_id: user.id,
+      admin_name: user.name || user.email,
+    }).select().single();
+
+    if (error) return { error: error.message };
+
+    // Add creator as admin member
+    await supabase.from('group_members').insert({
+      group_id: data.id,
+      user_id: user.id,
+      role: 'admin',
+    });
+
+    // Add to local state
+    const newGroup = {
+      id: data.id,
+      name: data.name,
+      emoji: data.emoji || '👥',
+      desc: data.description,
+      isPrivate: data.is_private,
+      admin: user.name || user.email,
+      adminAvatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
+      adminId: user.id,
+      members: 1,
+      maxMembers: data.max_members,
+      ages: data.age_group || 'All Ages',
+      area: data.area || '',
+      rules: data.rules || [],
+      recentActivity: 'Just created',
+      color: data.color || '#FF6B8A',
+      pendingRequests: [],
+      fromSupabase: true,
+    };
+    setGroups(prev => [...prev, newGroup]);
+    setJoinedGroups(prev => [...prev, data.id]);
+
+    return { data: newGroup };
+  };
+
+  // ─── Join request handler ───
+  const handleJoinRequest = async (groupId, message) => {
+    if (!user) return { error: 'Not logged in' };
+
+    const { error } = await supabase.from('join_requests').insert({
+      group_id: groupId,
+      user_id: user.id,
+      user_name: user.name || user.email,
+      user_avatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
+      user_bio: user.bio || '',
+      child_age: user.child_age || '',
+      message,
+      status: 'pending',
+    });
+
+    if (error) return { error: error.message };
+    setPendingJoins(prev => [...prev, groupId]);
+    return { success: true };
+  };
+
+  // ─── Approve join request handler ───
+  const handleApproveRequest = async (requestId, groupId, userId) => {
+    await supabase.from('join_requests')
+      .update({ status: 'approved' })
+      .eq('id', requestId);
+
+    await supabase.from('group_members').insert({
+      group_id: groupId,
+      user_id: userId,
+      role: 'member',
+    });
+
+    // Update member count in local state
+    setGroups(prev => prev.map(g =>
+      g.id === groupId ? { ...g, members: (g.members || 0) + 1 } : g
+    ));
+  };
+
+  // ─── Deny join request handler ───
+  const handleDenyRequest = async (requestId) => {
+    await supabase.from('join_requests')
+      .update({ status: 'denied' })
+      .eq('id', requestId);
+  };
+
   if (loading) {
     return (
       <div style={{ ...styles.fullScreen, background: "#FFFBFC", justifyContent: "center", alignItems: "center" }}>
@@ -335,7 +489,7 @@ function MamaSquadsApp() {
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} fadeIn={fadeIn} />;
     if (showPoll) return <PollScreen polls={POLLS} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} fadeIn={fadeIn} />;
-    if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} fadeIn={fadeIn} />;
+    if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
       <div style={styles.detailScreen}>
         <div style={styles.detailHeader}>
@@ -361,6 +515,10 @@ function MamaSquadsApp() {
         setPendingJoins={setPendingJoins}
         groupRequests={groupRequests}
         setGroupRequests={setGroupRequests}
+        user={user}
+        onJoinRequest={handleJoinRequest}
+        onApproveRequest={handleApproveRequest}
+        onDenyRequest={handleDenyRequest}
         fadeIn={fadeIn}
       />
     );
@@ -386,6 +544,7 @@ function MamaSquadsApp() {
           )}
           {tab === "groups" && (
             <GroupsTab
+              groups={groups}
               onGroupSelect={(g) => setSelectedGroup(g)}
               onCreateGroup={() => setShowCreateGroup(true)}
               joinedGroups={joinedGroups}
@@ -1882,11 +2041,11 @@ function AdminApplyScreen({ onBack }) {
 }
 
 // ─── Groups Tab ───
-function GroupsTab({ onGroupSelect, onCreateGroup, joinedGroups, pendingJoins }) {
+function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pendingJoins }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const filtered = SAMPLE_GROUPS.filter(g => {
+  const filtered = (groups || SAMPLE_GROUPS).filter(g => {
     const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase()) || g.area.toLowerCase().includes(search.toLowerCase());
     if (filter === "my") return matchesSearch && joinedGroups.includes(g.id);
     if (filter === "private") return matchesSearch && g.isPrivate;
@@ -1980,10 +2139,10 @@ function GroupsTab({ onGroupSelect, onCreateGroup, joinedGroups, pendingJoins })
 }
 
 // ─── Group Detail Screen ───
-function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, fadeIn }) {
+function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
-  const isAdmin = group.admin === "Sarah Mitchell"; // simulate current user being admin of some groups
+  const isAdmin = user ? (group.adminId === user.id || group.admin === user.name) : group.admin === "Sarah Mitchell";
   const [activeSection, setActiveSection] = useState("feed");
   const [requestMessage, setRequestMessage] = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -1991,44 +2150,93 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [newPost, setNewPost] = useState("");
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
+  const [supaRequests, setSupaRequests] = useState([]);
   const [myAvailability, setMyAvailability] = useState({
     Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
   });
   const [myAvailNote, setMyAvailNote] = useState("");
 
-  // Simulated request actions
+  // Load pending requests from Supabase for admin
+  useEffect(() => {
+    if (!isAdmin || !group.fromSupabase) return;
+    supabase.from('join_requests')
+      .select('*')
+      .eq('group_id', group.id)
+      .eq('status', 'pending')
+      .then(({ data }) => {
+        if (data) setSupaRequests(data);
+      });
+  }, [isAdmin, group.id, group.fromSupabase]);
+
+  // Merge sample pending requests with Supabase requests
   const approvedRequests = groupRequests[group.id]?.approved || [];
   const deniedRequests = groupRequests[group.id]?.denied || [];
-  const pending = (group.pendingRequests || []).filter(
+  const samplePending = (group.pendingRequests || []).filter(
     r => !approvedRequests.includes(r.id) && !deniedRequests.includes(r.id)
   );
+  const pending = group.fromSupabase
+    ? supaRequests.map(r => ({
+        id: r.id,
+        userId: r.user_id,
+        name: r.user_name,
+        avatar: r.user_avatar,
+        bio: r.user_bio || r.message || '',
+        ages: r.child_age || '',
+        requestedAt: new Date(r.created_at).toLocaleDateString(),
+        fromSupabase: true,
+      }))
+    : samplePending;
 
-  const handleApprove = (reqId) => {
-    setGroupRequests(prev => ({
-      ...prev,
-      [group.id]: {
-        ...prev[group.id],
-        approved: [...(prev[group.id]?.approved || []), reqId],
-      }
-    }));
+  const handleApprove = async (reqId) => {
+    const req = pending.find(r => r.id === reqId);
+    if (req?.fromSupabase && onApproveRequest) {
+      await onApproveRequest(reqId, group.id, req.userId);
+      setSupaRequests(prev => prev.filter(r => r.id !== reqId));
+    } else {
+      setGroupRequests(prev => ({
+        ...prev,
+        [group.id]: {
+          ...prev[group.id],
+          approved: [...(prev[group.id]?.approved || []), reqId],
+        }
+      }));
+    }
   };
 
-  const handleDeny = (reqId) => {
-    setGroupRequests(prev => ({
-      ...prev,
-      [group.id]: {
-        ...prev[group.id],
-        denied: [...(prev[group.id]?.denied || []), reqId],
-      }
-    }));
+  const handleDeny = async (reqId) => {
+    const req = pending.find(r => r.id === reqId);
+    if (req?.fromSupabase && onDenyRequest) {
+      await onDenyRequest(reqId);
+      setSupaRequests(prev => prev.filter(r => r.id !== reqId));
+    } else {
+      setGroupRequests(prev => ({
+        ...prev,
+        [group.id]: {
+          ...prev[group.id],
+          denied: [...(prev[group.id]?.denied || []), reqId],
+        }
+      }));
+    }
   };
 
-  const handleJoinRequest = () => {
+  const handleJoinRequest = async () => {
     if (group.isPrivate) {
-      setPendingJoins(p => [...p, group.id]);
+      if (group.fromSupabase && onJoinRequest) {
+        await onJoinRequest(group.id, requestMessage);
+      } else {
+        setPendingJoins(p => [...p, group.id]);
+      }
       setJoinSent(true);
       setTimeout(() => setShowJoinModal(false), 1500);
     } else {
+      if (group.fromSupabase && onJoinRequest) {
+        await onJoinRequest(group.id, '');
+        // For public groups, also add to group_members immediately
+        if (user) {
+          await supabase.from('join_requests').update({ status: 'approved' }).eq('group_id', group.id).eq('user_id', user.id);
+          await supabase.from('group_members').insert({ group_id: group.id, user_id: user.id, role: 'member' });
+        }
+      }
       setJoinedGroups(j => [...j, group.id]);
     }
   };
@@ -2691,8 +2899,44 @@ const avs = {
 };
 
 // ─── Create Group Screen ───
-function CreateGroupScreen({ onBack, fadeIn }) {
+function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
   const [isPrivate, setIsPrivate] = useState(true);
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [area, setArea] = useState("");
+  const [ageGroup, setAgeGroup] = useState("All Ages");
+  const [maxMembers, setMaxMembers] = useState("");
+  const [rules, setRules] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const COLORS = ["#FF6B8A", "#4ECDC4", "#FFD93D", "#A78BFA", "#F97316", "#10B981", "#EC4899", "#3B82F6"];
+  const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+  const handleSubmit = async () => {
+    if (!name.trim()) { setError("Group name is required"); return; }
+    setSubmitting(true);
+    setError(null);
+
+    const result = await onSubmit({
+      name: name.trim(),
+      description: description.trim(),
+      area: area.trim(),
+      ageGroup,
+      maxMembers: parseInt(maxMembers) || 30,
+      isPrivate,
+      rules: rules.trim() ? rules.trim().split('\n').filter(Boolean) : [],
+      color: randomColor,
+    });
+
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      onBack();
+    }
+  };
+
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -2708,11 +2952,10 @@ function CreateGroupScreen({ onBack, fadeIn }) {
         </div>
 
         <div style={styles.onboardFields}>
-          <input style={styles.input} placeholder="Group name (e.g., Westside Toddler Moms)" />
-          <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Describe your group... What's it about? Who should join?" />
-          <input style={styles.input} placeholder="Area / Neighborhood" />
-          <select style={styles.input}>
-            <option>Age group focus</option>
+          <input style={styles.input} placeholder="Group name (e.g., Westside Toddler Moms)" value={name} onChange={e => setName(e.target.value)} />
+          <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Describe your group... What's it about? Who should join?" value={description} onChange={e => setDescription(e.target.value)} />
+          <input style={styles.input} placeholder="Area / Neighborhood" value={area} onChange={e => setArea(e.target.value)} />
+          <select style={styles.input} value={ageGroup} onChange={e => setAgeGroup(e.target.value)}>
             <option>All Ages</option>
             <option>0-1 years</option>
             <option>1-3 years</option>
@@ -2720,7 +2963,7 @@ function CreateGroupScreen({ onBack, fadeIn }) {
             <option>5-8 years</option>
             <option>8+ years</option>
           </select>
-          <input style={styles.input} placeholder="Max members (e.g., 30)" type="number" />
+          <input style={styles.input} placeholder="Max members (e.g., 30)" type="number" value={maxMembers} onChange={e => setMaxMembers(e.target.value)} />
 
           {/* Privacy toggle */}
           <div style={gs.privacyToggle}>
@@ -2756,11 +2999,17 @@ function CreateGroupScreen({ onBack, fadeIn }) {
             </div>
           )}
 
-          <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Group rules (one per line)..." />
+          <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Group rules (one per line)..." value={rules} onChange={e => setRules(e.target.value)} />
         </div>
 
-        <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 16 }}>
-          Create Group 🎉
+        {error && <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginTop: 8 }}>{error}</p>}
+
+        <button
+          style={{ ...styles.primaryBtn, width: "100%", marginTop: 16, opacity: submitting ? 0.6 : 1 }}
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? "Creating..." : "Create Group 🎉"}
         </button>
       </div>
     </div>

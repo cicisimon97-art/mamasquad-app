@@ -67,3 +67,121 @@ insert into public.invite_codes (code) values
   ('BETA-MOM'),
   ('SQUAD-ONE')
 on conflict (code) do nothing;
+
+-- ─── Groups ───
+
+create table if not exists public.groups (
+  id uuid default gen_random_uuid() primary key,
+  name text not null,
+  description text,
+  area text,
+  age_group text default 'All Ages',
+  max_members int default 30,
+  is_private boolean default true,
+  rules text[] default '{}',
+  emoji text default '👥',
+  color text default '#FF6B8A',
+  admin_id uuid references public.users(id),
+  admin_name text,
+  created_at timestamptz default now()
+);
+
+alter table public.groups enable row level security;
+
+-- Anyone authenticated can read groups
+create policy "Authenticated users can read groups"
+  on public.groups for select
+  to authenticated
+  using (true);
+
+-- Authenticated users can create groups
+create policy "Authenticated users can create groups"
+  on public.groups for insert
+  to authenticated
+  with check (auth.uid() = admin_id);
+
+-- Admin can update their own groups
+create policy "Admin can update own groups"
+  on public.groups for update
+  to authenticated
+  using (auth.uid() = admin_id);
+
+-- ─── Group Members ───
+
+create table if not exists public.group_members (
+  id uuid default gen_random_uuid() primary key,
+  group_id uuid references public.groups(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
+  role text default 'member' check (role in ('admin', 'member')),
+  joined_at timestamptz default now(),
+  unique(group_id, user_id)
+);
+
+alter table public.group_members enable row level security;
+
+-- Anyone authenticated can read group members
+create policy "Authenticated users can read group members"
+  on public.group_members for select
+  to authenticated
+  using (true);
+
+-- Authenticated users can insert (join a group / be added)
+create policy "Authenticated users can insert group members"
+  on public.group_members for insert
+  to authenticated
+  with check (true);
+
+-- Members can remove themselves, admins can remove anyone in their group
+create policy "Members can delete own membership"
+  on public.group_members for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- ─── Join Requests ───
+
+create table if not exists public.join_requests (
+  id uuid default gen_random_uuid() primary key,
+  group_id uuid references public.groups(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
+  user_name text,
+  user_avatar text,
+  user_bio text,
+  child_age text,
+  message text,
+  status text default 'pending' check (status in ('pending', 'approved', 'denied')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.join_requests enable row level security;
+
+-- Users can read their own requests; group admins can read requests for their groups
+create policy "Users can read own join requests"
+  on public.join_requests for select
+  to authenticated
+  using (
+    auth.uid() = user_id
+    or exists (
+      select 1 from public.groups
+      where groups.id = join_requests.group_id
+      and groups.admin_id = auth.uid()
+    )
+  );
+
+-- Authenticated users can create join requests
+create policy "Authenticated users can create join requests"
+  on public.join_requests for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+-- Group admins can update request status (approve/deny)
+create policy "Group admins can update join requests"
+  on public.join_requests for update
+  to authenticated
+  using (
+    exists (
+      select 1 from public.groups
+      where groups.id = join_requests.group_id
+      and groups.admin_id = auth.uid()
+    )
+  );
