@@ -175,6 +175,7 @@ function MamaSquadsApp() {
   const [newComment, setNewComment] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [votedPolls, setVotedPolls] = useState({});
+  const [events, setEvents] = useState(SAMPLE_EVENTS);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
 
@@ -440,6 +441,147 @@ function MamaSquadsApp() {
       .eq('id', requestId);
   };
 
+  // ─── Load events from Supabase ───
+  useEffect(() => {
+    const loadEvents = async () => {
+      const { data } = await supabase
+        .from('events')
+        .select('*, event_rsvps(user_id), comments(id)')
+        .order('created_at', { ascending: false });
+      if (data && data.length > 0) {
+        const supaEvents = data.map(e => ({
+          id: e.id,
+          title: e.title,
+          location: e.location,
+          time: e.time,
+          date: e.date,
+          ages: e.ages || 'All Ages',
+          host: e.host_name,
+          hostId: e.host_id,
+          attendees: e.event_rsvps?.length || 0,
+          maxAttendees: e.max_attendees || 15,
+          comments: [],
+          color: e.color || '#FF6B8A',
+          description: e.description,
+          groupId: e.group_id,
+          fromSupabase: true,
+        }));
+        setEvents(prev => [...SAMPLE_EVENTS, ...supaEvents]);
+      }
+    };
+    loadEvents();
+  }, []);
+
+  // ──�� Load RSVPs for current user ───
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('event_rsvps')
+      .select('event_id')
+      .eq('user_id', user.id)
+      .then(({ data }) => {
+        if (data) {
+          setJoinedEvents(prev => [...new Set([...prev, ...data.map(r => r.event_id)])]);
+        }
+      });
+  }, [user]);
+
+  // ─── Create event handler ───
+  const handleCreateEvent = async (eventData) => {
+    if (!user) return { error: 'Not logged in' };
+
+    const COLORS = ["#FF6B8A", "#4ECDC4", "#FFD93D", "#A78BFA", "#F97316", "#10B981", "#EC4899"];
+    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
+
+    const { data, error } = await supabase.from('events').insert({
+      title: eventData.title,
+      location: eventData.location,
+      date: eventData.date,
+      time: eventData.time,
+      ages: eventData.ages,
+      max_attendees: eventData.maxAttendees || 15,
+      description: eventData.description,
+      host_id: user.id,
+      host_name: user.name || user.email,
+      group_id: eventData.groupId || null,
+      color,
+    }).select().single();
+
+    if (error) return { error: error.message };
+
+    // Auto-RSVP the creator
+    await supabase.from('event_rsvps').insert({
+      event_id: data.id,
+      user_id: user.id,
+    });
+
+    const newEvent = {
+      id: data.id,
+      title: data.title,
+      location: data.location,
+      time: data.time,
+      date: data.date,
+      ages: data.ages || 'All Ages',
+      host: user.name || user.email,
+      hostId: user.id,
+      attendees: 1,
+      maxAttendees: data.max_attendees,
+      comments: [],
+      color,
+      description: data.description,
+      groupId: data.group_id,
+      fromSupabase: true,
+    };
+    setEvents(prev => [newEvent, ...prev]);
+    setJoinedEvents(prev => [...prev, data.id]);
+
+    return { data: newEvent };
+  };
+
+  // ─── RSVP handler ───
+  const handleRsvp = async (eventId, joining) => {
+    if (!user) return;
+    if (joining) {
+      await supabase.from('event_rsvps').insert({
+        event_id: eventId,
+        user_id: user.id,
+      });
+      setJoinedEvents(prev => [...prev, eventId]);
+      setEvents(prev => prev.map(e =>
+        e.id === eventId ? { ...e, attendees: (e.attendees || 0) + 1 } : e
+      ));
+    } else {
+      await supabase.from('event_rsvps')
+        .delete()
+        .eq('event_id', eventId)
+        .eq('user_id', user.id);
+      setJoinedEvents(prev => prev.filter(id => id !== eventId));
+      setEvents(prev => prev.map(e =>
+        e.id === eventId ? { ...e, attendees: Math.max(0, (e.attendees || 1) - 1) } : e
+      ));
+    }
+  };
+
+  // ─── Post comment handler ���──
+  const handlePostComment = async (eventId, text) => {
+    if (!user || !text.trim()) return null;
+
+    const { data, error } = await supabase.from('comments').insert({
+      event_id: eventId,
+      user_id: user.id,
+      user_name: user.name || user.email,
+      text: text.trim(),
+    }).select().single();
+
+    if (error) return null;
+    return {
+      id: data.id,
+      user: data.user_name,
+      text: data.text,
+      time: 'Just now',
+      fromSupabase: true,
+    };
+  };
+
   if (loading) {
     return (
       <div style={{ ...styles.fullScreen, background: "#FFFBFC", justifyContent: "center", alignItems: "center" }}>
@@ -478,7 +620,7 @@ function MamaSquadsApp() {
   // Main App — only accessible to verified OR beta users
   if (screen === "main" && isVerified) {
     if (selectedEvent) return (
-      <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} fadeIn={fadeIn} />
+      <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
     if (selectedChat) return (
       <ChatDetail chat={selectedChat} onBack={() => setSelectedChat(null)} newMessage={newMessage} setNewMessage={setNewMessage} fadeIn={fadeIn} />
@@ -486,7 +628,7 @@ function MamaSquadsApp() {
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={() => { setSelectedProfile(null); setTab("messages"); }} fadeIn={fadeIn} />
     );
-    if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} fadeIn={fadeIn} />;
+    if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
     if (showPoll) return <PollScreen polls={POLLS} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
@@ -519,6 +661,7 @@ function MamaSquadsApp() {
         onJoinRequest={handleJoinRequest}
         onApproveRequest={handleApproveRequest}
         onDenyRequest={handleDenyRequest}
+        onCreateEvent={handleCreateEvent}
         fadeIn={fadeIn}
       />
     );
@@ -528,6 +671,7 @@ function MamaSquadsApp() {
         <div style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
           {tab === "home" && (
             <HomeTab
+              events={events}
               selectedDay={selectedDay} setSelectedDay={setSelectedDay}
               selectedAge={selectedAge} setSelectedAge={setSelectedAge}
               onEventSelect={(e) => navigate("event", e)}
@@ -1409,8 +1553,8 @@ const verifyKeyframes = `
 `;
 
 // ─── Home Tab ───
-function HomeTab({ selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onPoll, joinedEvents }) {
-  const filtered = SAMPLE_EVENTS.filter(e =>
+function HomeTab({ events, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onPoll, joinedEvents }) {
+  const filtered = (events || SAMPLE_EVENTS).filter(e =>
     (selectedDay === "All" || e.date === selectedDay) &&
     (selectedAge === "All Ages" || e.ages === selectedAge)
   );
@@ -1497,8 +1641,61 @@ function HomeTab({ selectedDay, setSelectedDay, selectedAge, setSelectedAge, onE
 }
 
 // ─── Event Detail ───
-function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, setJoinedEvents }) {
+function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, setJoinedEvents, onRsvp, onPostComment, fadeIn }) {
   const joined = joinedEvents.includes(event.id);
+  const [comments, setComments] = useState(event.comments || []);
+  const [rsvpLoading, setRsvpLoading] = useState(false);
+  const [commentLoading, setCommentLoading] = useState(false);
+  const [localAttendees, setLocalAttendees] = useState(event.attendees);
+
+  // Load comments from Supabase for real events
+  useEffect(() => {
+    if (!event.fromSupabase) return;
+    supabase.from('comments')
+      .select('*')
+      .eq('event_id', event.id)
+      .order('created_at', { ascending: true })
+      .then(({ data }) => {
+        if (data) {
+          setComments(data.map(c => ({
+            id: c.id,
+            user: c.user_name,
+            text: c.text,
+            time: new Date(c.created_at).toLocaleDateString(),
+            fromSupabase: true,
+          })));
+        }
+      });
+  }, [event.id, event.fromSupabase]);
+
+  const handleRsvpClick = async () => {
+    if (event.fromSupabase && onRsvp) {
+      setRsvpLoading(true);
+      await onRsvp(event.id, !joined);
+      setLocalAttendees(prev => joined ? Math.max(0, prev - 1) : prev + 1);
+      setRsvpLoading(false);
+    } else {
+      if (joined) setJoinedEvents(j => j.filter(id => id !== event.id));
+      else setJoinedEvents(j => [...j, event.id]);
+      setLocalAttendees(prev => joined ? Math.max(0, prev - 1) : prev + 1);
+    }
+  };
+
+  const handleCommentSubmit = async () => {
+    if (!newComment.trim()) return;
+    if (event.fromSupabase && onPostComment) {
+      setCommentLoading(true);
+      const result = await onPostComment(event.id, newComment);
+      if (result) {
+        setComments(prev => [...prev, result]);
+      }
+      setCommentLoading(false);
+    } else {
+      setComments(prev => [...prev, { user: "You", text: newComment, time: "Just now" }]);
+    }
+    setNewComment("");
+  };
+
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -1516,6 +1713,12 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
           </div>
         </div>
 
+        {event.description && (
+          <div style={styles.detailSection}>
+            <p style={{ fontSize: 13, color: "#666", lineHeight: 1.5 }}>{event.description}</p>
+          </div>
+        )}
+
         <div style={styles.detailSection}>
           <div style={styles.hostRow}>
             <div style={{ ...styles.avatarSmall, background: event.color }}>{event.host.split(" ").map(n => n[0]).join("")}</div>
@@ -1528,26 +1731,24 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 
         <div style={styles.detailSection}>
           <div style={styles.attendeeBar}>
-            <div style={{ ...styles.attendeeFill, width: `${(event.attendees / event.maxAttendees) * 100}%`, background: event.color }} />
+            <div style={{ ...styles.attendeeFill, width: `${(localAttendees / event.maxAttendees) * 100}%`, background: event.color }} />
           </div>
-          <p style={styles.attendeeText}>{event.attendees} of {event.maxAttendees} spots filled</p>
+          <p style={styles.attendeeText}>{localAttendees} of {event.maxAttendees} spots filled</p>
         </div>
 
         <button
-          style={{ ...styles.primaryBtn, background: joined ? "#E8F5E9" : undefined, color: joined ? "#2E7D32" : undefined, width: "100%" }}
-          onClick={() => {
-            if (joined) setJoinedEvents(j => j.filter(id => id !== event.id));
-            else setJoinedEvents(j => [...j, event.id]);
-          }}
+          style={{ ...styles.primaryBtn, background: joined ? "#E8F5E9" : undefined, color: joined ? "#2E7D32" : undefined, width: "100%", opacity: rsvpLoading ? 0.6 : 1 }}
+          onClick={handleRsvpClick}
+          disabled={rsvpLoading}
         >
-          {joined ? "✓ You're Going!" : "Join This Playdate"}
+          {rsvpLoading ? "..." : joined ? "✓ You're Going!" : "Join This Playdate"}
         </button>
 
         {/* Comments */}
         <div style={styles.commentsSection}>
-          <h3 style={styles.sectionTitle}>Comments ({event.comments.length})</h3>
-          {event.comments.map((c, i) => (
-            <div key={i} style={styles.commentCard}>
+          <h3 style={styles.sectionTitle}>Comments ({comments.length})</h3>
+          {comments.map((c, i) => (
+            <div key={c.id || i} style={styles.commentCard}>
               <div style={styles.commentAvatar}>{c.user.split(" ").map(n => n[0]).join("")}</div>
               <div style={styles.commentBody}>
                 <div style={styles.commentTop}>
@@ -1564,8 +1765,9 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
               placeholder="Add a comment..."
               value={newComment}
               onChange={e => setNewComment(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleCommentSubmit()}
             />
-            <button style={styles.sendBtn}>{Icons.send}</button>
+            <button style={{ ...styles.sendBtn, opacity: commentLoading ? 0.5 : 1 }} onClick={handleCommentSubmit} disabled={commentLoading}>{Icons.send}</button>
           </div>
         </div>
       </div>
@@ -1822,7 +2024,40 @@ function MyProfileTab({ isBetaMember }) {
 }
 
 // ─── Create Event Screen ───
-function CreateEventScreen({ onBack }) {
+function CreateEventScreen({ onBack, onSubmit }) {
+  const [title, setTitle] = useState("");
+  const [location, setLocation] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [ages, setAges] = useState("All Ages");
+  const [maxAttendees, setMaxAttendees] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const handleSubmit = async () => {
+    if (!title.trim()) { setError("Title is required"); return; }
+    setSubmitting(true);
+    setError(null);
+
+    const result = await onSubmit({
+      title: title.trim(),
+      location: location.trim(),
+      date: date.trim() || "TBD",
+      time: time.trim() || "TBD",
+      ages,
+      maxAttendees: parseInt(maxAttendees) || 15,
+      description: description.trim(),
+    });
+
+    setSubmitting(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      onBack();
+    }
+  };
+
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -1832,21 +2067,26 @@ function CreateEventScreen({ onBack }) {
       </div>
       <div style={styles.detailBody}>
         <div style={styles.onboardFields}>
-          <input style={styles.input} placeholder="Playdate title (e.g., Park Day!)" />
-          <input style={styles.input} placeholder="Location" />
+          <input style={styles.input} placeholder="Playdate title (e.g., Park Day!)" value={title} onChange={e => setTitle(e.target.value)} />
+          <input style={styles.input} placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
           <div style={{ display: "flex", gap: 10 }}>
-            <input style={{ ...styles.input, flex: 1 }} placeholder="Date" />
-            <input style={{ ...styles.input, flex: 1 }} placeholder="Time" />
+            <input style={{ ...styles.input, flex: 1 }} placeholder="Date (e.g., Mon, Sat)" value={date} onChange={e => setDate(e.target.value)} />
+            <input style={{ ...styles.input, flex: 1 }} placeholder="Time (e.g., 10:00 AM)" value={time} onChange={e => setTime(e.target.value)} />
           </div>
-          <select style={styles.input}>
-            <option>Age group: All Ages</option>
-            {AGE_FILTERS.slice(1).map(a => <option key={a}>{a} years</option>)}
+          <select style={styles.input} value={ages} onChange={e => setAges(e.target.value)}>
+            <option>All Ages</option>
+            {AGE_FILTERS.slice(1).map(a => <option key={a} value={a}>{a} years</option>)}
           </select>
-          <input style={styles.input} placeholder="Max attendees" type="number" />
-          <textarea style={{ ...styles.input, minHeight: 100, fontFamily: "inherit" }} placeholder="Describe the playdate... What should moms expect?" />
+          <input style={styles.input} placeholder="Max attendees" type="number" value={maxAttendees} onChange={e => setMaxAttendees(e.target.value)} />
+          <textarea style={{ ...styles.input, minHeight: 100, fontFamily: "inherit" }} placeholder="Describe the playdate... What should moms expect?" value={description} onChange={e => setDescription(e.target.value)} />
         </div>
-        <button style={{ ...styles.primaryBtn, width: "100%", marginTop: 20 }}>
-          Post Playdate 🎉
+        {error && <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginTop: 8 }}>{error}</p>}
+        <button
+          style={{ ...styles.primaryBtn, width: "100%", marginTop: 20, opacity: submitting ? 0.6 : 1 }}
+          onClick={handleSubmit}
+          disabled={submitting}
+        >
+          {submitting ? "Posting..." : "Post Playdate 🎉"}
         </button>
       </div>
     </div>
@@ -2139,7 +2379,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
 }
 
 // ─── Group Detail Screen ───
-function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, fadeIn }) {
+function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.name) : group.admin === "Sarah Mitchell";
@@ -2150,6 +2390,13 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [newPost, setNewPost] = useState("");
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
+  const [pdTitle, setPdTitle] = useState("");
+  const [pdLocation, setPdLocation] = useState("");
+  const [pdDate, setPdDate] = useState("");
+  const [pdTime, setPdTime] = useState("");
+  const [pdMax, setPdMax] = useState("");
+  const [pdDesc, setPdDesc] = useState("");
+  const [pdSubmitting, setPdSubmitting] = useState(false);
   const [supaRequests, setSupaRequests] = useState([]);
   const [myAvailability, setMyAvailability] = useState({
     Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
@@ -2414,16 +2661,38 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowPostPlaydate(false)}>✕</button>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" />
-                      <input style={gs.formInput} placeholder="Location" />
+                      <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" value={pdTitle} onChange={e => setPdTitle(e.target.value)} />
+                      <input style={gs.formInput} placeholder="Location" value={pdLocation} onChange={e => setPdLocation(e.target.value)} />
                       <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Date" />
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Time" />
+                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Date" value={pdDate} onChange={e => setPdDate(e.target.value)} />
+                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Time" value={pdTime} onChange={e => setPdTime(e.target.value)} />
                       </div>
-                      <input style={gs.formInput} placeholder="Max kids / families" type="number" />
-                      <textarea style={{ ...gs.formInput, minHeight: 60, resize: "vertical" }} placeholder="Details — what to bring, what to expect..." />
-                      <button style={{ ...styles.primaryBtn, marginTop: 4 }} onClick={() => setShowPostPlaydate(false)}>
-                        Post Playdate to Group 🎉
+                      <input style={gs.formInput} placeholder="Max kids / families" type="number" value={pdMax} onChange={e => setPdMax(e.target.value)} />
+                      <textarea style={{ ...gs.formInput, minHeight: 60, resize: "vertical" }} placeholder="Details — what to bring, what to expect..." value={pdDesc} onChange={e => setPdDesc(e.target.value)} />
+                      <button
+                        style={{ ...styles.primaryBtn, marginTop: 4, opacity: pdSubmitting ? 0.6 : 1 }}
+                        disabled={pdSubmitting}
+                        onClick={async () => {
+                          if (!pdTitle.trim()) return;
+                          setPdSubmitting(true);
+                          if (onCreateEvent) {
+                            await onCreateEvent({
+                              title: pdTitle.trim(),
+                              location: pdLocation.trim(),
+                              date: pdDate.trim() || "TBD",
+                              time: pdTime.trim() || "TBD",
+                              ages: group.ages || "All Ages",
+                              maxAttendees: parseInt(pdMax) || 15,
+                              description: pdDesc.trim(),
+                              groupId: group.fromSupabase ? group.id : null,
+                            });
+                          }
+                          setPdSubmitting(false);
+                          setPdTitle(""); setPdLocation(""); setPdDate(""); setPdTime(""); setPdMax(""); setPdDesc("");
+                          setShowPostPlaydate(false);
+                        }}
+                      >
+                        {pdSubmitting ? "Posting..." : "Post Playdate to Group 🎉"}
                       </button>
                     </div>
                   </div>

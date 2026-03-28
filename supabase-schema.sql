@@ -185,3 +185,98 @@ create policy "Group admins can update join requests"
       and groups.admin_id = auth.uid()
     )
   );
+
+-- ─── Events / Playdates ───
+
+create table if not exists public.events (
+  id uuid default gen_random_uuid() primary key,
+  title text not null,
+  location text,
+  date text,
+  time text,
+  ages text default 'All Ages',
+  max_attendees int default 15,
+  description text,
+  host_id uuid references public.users(id),
+  host_name text,
+  group_id uuid references public.groups(id) on delete set null,
+  color text default '#FF6B8A',
+  created_at timestamptz default now()
+);
+
+alter table public.events enable row level security;
+
+create policy "Anyone authenticated can read events"
+  on public.events for select
+  to authenticated
+  using (true);
+
+create policy "Authenticated users can create events"
+  on public.events for insert
+  to authenticated
+  with check (auth.uid() = host_id);
+
+create policy "Host can update own events"
+  on public.events for update
+  to authenticated
+  using (auth.uid() = host_id);
+
+create policy "Host can delete own events"
+  on public.events for delete
+  to authenticated
+  using (auth.uid() = host_id);
+
+-- ─── Event RSVPs ───
+
+create table if not exists public.event_rsvps (
+  id uuid default gen_random_uuid() primary key,
+  event_id uuid references public.events(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
+  created_at timestamptz default now(),
+  unique(event_id, user_id)
+);
+
+alter table public.event_rsvps enable row level security;
+
+create policy "Anyone authenticated can read RSVPs"
+  on public.event_rsvps for select
+  to authenticated
+  using (true);
+
+create policy "Users can RSVP"
+  on public.event_rsvps for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can remove own RSVP"
+  on public.event_rsvps for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- ─── Comments ───
+
+create table if not exists public.comments (
+  id uuid default gen_random_uuid() primary key,
+  event_id uuid references public.events(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
+  user_name text,
+  text text not null,
+  created_at timestamptz default now()
+);
+
+alter table public.comments enable row level security;
+
+create policy "Anyone authenticated can read comments"
+  on public.comments for select
+  to authenticated
+  using (true);
+
+create policy "Authenticated users can post comments"
+  on public.comments for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can delete own comments"
+  on public.comments for delete
+  to authenticated
+  using (auth.uid() = user_id);
