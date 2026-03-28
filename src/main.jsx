@@ -139,9 +139,9 @@ const SAMPLE_GROUP_MEETUPS = [
 
 const QUICK_QS = {
   kids: [
-    { q: "My kid is best described as...", options: ["Social butterfly", "Slow to warm up", "Wild card"] },
-    { q: "My kid's perfect playdate is...", options: ["Outdoor adventures", "Arts and crafts", "Pure chaos"] },
-    { q: "Nap schedules in our house are...", options: ["Sacred", "Flexible", "What's a nap?"] },
+    { q: "{name} is best described as...", options: ["Social butterfly", "Slow to warm up", "Wild card"] },
+    { q: "{name}'s perfect playdate is...", options: ["Outdoor adventures", "Arts and crafts", "Pure chaos"] },
+    { q: "{name}'s nap schedule is...", options: ["Sacred", "Flexible", "What's a nap?"] },
   ],
   mom: [
     { q: "I show up to playdates...", options: ["Snacks packed and on time", "Fashionably late", "Forgot it was today"] },
@@ -1496,7 +1496,10 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
     setChildren(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
   };
 
-  const totalSteps = 6;
+  // Dynamic step count: account, kids, vibe, [1 slide per child], about mom, matching
+  const kidsWithNames = children.filter(c => c.name.trim());
+  const numKidSlides = Math.max(kidsWithNames.length, 1);
+  const totalSteps = 3 + numKidSlides + 2; // account + kids + vibe + [per-child slides] + mom + matching
   const goNext = async () => {
     if (step >= totalSteps - 1) {
       setSubmitting(true);
@@ -1574,15 +1577,15 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
         </div>
       ),
     },
-    {
-      title: "Quick Q's: About the Kids",
-      subtitle: "Help us match your little ones with the right playdates",
+    ...(kidsWithNames.length > 0 ? kidsWithNames : [{ name: "Your Kid" }]).map((child, ci) => ({
+      title: `Quick Q's: About ${child.name || "Your Kid"}`,
+      subtitle: `Help us match ${child.name || "your little one"} with the right playdates`,
       fields: (
         <div style={styles.onboardFields}>
           {QUICK_QS.kids.map((item, i) => (
             <div key={i} style={styles.promptCard}>
-              <p style={styles.promptQuestion}>{item.q}</p>
-              <select style={styles.input} value={quickAnswers[`kids_${i}`] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [`kids_${i}`]: e.target.value }))}>
+              <p style={styles.promptQuestion}>{item.q.replace(/\{name\}/g, child.name || "Your kid")}</p>
+              <select style={styles.input} value={quickAnswers[`kid_${ci}_${i}`] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [`kid_${ci}_${i}`]: e.target.value }))}>
                 <option value="">Choose one...</option>
                 {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
               </select>
@@ -1590,7 +1593,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
           ))}
         </div>
       ),
-    },
+    })),
     {
       title: "Quick Q's: About Mom",
       subtitle: "Let's see what kind of playdate mom you are",
