@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
+import { supabase } from './supabaseClient'
 
 // ─── Icons ───
 const Icons = {
@@ -150,6 +151,10 @@ function MamaSquadsApp() {
   const [screen, setScreen] = useState("welcome");
   const [isVerified, setIsVerified] = useState(false);
   const [isBetaMember, setIsBetaMember] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [inviteCode, setInviteCode] = useState(null);
+  const [signupError, setSignupError] = useState(null);
   const [tab, setTab] = useState("home");
   const [selectedDay, setSelectedDay] = useState("All");
   const [selectedAge, setSelectedAge] = useState("All Ages");
@@ -184,13 +189,119 @@ function MamaSquadsApp() {
     }, 150);
   }, []);
 
+  // ─── Session restore on mount ───
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        supabase.from('users').select('*').eq('id', session.user.id).single()
+          .then(({ data: profile }) => {
+            if (profile) {
+              setUser(profile);
+              setIsVerified(profile.is_verified);
+              setIsBetaMember(profile.is_founding_member);
+              setScreen("main");
+            }
+            setLoading(false);
+          });
+      } else {
+        setLoading(false);
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!session) {
+        setUser(null);
+        setIsVerified(false);
+        setScreen("welcome");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ─── Signup handler (called when onboarding completes) ───
+  const handleSignup = async (userData) => {
+    setSignupError(null);
+    const { email, password, name, area, bio, childName, childAge, interests } = userData;
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setSignupError(authError.message);
+      return;
+    }
+
+    const userId = authData.user.id;
+    const isFoundingMember = !!inviteCode;
+
+    const { error: profileError } = await supabase.from('users').insert({
+      id: userId,
+      email,
+      name,
+      area,
+      bio,
+      child_name: childName,
+      child_age: childAge,
+      interests,
+      is_verified: isFoundingMember,
+      is_founding_member: isFoundingMember,
+      invite_code: inviteCode,
+    });
+
+    if (profileError) {
+      setSignupError(profileError.message);
+      return;
+    }
+
+    // Mark invite code as used
+    if (inviteCode) {
+      await supabase.from('invite_codes').update({
+        is_used: true,
+        used_by: userId,
+        used_at: new Date().toISOString(),
+      }).eq('code', inviteCode);
+    }
+
+    setUser({ id: userId, email, name, is_verified: isFoundingMember, is_founding_member: isFoundingMember });
+
+    if (isFoundingMember) {
+      setIsVerified(true);
+      setIsBetaMember(true);
+      navigate("screen", "main");
+    } else {
+      navigate("screen", "verify");
+    }
+  };
+
+  // ─── Verification complete handler ───
+  const handleVerificationComplete = async () => {
+    if (user) {
+      await supabase.from('users').update({ is_verified: true }).eq('id', user.id);
+      setUser(prev => ({ ...prev, is_verified: true }));
+    }
+    setIsVerified(true);
+    navigate("screen", "main");
+  };
+
+  if (loading) {
+    return (
+      <div style={{ ...styles.fullScreen, background: "#FFFBFC", justifyContent: "center", alignItems: "center" }}>
+        <span style={{ fontSize: 40 }}>🌸</span>
+        <p style={{ marginTop: 16, fontSize: 14, color: "#888" }}>Loading...</p>
+      </div>
+    );
+  }
+
   // Welcome / About Us / Onboarding / Access Path
   if (screen === "welcome") return <WelcomeScreen onContinue={() => navigate("screen", "about")} fadeIn={fadeIn} />;
   if (screen === "about") return <AboutScreen onContinue={() => navigate("screen", "access")} fadeIn={fadeIn} />;
   if (screen === "access") return (
     <AccessGateScreen
-      onInviteCode={() => { setIsBetaMember(true); navigate("screen", "onboard"); }}
-      onPublicSignup={() => { setIsBetaMember(false); navigate("screen", "onboard"); }}
+      onInviteCode={(code) => { setInviteCode(code); setIsBetaMember(true); navigate("screen", "onboard"); }}
+      onPublicSignup={() => { setInviteCode(null); setIsBetaMember(false); navigate("screen", "onboard"); }}
       fadeIn={fadeIn}
     />
   );
@@ -198,18 +309,12 @@ function MamaSquadsApp() {
     <OnboardingScreen
       step={onboardStep}
       setStep={setOnboardStep}
-      onComplete={() => {
-        if (isBetaMember) {
-          setIsVerified(true);
-          navigate("screen", "main");
-        } else {
-          navigate("screen", "verify");
-        }
-      }}
+      onComplete={handleSignup}
+      signupError={signupError}
       fadeIn={fadeIn}
     />
   );
-  if (screen === "verify") return <VerificationScreen onComplete={() => { setIsVerified(true); navigate("screen", "main"); }} fadeIn={fadeIn} />;
+  if (screen === "verify") return <VerificationScreen onComplete={handleVerificationComplete} fadeIn={fadeIn} />;
 
   // HARD GATE: Block unverified users from accessing anything
   if (screen === "main" && !isVerified) {
@@ -393,15 +498,27 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, fadeIn }) {
   const [show, setShow] = useState(false);
   useEffect(() => { setTimeout(() => setShow(true), 100); }, []);
 
-  // Simulated valid invite codes
-  const VALID_CODES = ["MAMASQUAD2026", "FOUNDING-MOM", "CICI-INVITED", "BETA-MOM", "SQUAD-ONE"];
+  const [checking, setChecking] = useState(false);
 
-  const handleCodeSubmit = () => {
+  const handleCodeSubmit = async () => {
     const trimmed = code.trim().toUpperCase();
-    if (VALID_CODES.includes(trimmed)) {
+    if (!trimmed) return;
+    setChecking(true);
+    setCodeError(false);
+
+    const { data, error } = await supabase
+      .from('invite_codes')
+      .select('*')
+      .eq('code', trimmed)
+      .eq('is_used', false)
+      .single();
+
+    setChecking(false);
+
+    if (data && !error) {
       setCodeError(false);
       setCodeSuccess(true);
-      setTimeout(() => onInviteCode(), 1200);
+      setTimeout(() => onInviteCode(trimmed), 1200);
     } else {
       setCodeError(true);
       setCodeSuccess(false);
@@ -471,10 +588,11 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, fadeIn }) {
                 )}
                 {!codeSuccess && (
                   <button
-                    style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #4CAF50, #388E3C)", boxShadow: "0 4px 16px rgba(76,175,80,0.3)", marginTop: 4 }}
+                    style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #4CAF50, #388E3C)", boxShadow: "0 4px 16px rgba(76,175,80,0.3)", marginTop: 4, opacity: checking ? 0.6 : 1 }}
                     onClick={handleCodeSubmit}
+                    disabled={checking}
                   >
-                    Redeem Code
+                    {checking ? "Checking..." : "Redeem Code"}
                   </button>
                 )}
               </div>
@@ -624,28 +742,47 @@ function AboutScreen({ onContinue, fadeIn }) {
 }
 
 // ─── Onboarding ───
-function OnboardingScreen({ step, setStep, onComplete, fadeIn }) {
-  const [answers, setAnswers] = useState({});
+function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const [show, setShow] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const goNext = () => {
+  // Controlled form state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [area, setArea] = useState("");
+  const [bio, setBio] = useState("");
+  const [childName, setChildName] = useState("");
+  const [childAge, setChildAge] = useState("");
+  const [selectedInterests, setSelectedInterests] = useState({});
+  const [quickAnswers, setQuickAnswers] = useState({});
+
+  const goNext = async () => {
+    if (step >= 3) {
+      setSubmitting(true);
+      const interests = Object.keys(selectedInterests).filter(k => selectedInterests[k]);
+      await onComplete({ email, password, name, area, bio, childName, childAge, interests });
+      setSubmitting(false);
+      return;
+    }
     setShow(false);
     setTimeout(() => {
-      if (step >= 3) onComplete();
-      else setStep(step + 1);
+      setStep(step + 1);
       setShow(true);
     }, 200);
   };
 
   const steps = [
     {
-      title: "Tell us about you",
-      subtitle: "Help moms find their match",
+      title: "Create your account",
+      subtitle: "Your login for MamaSquads",
       fields: (
         <div style={styles.onboardFields}>
-          <input style={styles.input} placeholder="Your name" />
-          <input style={styles.input} placeholder="Your area / zip code" />
-          <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Write a short bio... (e.g., Coffee-loving boy mom, always at the park!)" />
+          <input style={styles.input} placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
+          <input style={styles.input} placeholder="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+          <input style={styles.input} placeholder="Create a password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+          <input style={styles.input} placeholder="Your area / zip code" value={area} onChange={e => setArea(e.target.value)} />
+          <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Write a short bio... (e.g., Coffee-loving boy mom, always at the park!)" value={bio} onChange={e => setBio(e.target.value)} />
         </div>
       ),
     },
@@ -654,8 +791,8 @@ function OnboardingScreen({ step, setStep, onComplete, fadeIn }) {
       subtitle: "We'll match you with age-appropriate playdates",
       fields: (
         <div style={styles.onboardFields}>
-          <input style={styles.input} placeholder="Child's name" />
-          <input style={styles.input} placeholder="Child's age (e.g., 2 years)" />
+          <input style={styles.input} placeholder="Child's name" value={childName} onChange={e => setChildName(e.target.value)} />
+          <input style={styles.input} placeholder="Child's age (e.g., 2 years)" value={childAge} onChange={e => setChildAge(e.target.value)} />
           <button style={styles.addChildBtn}>+ Add another child</button>
         </div>
       ),
@@ -670,9 +807,9 @@ function OnboardingScreen({ step, setStep, onComplete, fadeIn }) {
               key={i}
               style={{
                 ...styles.interestChip,
-                ...(answers[interest] ? styles.interestChipActive : {}),
+                ...(selectedInterests[interest] ? styles.interestChipActive : {}),
               }}
-              onClick={() => setAnswers(a => ({ ...a, [interest]: !a[interest] }))}
+              onClick={() => setSelectedInterests(a => ({ ...a, [interest]: !a[interest] }))}
             >
               {interest}
             </button>
@@ -688,7 +825,7 @@ function OnboardingScreen({ step, setStep, onComplete, fadeIn }) {
           {LIFESTYLE_QUESTIONS.slice(0, 3).map((q, i) => (
             <div key={i} style={styles.promptCard}>
               <p style={styles.promptQuestion}>{q}</p>
-              <input style={styles.input} placeholder="Your answer..." />
+              <input style={styles.input} placeholder="Your answer..." value={quickAnswers[i] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [i]: e.target.value }))} />
             </div>
           ))}
         </div>
@@ -707,8 +844,11 @@ function OnboardingScreen({ step, setStep, onComplete, fadeIn }) {
         <h2 style={styles.onboardTitle}>{s.title}</h2>
         <p style={styles.onboardSubtitle}>{s.subtitle}</p>
         {s.fields}
-        <button style={styles.primaryBtn} onClick={goNext}>
-          {step >= 3 ? "Let's Go! 🎉" : "Continue"}
+        {signupError && step >= 3 && (
+          <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginBottom: 8 }}>{signupError}</p>
+        )}
+        <button style={{ ...styles.primaryBtn, opacity: submitting ? 0.6 : 1 }} onClick={goNext} disabled={submitting}>
+          {submitting ? "Creating account..." : step >= 3 ? "Let's Go! 🎉" : "Continue"}
         </button>
         {step > 0 && (
           <button style={styles.textBtn} onClick={() => { setShow(false); setTimeout(() => { setStep(step - 1); setShow(true); }, 200); }}>
