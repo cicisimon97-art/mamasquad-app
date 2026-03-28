@@ -268,19 +268,26 @@ function MamaSquadsApp() {
     const { data: profile, error: profileError } = await supabase.from('users').select('*').eq('id', data.user.id).single();
     if (profileError || !profile) {
       // User exists in auth but not in users table — create a basic profile
-      const { error: insertError } = await supabase.from('users').insert({
+      const newProfile = {
         id: data.user.id,
         email: data.user.email,
         name: data.user.email.split('@')[0],
-        kids: [],
-        interests: [],
-        is_verified: false,
-        is_founding_member: false,
-      });
-      if (insertError) return { error: "Could not load your profile. Please try again." };
+      };
+      const { error: insertError } = await supabase.from('users').insert(newProfile);
+      if (insertError) {
+        // If insert fails due to duplicate, try fetching again
+        const { data: retryProfile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+        if (retryProfile) {
+          setUser(retryProfile);
+          setIsVerified(retryProfile.is_verified);
+          setIsBetaMember(retryProfile.is_founding_member);
+          setScreen("main");
+          return { success: true };
+        }
+        return { error: "Could not create your profile: " + insertError.message };
+      }
 
-      const newProfile = { id: data.user.id, email: data.user.email, name: data.user.email.split('@')[0], is_verified: false, is_founding_member: false };
-      setUser(newProfile);
+      setUser({ ...newProfile, is_verified: false, is_founding_member: false, kids: [], interests: [] });
       setIsVerified(false);
       setScreen("main");
       return { success: true };
