@@ -733,7 +733,7 @@ function MamaSquadsApp() {
     );
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
     if (showPoll) return <PollScreen polls={POLLS} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
-    if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} fadeIn={fadeIn} />;
+    if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
       <div style={styles.detailScreen}>
@@ -808,7 +808,7 @@ function MamaSquadsApp() {
             <MessagesTab onChatSelect={(c) => navigate("chat", c)} />
           )}
           {tab === "profile" && (
-            <MyProfileTab isBetaMember={isBetaMember} />
+            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} />
           )}
         </div>
         <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} />
@@ -2062,67 +2062,145 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
 }
 
 // ─── My Profile Tab ───
-function MyProfileTab({ isBetaMember }) {
+function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups }) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editName, setEditName] = useState(user?.name || "");
+  const [editArea, setEditArea] = useState(user?.area || "");
+  const [editBio, setEditBio] = useState(user?.bio || "");
+  const [editChildName, setEditChildName] = useState(user?.child_name || "");
+  const [editChildAge, setEditChildAge] = useState(user?.child_age || "");
+  const [editInterests, setEditInterests] = useState(user?.interests || []);
+
+  const displayName = user?.name || "Mom";
+  const avatar = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
+  const isVerified = user?.is_verified;
+  const isFoundingMember = user?.is_founding_member || isBetaMember;
+
+  const handleSave = async () => {
+    if (!user) return;
+    setSaving(true);
+    const updates = {
+      name: editName.trim(),
+      area: editArea.trim(),
+      bio: editBio.trim(),
+      child_name: editChildName.trim(),
+      child_age: editChildAge.trim(),
+      interests: editInterests,
+    };
+    await supabase.from('users').update(updates).eq('id', user.id);
+    setUser(prev => ({ ...prev, ...updates }));
+    setSaving(false);
+    setEditing(false);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const ALL_INTERESTS = ["Outdoors", "Artsy & Crafty", "Bookworm", "Wellness", "Foodie", "Techy", "Active", "Music Lover", "Eco-Conscious", "Coffee Dates", "Pet Lover", "Game Nights"];
+
+  if (editing) {
+    return (
+      <div style={styles.tabContent}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+          <h1 style={styles.pageTitle}>Edit Profile</h1>
+          <button style={{ ...styles.textBtn, marginTop: 0, padding: 0, fontSize: 14 }} onClick={() => setEditing(false)}>Cancel</button>
+        </div>
+        <div style={styles.onboardFields}>
+          <input style={styles.input} placeholder="Your name" value={editName} onChange={e => setEditName(e.target.value)} />
+          <input style={styles.input} placeholder="Area / zip code" value={editArea} onChange={e => setEditArea(e.target.value)} />
+          <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Bio" value={editBio} onChange={e => setEditBio(e.target.value)} />
+          <input style={styles.input} placeholder="Child's name" value={editChildName} onChange={e => setEditChildName(e.target.value)} />
+          <input style={styles.input} placeholder="Child's age" value={editChildAge} onChange={e => setEditChildAge(e.target.value)} />
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Interests</p>
+          <div style={styles.interestGrid}>
+            {ALL_INTERESTS.map(interest => (
+              <button
+                key={interest}
+                style={{
+                  ...styles.interestChip,
+                  ...(editInterests.includes(interest) ? styles.interestChipActive : {}),
+                }}
+                onClick={() => setEditInterests(prev =>
+                  prev.includes(interest) ? prev.filter(i => i !== interest) : [...prev, interest]
+                )}
+              >
+                {interest}
+              </button>
+            ))}
+          </div>
+        </div>
+        <button
+          style={{ ...styles.primaryBtn, width: "100%", marginTop: 16, opacity: saving ? 0.6 : 1 }}
+          onClick={handleSave}
+          disabled={saving}
+        >
+          {saving ? "Saving..." : "Save Changes"}
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.tabContent}>
       <h1 style={styles.pageTitle}>My Profile</h1>
       <div style={styles.myProfileCard}>
         <div style={{ position: "relative", display: "inline-block" }}>
-          <div style={styles.myAvatar}>JD</div>
-          <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13 }} title="Verified">✓</div>
+          <div style={styles.myAvatar}>{avatar}</div>
+          {isVerified && <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13 }} title="Verified">✓</div>}
         </div>
-        {isBetaMember && (
+        {isFoundingMember && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: "#FF8F00", background: "#FFF8E1", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>⭐ FOUNDING MEMBER</span>
           </div>
         )}
-        <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>
-        <h2 style={styles.myName}>Jane Doe</h2>
-        <p style={styles.myArea}>{Icons.location} Westside</p>
+        {isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>}
+        <h2 style={styles.myName}>{displayName}</h2>
+        {(user?.area) && <p style={styles.myArea}>{Icons.location} {user.area}</p>}
         <div style={styles.statRow}>
-          <div style={styles.stat}><strong>3</strong><span>Playdates</span></div>
-          <div style={styles.stat}><strong>12</strong><span>Connections</span></div>
-          <div style={styles.stat}><strong>2</strong><span>Groups</span></div>
+          <div style={styles.stat}><strong>{joinedEvents?.length || 0}</strong><span>Playdates</span></div>
+          <div style={styles.stat}><strong>0</strong><span>Connections</span></div>
+          <div style={styles.stat}><strong>{joinedGroups?.length || 0}</strong><span>Groups</span></div>
         </div>
       </div>
 
-      <div style={styles.detailSection}>
-        <h3 style={styles.sectionTitle}>Bio</h3>
-        <p style={styles.bioText}>Mom of 2 amazing kiddos (3 & 5). Love coffee, the park, and finding the best snack spots. Always down for a playdate! 🌻</p>
-      </div>
+      {user?.bio && (
+        <div style={styles.detailSection}>
+          <h3 style={styles.sectionTitle}>Bio</h3>
+          <p style={styles.bioText}>{user.bio}</p>
+        </div>
+      )}
 
-      <div style={styles.detailSection}>
-        <h3 style={styles.sectionTitle}>My Interests</h3>
-        <div style={styles.interestRow}>
-          {["Outdoors", "Coffee", "Crafts", "Reading"].map(i => (
-            <span key={i} style={styles.interestTagLg}>{i}</span>
-          ))}
+      {user?.child_name && (
+        <div style={styles.detailSection}>
+          <h3 style={styles.sectionTitle}>My Little Ones</h3>
+          <p style={styles.bioText}>{user.child_name}{user.child_age ? ` (${user.child_age})` : ''}</p>
         </div>
-      </div>
+      )}
 
-      <div style={styles.detailSection}>
-        <h3 style={styles.sectionTitle}>Lifestyle Prompts</h3>
-        <div style={styles.promptAnswer}>
-          <p style={styles.promptQ}>Coffee or tea mom?</p>
-          <p style={styles.promptA}>Coffee. Triple shot. No negotiations. ☕</p>
+      {(user?.interests || []).length > 0 && (
+        <div style={styles.detailSection}>
+          <h3 style={styles.sectionTitle}>My Interests</h3>
+          <div style={styles.interestRow}>
+            {user.interests.map(i => (
+              <span key={i} style={styles.interestTagLg}>{i}</span>
+            ))}
+          </div>
         </div>
-        <div style={styles.promptAnswer}>
-          <p style={styles.promptQ}>Favorite family activity?</p>
-          <p style={styles.promptA}>Farmers market on Saturdays — the kids love the honey samples!</p>
-        </div>
-      </div>
+      )}
 
       <div style={styles.menuList}>
         {[
-          { label: "Edit Profile", icon: "✏️" },
+          { label: "Edit Profile", icon: "✏️", action: () => setEditing(true) },
           { label: "My Children", icon: "👶" },
           { label: "Discover Moms", icon: "🔍" },
           { label: "Notifications", icon: "🔔" },
           { label: "Privacy & Safety", icon: "🔒" },
           { label: "About MamaSquads", icon: "💛" },
-          { label: "Sign Out", icon: "👋" },
+          { label: "Sign Out", icon: "👋", action: handleSignOut },
         ].map(item => (
-          <div key={item.label} style={styles.menuItem}>
+          <div key={item.label} style={styles.menuItem} onClick={item.action || undefined}>
             <span>{item.icon} {item.label}</span>
             <span style={{ color: "#ccc" }}>›</span>
           </div>
@@ -2251,9 +2329,20 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
 }
 
 // ─── Admin Application ───
-function AdminApplyScreen({ onBack }) {
+function AdminApplyScreen({ onBack, user }) {
   const [agreed, setAgreed] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Controlled form fields
+  const [fullName, setFullName] = useState(user?.name || "");
+  const [area, setArea] = useState(user?.area || "");
+  const [phone, setPhone] = useState("");
+  const [motivation, setMotivation] = useState("");
+  const [networkSize, setNetworkSize] = useState("");
+  const [experience, setExperience] = useState("");
+  const [references, setReferences] = useState("");
 
   const requirements = [
     { id: "active", label: "I have been an active MamaSquads member for at least 30 days" },
@@ -2264,6 +2353,32 @@ function AdminApplyScreen({ onBack }) {
   ];
 
   const allAgreed = requirements.every(r => agreed[r.id]);
+
+  const handleSubmit = async () => {
+    if (!allAgreed) return;
+    setSubmitting(true);
+    setError(null);
+
+    const { error: insertError } = await supabase.from('admin_applications').insert({
+      user_id: user?.id,
+      full_name: fullName.trim(),
+      area: area.trim(),
+      phone: phone.trim(),
+      motivation: motivation.trim(),
+      network_size: networkSize,
+      event_experience: experience,
+      references: references.trim(),
+      checklist: agreed,
+      status: 'pending',
+    });
+
+    setSubmitting(false);
+    if (insertError) {
+      setError(insertError.message);
+    } else {
+      setSubmitted(true);
+    }
+  };
 
   if (submitted) {
     return (
@@ -2348,37 +2463,40 @@ function AdminApplyScreen({ onBack }) {
         {/* Application Form */}
         <div style={{ ...styles.onboardFields, marginTop: 4 }}>
           <p style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 4 }}>Your Application</p>
-          <input style={styles.input} placeholder="Full legal name (for background check)" />
-          <input style={styles.input} placeholder="Your area / neighborhood / zip code" />
-          <input style={styles.input} placeholder="Phone number" />
-          <textarea style={{ ...styles.input, minHeight: 100, fontFamily: "inherit" }} placeholder="Why do you want to be an admin? Tell us about your involvement with local families and any relevant experience..." />
-          <select style={styles.input}>
-            <option>How many local moms do you connect with?</option>
+          <input style={styles.input} placeholder="Full legal name (for background check)" value={fullName} onChange={e => setFullName(e.target.value)} />
+          <input style={styles.input} placeholder="Your area / neighborhood / zip code" value={area} onChange={e => setArea(e.target.value)} />
+          <input style={styles.input} placeholder="Phone number" value={phone} onChange={e => setPhone(e.target.value)} />
+          <textarea style={{ ...styles.input, minHeight: 100, fontFamily: "inherit" }} placeholder="Why do you want to be an admin? Tell us about your involvement with local families and any relevant experience..." value={motivation} onChange={e => setMotivation(e.target.value)} />
+          <select style={styles.input} value={networkSize} onChange={e => setNetworkSize(e.target.value)}>
+            <option value="">How many local moms do you connect with?</option>
             <option>1-5 moms</option>
             <option>5-15 moms</option>
             <option>15-30 moms</option>
             <option>30+ moms</option>
           </select>
-          <select style={styles.input}>
-            <option>Do you have experience organizing group events?</option>
+          <select style={styles.input} value={experience} onChange={e => setExperience(e.target.value)}>
+            <option value="">Do you have experience organizing group events?</option>
             <option>No, but I'm eager to learn</option>
             <option>Some informal experience</option>
             <option>Yes, regularly</option>
             <option>Yes, professionally</option>
           </select>
-          <input style={styles.input} placeholder="Social media or community references (optional)" />
+          <input style={styles.input} placeholder="Social media or community references (optional)" value={references} onChange={e => setReferences(e.target.value)} />
         </div>
+
+        {error && <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginTop: 8 }}>{error}</p>}
 
         <button
           style={{
             ...styles.primaryBtn,
             width: "100%", marginTop: 20,
-            opacity: allAgreed ? 1 : 0.4,
-            cursor: allAgreed ? "pointer" : "not-allowed",
+            opacity: allAgreed && !submitting ? 1 : 0.4,
+            cursor: allAgreed && !submitting ? "pointer" : "not-allowed",
           }}
-          onClick={() => { if (allAgreed) setSubmitted(true); }}
+          onClick={handleSubmit}
+          disabled={submitting}
         >
-          Submit Application for Review
+          {submitting ? "Submitting..." : "Submit Application for Review"}
         </button>
         {!allAgreed && (
           <p style={{ fontSize: 12, color: "#ACACAC", textAlign: "center", marginTop: 8 }}>Please check all eligibility requirements above to submit</p>
