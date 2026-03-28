@@ -265,16 +265,12 @@ function MamaSquadsApp() {
     const userId = authData.user.id;
     const isFoundingMember = !!inviteCode;
 
-    // Keep child_name/child_age for backward compat, add kids array
-    const firstKid = (kids || [])[0] || {};
     const { error: profileError } = await supabase.from('users').insert({
       id: userId,
       email,
       name,
       area,
       bio,
-      child_name: firstKid.name || '',
-      child_age: firstKid.age || '',
       kids: kids || [],
       interests,
       is_verified: isFoundingMember,
@@ -435,7 +431,7 @@ function MamaSquadsApp() {
       user_name: user.name || user.email,
       user_avatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
       user_bio: user.bio || '',
-      child_age: user.child_age || '',
+      child_age: (user.kids && user.kids[0]?.age) || '',
       message,
       status: 'pending',
     });
@@ -2192,7 +2188,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editChildren, setEditChildren] = useState(() => {
     if (user?.kids && user.kids.length > 0) return user.kids;
-    if (user?.child_name) return [{ name: user.child_name, age: user.child_age || "" }];
+    if (user?.kids && user.kids.length > 0) return user.kids;
     return [{ name: "", age: "" }];
   });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
@@ -2206,13 +2202,10 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
     if (!user) return;
     setSaving(true);
     const kids = editChildren.filter(c => c.name.trim() || c.age.trim());
-    const firstKid = kids[0] || {};
     const updates = {
       name: editName.trim(),
       area: editArea.trim(),
       bio: editBio.trim(),
-      child_name: firstKid.name || '',
-      child_age: firstKid.age || '',
       kids,
       interests: editInterests,
     };
@@ -2309,15 +2302,12 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
         </div>
       )}
 
-      {((user?.kids && user.kids.length > 0) || user?.child_name) && (
+      {(user?.kids && user.kids.length > 0) && (
         <div style={styles.detailSection}>
           <h3 style={styles.sectionTitle}>My Little Ones</h3>
-          {(user.kids && user.kids.length > 0)
-            ? user.kids.filter(k => k.name || k.age).map((kid, i) => (
-                <p key={i} style={styles.bioText}>{kid.name}{kid.age ? ` (${kid.age})` : ''}</p>
-              ))
-            : <p style={styles.bioText}>{user.child_name}{user.child_age ? ` (${user.child_age})` : ''}</p>
-          }
+          {user.kids.filter(k => k.name || k.age).map((kid, i) => (
+            <p key={i} style={styles.bioText}>{kid.name}{kid.age ? ` (${kid.age})` : ''}</p>
+          ))}
         </div>
       )}
 

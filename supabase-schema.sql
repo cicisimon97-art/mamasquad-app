@@ -7,8 +7,6 @@ create table if not exists public.users (
   name text,
   area text,
   bio text,
-  child_name text,
-  child_age text,
   kids jsonb default '[]',
   interests text[] default '{}',
   is_verified boolean default false,
