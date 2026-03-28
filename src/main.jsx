@@ -582,6 +582,109 @@ function MamaSquadsApp() {
     };
   };
 
+  // ─── Save availability handler ───
+  const handleSaveAvailability = async (groupId, availability, note) => {
+    if (!user) return;
+    const { data: existing } = await supabase
+      .from('availability')
+      .select('id')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .single();
+
+    const payload = {
+      group_id: groupId,
+      user_id: user.id,
+      user_name: user.name || user.email,
+      user_avatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
+      days: availability,
+      note: note || '',
+    };
+
+    if (existing) {
+      await supabase.from('availability').update(payload).eq('id', existing.id);
+    } else {
+      await supabase.from('availability').insert(payload);
+    }
+  };
+
+  // ─── Load group availability ───
+  const loadGroupAvailability = async (groupId) => {
+    if (!user) return [];
+    const { data } = await supabase
+      .from('availability')
+      .select('*')
+      .eq('group_id', groupId)
+      .neq('user_id', user.id);
+    return (data || []).map(a => ({
+      name: a.user_name,
+      avatar: a.user_avatar,
+      days: a.days || {},
+      note: a.note || '',
+      fromSupabase: true,
+    }));
+  };
+
+  // ─── Load my availability for a group ───
+  const loadMyAvailability = async (groupId) => {
+    if (!user) return null;
+    const { data } = await supabase
+      .from('availability')
+      .select('*')
+      .eq('group_id', groupId)
+      .eq('user_id', user.id)
+      .single();
+    if (data) return { days: data.days || {}, note: data.note || '' };
+    return null;
+  };
+
+  // ─── Propose meetup handler ───
+  const handleProposeMeetup = async (groupId, proposal) => {
+    if (!user) return { error: 'Not logged in' };
+    const { data, error } = await supabase.from('meetup_proposals').insert({
+      group_id: groupId,
+      proposed_by: user.id,
+      proposed_by_name: user.name || user.email,
+      title: proposal.title,
+      description: proposal.description,
+      time_options: proposal.timeOptions,
+      location_options: proposal.locationOptions,
+      status: 'voting',
+    }).select().single();
+
+    if (error) return { error: error.message };
+    return { data };
+  };
+
+  // ─── Load meetup proposals for a group ───
+  const loadMeetupProposals = async (groupId) => {
+    const { data } = await supabase
+      .from('meetup_proposals')
+      .select('*, votes(id, user_id, option_type, option_value)')
+      .eq('group_id', groupId)
+      .order('created_at', { ascending: false });
+    return data || [];
+  };
+
+  // ─── Vote on meetup option ───
+  const handleVote = async (proposalId, optionType, optionValue) => {
+    if (!user) return;
+    // Remove existing vote for this type on this proposal
+    await supabase.from('votes')
+      .delete()
+      .eq('proposal_id', proposalId)
+      .eq('user_id', user.id)
+      .eq('option_type', optionType);
+
+    // Insert new vote
+    await supabase.from('votes').insert({
+      proposal_id: proposalId,
+      user_id: user.id,
+      option_type: optionType,
+      option_value: optionValue,
+    });
+  };
+
   if (loading) {
     return (
       <div style={{ ...styles.fullScreen, background: "#FFFBFC", justifyContent: "center", alignItems: "center" }}>
@@ -662,6 +765,12 @@ function MamaSquadsApp() {
         onApproveRequest={handleApproveRequest}
         onDenyRequest={handleDenyRequest}
         onCreateEvent={handleCreateEvent}
+        onSaveAvailability={handleSaveAvailability}
+        loadGroupAvailability={loadGroupAvailability}
+        loadMyAvailability={loadMyAvailability}
+        onProposeMeetup={handleProposeMeetup}
+        loadMeetupProposals={loadMeetupProposals}
+        onVote={handleVote}
         fadeIn={fadeIn}
       />
     );
@@ -2379,7 +2488,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
 }
 
 // ─── Group Detail Screen ───
-function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, fadeIn }) {
+function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.name) : group.admin === "Sarah Mitchell";
@@ -2397,6 +2506,17 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [pdMax, setPdMax] = useState("");
   const [pdDesc, setPdDesc] = useState("");
   const [pdSubmitting, setPdSubmitting] = useState(false);
+  const [mtTitle, setMtTitle] = useState("");
+  const [mtDesc, setMtDesc] = useState("");
+  const [mtTime1, setMtTime1] = useState("");
+  const [mtTime2, setMtTime2] = useState("");
+  const [mtTime3, setMtTime3] = useState("");
+  const [mtLoc1, setMtLoc1] = useState("");
+  const [mtLoc2, setMtLoc2] = useState("");
+  const [mtSubmitting, setMtSubmitting] = useState(false);
+  const [meetups, setMeetups] = useState([]);
+  const [meetupsLoaded, setMeetupsLoaded] = useState(false);
+  const [myVotes, setMyVotes] = useState({});
   const [supaRequests, setSupaRequests] = useState([]);
   const [myAvailability, setMyAvailability] = useState({
     Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
@@ -2414,6 +2534,27 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         if (data) setSupaRequests(data);
       });
   }, [isAdmin, group.id, group.fromSupabase]);
+
+  // Load meetup proposals from Supabase
+  useEffect(() => {
+    if (!group.fromSupabase || !loadMeetupProposals || meetupsLoaded) return;
+    loadMeetupProposals(group.id).then(data => {
+      setMeetups(data);
+      // Extract my existing votes
+      if (user && data.length > 0) {
+        const votes = {};
+        data.forEach(p => {
+          (p.votes || []).forEach(v => {
+            if (v.user_id === user.id) {
+              votes[`${p.id}_${v.option_type}`] = v.option_value;
+            }
+          });
+        });
+        setMyVotes(votes);
+      }
+      setMeetupsLoaded(true);
+    });
+  }, [group.fromSupabase, group.id, meetupsLoaded]);
 
   // Merge sample pending requests with Supabase requests
   const approvedRequests = groupRequests[group.id]?.approved || [];
@@ -2707,21 +2848,44 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     </div>
                     <p style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Suggest a meetup and let the group vote on time & place!</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <input style={gs.formInput} placeholder="What's the meetup idea?" />
-                      <textarea style={{ ...gs.formInput, minHeight: 50, resize: "vertical" }} placeholder="Any details or context..." />
+                      <input style={gs.formInput} placeholder="What's the meetup idea?" value={mtTitle} onChange={e => setMtTitle(e.target.value)} />
+                      <textarea style={{ ...gs.formInput, minHeight: 50, resize: "vertical" }} placeholder="Any details or context..." value={mtDesc} onChange={e => setMtDesc(e.target.value)} />
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Suggest times (members will vote):</p>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Option 1 (e.g., Sat 10am)" />
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Option 2" />
+                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Option 1 (e.g., Sat 10am)" value={mtTime1} onChange={e => setMtTime1(e.target.value)} />
+                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Option 2" value={mtTime2} onChange={e => setMtTime2(e.target.value)} />
                       </div>
-                      <input style={gs.formInput} placeholder="Option 3 (optional)" />
+                      <input style={gs.formInput} placeholder="Option 3 (optional)" value={mtTime3} onChange={e => setMtTime3(e.target.value)} />
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Suggest locations (members will vote):</p>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Location 1" />
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Location 2" />
+                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Location 1" value={mtLoc1} onChange={e => setMtLoc1(e.target.value)} />
+                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Location 2" value={mtLoc2} onChange={e => setMtLoc2(e.target.value)} />
                       </div>
-                      <button style={{ ...styles.primaryBtn, marginTop: 4 }} onClick={() => setShowProposeMeetup(false)}>
-                        Propose to Group — Let's Vote! 🗳️
+                      <button
+                        style={{ ...styles.primaryBtn, marginTop: 4, opacity: mtSubmitting ? 0.6 : 1 }}
+                        disabled={mtSubmitting}
+                        onClick={async () => {
+                          if (!mtTitle.trim()) return;
+                          setMtSubmitting(true);
+                          if (onProposeMeetup && group.fromSupabase) {
+                            const timeOptions = [mtTime1, mtTime2, mtTime3].map(t => t.trim()).filter(Boolean);
+                            const locationOptions = [mtLoc1, mtLoc2].map(l => l.trim()).filter(Boolean);
+                            const result = await onProposeMeetup(group.id, {
+                              title: mtTitle.trim(),
+                              description: mtDesc.trim(),
+                              timeOptions,
+                              locationOptions,
+                            });
+                            if (result.data) {
+                              setMeetups(prev => [{ ...result.data, votes: [] }, ...prev]);
+                            }
+                          }
+                          setMtSubmitting(false);
+                          setMtTitle(""); setMtDesc(""); setMtTime1(""); setMtTime2(""); setMtTime3(""); setMtLoc1(""); setMtLoc2("");
+                          setShowProposeMeetup(false);
+                        }}
+                      >
+                        {mtSubmitting ? "Proposing..." : "Propose to Group — Let's Vote! 🗳️"}
                       </button>
                     </div>
                   </div>
@@ -2787,7 +2951,114 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   <h3 style={styles.sectionTitle}>Upcoming Meetups</h3>
                   <button style={{ ...styles.secondaryBtn, padding: "8px 14px", fontSize: 12 }} onClick={() => { setActiveSection("feed"); setShowProposeMeetup(true); }}>+ Propose</button>
                 </div>
-                {SAMPLE_GROUP_MEETUPS.map((meetup, i) => (
+                {/* Supabase meetup proposals */}
+                {group.fromSupabase && meetups.map((proposal, i) => {
+                  const timeVotes = {};
+                  const locVotes = {};
+                  (proposal.votes || []).forEach(v => {
+                    if (v.option_type === 'time') timeVotes[v.option_value] = (timeVotes[v.option_value] || 0) + 1;
+                    if (v.option_type === 'location') locVotes[v.option_value] = (locVotes[v.option_value] || 0) + 1;
+                  });
+                  const myTimeVote = myVotes[`${proposal.id}_time`];
+                  const myLocVote = myVotes[`${proposal.id}_location`];
+
+                  return (
+                    <div key={proposal.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0", animation: `fadeSlideUp 0.4s ease both ${i * 0.05}s` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <span style={{ ...styles.ageBadge, background: proposal.status === 'confirmed' ? "#E8F5E9" : "#FFF3E0", color: proposal.status === 'confirmed' ? "#2E7D32" : "#E65100" }}>
+                          {proposal.status === 'confirmed' ? "✓ Confirmed" : "🗳 Voting"}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#bbb" }}>{new Date(proposal.created_at).toLocaleDateString()}</span>
+                      </div>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 4 }}>{proposal.title}</h3>
+                      {proposal.description && <p style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>{proposal.description}</p>}
+                      <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>by {proposal.proposed_by_name}</p>
+
+                      {/* Time voting */}
+                      {(proposal.time_options || []).length > 0 && (
+                        <div style={{ marginTop: 10 }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>🕐 Vote for time:</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {proposal.time_options.map((opt, j) => {
+                              const votes = timeVotes[opt] || 0;
+                              const isMyVote = myTimeVote === opt;
+                              return (
+                                <button
+                                  key={j}
+                                  style={{
+                                    padding: "8px 12px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+                                    border: isMyVote ? `2px solid ${group.color}` : "1.5px solid #E8E8E8",
+                                    background: isMyVote ? `${group.color}15` : "white",
+                                    color: "#2D2D2D", fontFamily: "'DM Sans', sans-serif",
+                                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                                  }}
+                                  onClick={async () => {
+                                    if (onVote) {
+                                      await onVote(proposal.id, 'time', opt);
+                                      setMyVotes(prev => ({ ...prev, [`${proposal.id}_time`]: opt }));
+                                      // Update local vote counts
+                                      setMeetups(prev => prev.map(p => {
+                                        if (p.id !== proposal.id) return p;
+                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.option_type === 'time'));
+                                        newVotes.push({ user_id: user?.id, option_type: 'time', option_value: opt });
+                                        return { ...p, votes: newVotes };
+                                      }));
+                                    }
+                                  }}
+                                >
+                                  <span>{opt}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: group.color }}>{votes} {votes === 1 ? 'vote' : 'votes'}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Location voting */}
+                      {(proposal.location_options || []).length > 0 && (
+                        <div style={{ marginTop: 10 }}>
+                          <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>📍 Vote for location:</p>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {proposal.location_options.map((opt, j) => {
+                              const votes = locVotes[opt] || 0;
+                              const isMyVote = myLocVote === opt;
+                              return (
+                                <button
+                                  key={j}
+                                  style={{
+                                    padding: "8px 12px", borderRadius: 8, fontSize: 13, cursor: "pointer",
+                                    border: isMyVote ? `2px solid ${group.color}` : "1.5px solid #E8E8E8",
+                                    background: isMyVote ? `${group.color}15` : "white",
+                                    color: "#2D2D2D", fontFamily: "'DM Sans', sans-serif",
+                                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                                  }}
+                                  onClick={async () => {
+                                    if (onVote) {
+                                      await onVote(proposal.id, 'location', opt);
+                                      setMyVotes(prev => ({ ...prev, [`${proposal.id}_location`]: opt }));
+                                      setMeetups(prev => prev.map(p => {
+                                        if (p.id !== proposal.id) return p;
+                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.option_type === 'location'));
+                                        newVotes.push({ user_id: user?.id, option_type: 'location', option_value: opt });
+                                        return { ...p, votes: newVotes };
+                                      }));
+                                    }
+                                  }}
+                                >
+                                  <span>{opt}</span>
+                                  <span style={{ fontSize: 12, fontWeight: 600, color: group.color }}>{votes} {votes === 1 ? 'vote' : 'votes'}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                {/* Sample meetups for demo groups */}
+                {!group.fromSupabase && SAMPLE_GROUP_MEETUPS.map((meetup, i) => (
                   <div key={i} style={{ ...styles.eventCard, animation: `fadeSlideUp 0.4s ease both ${i * 0.05}s` }}>
                     <div style={{ ...styles.eventAccent, background: group.color }} />
                     <div style={styles.eventBody}>
@@ -2806,17 +3077,15 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                         <span style={styles.hostName}>by {meetup.proposedBy}</span>
                         <span style={styles.attendeeCount}>{meetup.going} going</span>
                       </div>
-                      <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-                        <button style={{ ...gs.approveBtn, flex: 0, padding: "8px 16px", fontSize: 12, borderRadius: 50 }}>
-                          {meetup.confirmed ? "I'm Going!" : "Vote & RSVP"}
-                        </button>
-                        <button style={{ ...gs.viewProfileBtn, flex: 0, padding: "8px 16px", fontSize: 12, borderRadius: 50 }}>
-                          💬 {meetup.comments}
-                        </button>
-                      </div>
                     </div>
                   </div>
                 ))}
+                {group.fromSupabase && meetups.length === 0 && (
+                  <div style={{ textAlign: "center", padding: 24 }}>
+                    <span style={{ fontSize: 32 }}>📍</span>
+                    <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No meetups proposed yet. Be the first!</p>
+                  </div>
+                )}
               </>
             ) : (
               <div style={{ background: "#F5F5F5", borderRadius: 12, padding: 24, textAlign: "center" }}>
@@ -2836,6 +3105,10 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             myAvailNote={myAvailNote}
             setMyAvailNote={setMyAvailNote}
             groupColor={group.color}
+            groupId={group.fromSupabase ? group.id : null}
+            onSaveAvailability={onSaveAvailability}
+            loadGroupAvailability={loadGroupAvailability}
+            loadMyAvailability={loadMyAvailability}
           />
         )}
 
@@ -2943,10 +3216,33 @@ const MEMBERS_AVAILABILITY = [
   { name: "Lisa W.", avatar: "LW", days: { Mon: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Tue: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Wed: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Thu: ["Morning (8-11)", "Midday (11-1)"], Fri: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Sat: ["Morning (8-11)"], Sun: [] }, note: "Baby naps 2-4 Thu, so mornings better. Sundays are family day" },
 ];
 
-function AvailabilitySection({ myAvailability, setMyAvailability, myAvailNote, setMyAvailNote, groupColor }) {
+function AvailabilitySection({ myAvailability, setMyAvailability, myAvailNote, setMyAvailNote, groupColor, groupId, onSaveAvailability, loadGroupAvailability, loadMyAvailability }) {
   const [editMode, setEditMode] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [selectedOverlapDay, setSelectedOverlapDay] = useState(null);
+  const [membersAvail, setMembersAvail] = useState(groupId ? [] : MEMBERS_AVAILABILITY);
+  const [saving, setSaving] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load availability from Supabase
+  useEffect(() => {
+    if (!groupId || loaded) return;
+    const load = async () => {
+      if (loadMyAvailability) {
+        const myData = await loadMyAvailability(groupId);
+        if (myData) {
+          setMyAvailability(myData.days);
+          setMyAvailNote(myData.note);
+        }
+      }
+      if (loadGroupAvailability) {
+        const others = await loadGroupAvailability(groupId);
+        setMembersAvail(others);
+      }
+      setLoaded(true);
+    };
+    load();
+  }, [groupId, loaded]);
 
   const toggleSlot = (day, slot) => {
     setMyAvailability(prev => {
@@ -2958,11 +3254,25 @@ function AvailabilitySection({ myAvailability, setMyAvailability, myAvailNote, s
     });
   };
 
+  const handleDone = async () => {
+    if (groupId && onSaveAvailability) {
+      setSaving(true);
+      await onSaveAvailability(groupId, myAvailability, myAvailNote);
+      // Reload others' availability
+      if (loadGroupAvailability) {
+        const others = await loadGroupAvailability(groupId);
+        setMembersAvail(others);
+      }
+      setSaving(false);
+    }
+    setEditMode(false);
+  };
+
   const hasAny = Object.values(myAvailability).some(slots => slots.length > 0);
 
   // Calculate overlap: for a given day/slot, how many members are available
   const getOverlapCount = (day, slot) => {
-    return MEMBERS_AVAILABILITY.filter(m => (m.days[day] || []).includes(slot)).length;
+    return membersAvail.filter(m => (m.days[day] || []).includes(slot)).length;
   };
 
   // Best times: find slots with most overlap
@@ -2984,10 +3294,11 @@ function AvailabilitySection({ myAvailability, setMyAvailability, myAvailNote, s
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <h3 style={styles.sectionTitle}>My Availability</h3>
         <button
-          style={{ ...styles.secondaryBtn, padding: "6px 14px", fontSize: 12 }}
-          onClick={() => setEditMode(!editMode)}
+          style={{ ...styles.secondaryBtn, padding: "6px 14px", fontSize: 12, opacity: saving ? 0.6 : 1 }}
+          onClick={() => editMode ? handleDone() : setEditMode(true)}
+          disabled={saving}
         >
-          {editMode ? "Done" : "✏️ Edit"}
+          {saving ? "Saving..." : editMode ? "Done" : "✏️ Edit"}
         </button>
       </div>
 
@@ -3108,7 +3419,7 @@ function AvailabilitySection({ myAvailability, setMyAvailability, myAvailNote, s
         </div>
         {showMembers && (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {MEMBERS_AVAILABILITY.map((member, i) => {
+            {membersAvail.map((member, i) => {
               const freeDays = AVAIL_DAYS.filter(d => (member.days[d] || []).length > 0);
               return (
                 <div key={i} style={avs.memberAvailCard}>
