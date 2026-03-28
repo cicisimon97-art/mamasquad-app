@@ -137,14 +137,23 @@ const SAMPLE_GROUP_MEETUPS = [
   { title: "Group Potluck Picnic", location: "TBD — Voting", time: "TBD", date: "Next month", proposedBy: "Sarah M.", going: 0, comments: 14, confirmed: false },
 ];
 
-const LIFESTYLE_QUESTIONS = [
-  "What's your parenting style?",
-  "Indoor or outdoor activities?",
-  "Morning or afternoon playdates?",
-  "What's your go-to snack for the kids?",
-  "Coffee or tea mom?",
-  "Favorite family weekend activity?",
-];
+const QUICK_QS = {
+  kids: [
+    { q: "My kid is best described as...", options: ["Social butterfly", "Slow to warm up", "Wild card"] },
+    { q: "My kid's perfect playdate is...", options: ["Outdoor adventures", "Arts and crafts", "Pure chaos"] },
+    { q: "Nap schedules in our house are...", options: ["Sacred", "Flexible", "What's a nap?"] },
+  ],
+  mom: [
+    { q: "I show up to playdates...", options: ["Snacks packed and on time", "Fashionably late", "Forgot it was today"] },
+    { q: "My parenting vibe is...", options: ["Schedule queen", "Go with the flow", "Controlled chaos... maybe?"] },
+    { q: "During playdates I need...", options: ["Adult conversation", "Coffee", "Both or I won't survive"] },
+    { q: "I'm the mom who always brings...", options: ["Homemade snacks", "Store-bought and proud", "The wine for later"] },
+  ],
+  matching: [
+    { q: "My ideal playdate group size is...", options: ["Just one other family", "Small group", "The more the merrier"] },
+    { q: "We're best matched with moms who are...", options: ["Laid-back", "Planners like me", "Somewhere in between"] },
+  ],
+};
 
 // ─── App ───
 function MamaSquadsApp() {
@@ -303,7 +312,7 @@ function MamaSquadsApp() {
   // ─── Signup handler (called when onboarding completes) ───
   const handleSignup = async (userData) => {
     setSignupError(null);
-    const { email, password, name, area, bio, kids, interests } = userData;
+    const { email, password, name, area, bio, momAge, kids, interests, quickAnswers } = userData;
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -333,8 +342,10 @@ function MamaSquadsApp() {
       name,
       area,
       bio,
+      mom_age: momAge || null,
       kids: kids || [],
       interests,
+      quick_answers: quickAnswers || {},
       is_verified: isFoundingMember,
       is_founding_member: isFoundingMember,
       invite_code: inviteCode,
@@ -1475,6 +1486,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const [area, setArea] = useState("");
   const [bio, setBio] = useState("");
   const [children, setChildren] = useState([{ name: "", age: "" }]);
+  const [momAge, setMomAge] = useState("");
   const [selectedInterests, setSelectedInterests] = useState({});
   const [quickAnswers, setQuickAnswers] = useState({});
 
@@ -1484,12 +1496,13 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
     setChildren(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
   };
 
+  const totalSteps = 6;
   const goNext = async () => {
-    if (step >= 3) {
+    if (step >= totalSteps - 1) {
       setSubmitting(true);
       const interests = Object.keys(selectedInterests).filter(k => selectedInterests[k]);
       const kids = children.filter(c => c.name.trim() || c.age.trim());
-      await onComplete({ email, password, name, area, bio, kids, interests });
+      await onComplete({ email, password, name, area, bio, momAge, kids, interests, quickAnswers });
       setSubmitting(false);
       return;
     }
@@ -1509,6 +1522,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
           <input style={styles.input} placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
           <input style={styles.input} placeholder="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           <input style={styles.input} placeholder="Create a password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+          <input style={styles.input} placeholder="Your age" type="number" value={momAge} onChange={e => setMomAge(e.target.value)} />
           <input style={styles.input} placeholder="Your area / zip code" value={area} onChange={e => setArea(e.target.value)} />
           <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Write a short bio... (e.g., Coffee-loving boy mom, always at the park!)" value={bio} onChange={e => setBio(e.target.value)} />
         </div>
@@ -1561,14 +1575,51 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
       ),
     },
     {
-      title: "Quick Q's",
-      subtitle: "Fun prompts to show your personality",
+      title: "Quick Q's: About the Kids",
+      subtitle: "Help us match your little ones with the right playdates",
       fields: (
         <div style={styles.onboardFields}>
-          {LIFESTYLE_QUESTIONS.slice(0, 3).map((q, i) => (
+          {QUICK_QS.kids.map((item, i) => (
             <div key={i} style={styles.promptCard}>
-              <p style={styles.promptQuestion}>{q}</p>
-              <input style={styles.input} placeholder="Your answer..." value={quickAnswers[i] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [i]: e.target.value }))} />
+              <p style={styles.promptQuestion}>{item.q}</p>
+              <select style={styles.input} value={quickAnswers[`kids_${i}`] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [`kids_${i}`]: e.target.value }))}>
+                <option value="">Choose one...</option>
+                {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: "Quick Q's: About Mom",
+      subtitle: "Let's see what kind of playdate mom you are",
+      fields: (
+        <div style={styles.onboardFields}>
+          {QUICK_QS.mom.map((item, i) => (
+            <div key={i} style={styles.promptCard}>
+              <p style={styles.promptQuestion}>{item.q}</p>
+              <select style={styles.input} value={quickAnswers[`mom_${i}`] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [`mom_${i}`]: e.target.value }))}>
+                <option value="">Choose one...</option>
+                {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            </div>
+          ))}
+        </div>
+      ),
+    },
+    {
+      title: "Quick Q's: Matching & Social Style",
+      subtitle: "Help us find your perfect mom match",
+      fields: (
+        <div style={styles.onboardFields}>
+          {QUICK_QS.matching.map((item, i) => (
+            <div key={i} style={styles.promptCard}>
+              <p style={styles.promptQuestion}>{item.q}</p>
+              <select style={styles.input} value={quickAnswers[`matching_${i}`] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [`matching_${i}`]: e.target.value }))}>
+                <option value="">Choose one...</option>
+                {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
             </div>
           ))}
         </div>
@@ -1581,17 +1632,17 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
     <div style={{ ...styles.fullScreen, background: "#FFFBFC", overflow: "auto" }}>
       <div style={{ ...styles.onboardContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(15px)", transition: "all 0.3s ease" }}>
         <div style={styles.progressBar}>
-          <div style={{ ...styles.progressFill, width: `${((step + 1) / 4) * 100}%` }} />
+          <div style={{ ...styles.progressFill, width: `${((step + 1) / totalSteps) * 100}%` }} />
         </div>
-        <p style={styles.stepLabel}>Step {step + 1} of 4</p>
+        <p style={styles.stepLabel}>Step {step + 1} of {totalSteps}</p>
         <h2 style={styles.onboardTitle}>{s.title}</h2>
         <p style={styles.onboardSubtitle}>{s.subtitle}</p>
         {s.fields}
-        {signupError && step >= 3 && (
+        {signupError && step >= totalSteps - 1 && (
           <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginBottom: 8 }}>{signupError}</p>
         )}
         <button style={{ ...styles.primaryBtn, opacity: submitting ? 0.6 : 1 }} onClick={goNext} disabled={submitting}>
-          {submitting ? "Creating account..." : step >= 3 ? "Let's Go! 🎉" : "Continue"}
+          {submitting ? "Creating account..." : step >= totalSteps - 1 ? "Let's Go! 🎉" : "Continue"}
         </button>
         {step > 0 && (
           <button style={styles.textBtn} onClick={() => { setShow(false); setTimeout(() => { setStep(step - 1); setShow(true); }, 200); }}>
