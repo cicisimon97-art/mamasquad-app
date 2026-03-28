@@ -13,7 +13,6 @@ create table if not exists public.users (
   quick_answers jsonb default '{}',
   is_verified boolean default false,
   is_founding_member boolean default false,
-  invite_code text,
   created_at timestamptz default now()
 );
 

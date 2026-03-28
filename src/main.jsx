@@ -348,7 +348,6 @@ function MamaSquadsApp() {
       quick_answers: quickAnswers || {},
       is_verified: isFoundingMember,
       is_founding_member: isFoundingMember,
-      invite_code: inviteCode,
     });
 
     if (profileError) {
