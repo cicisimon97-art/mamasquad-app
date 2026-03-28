@@ -224,7 +224,7 @@ function MamaSquadsApp() {
   // ─── Signup handler (called when onboarding completes) ───
   const handleSignup = async (userData) => {
     setSignupError(null);
-    const { email, password, name, area, bio, childName, childAge, interests } = userData;
+    const { email, password, name, area, bio, kids, interests } = userData;
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -239,14 +239,17 @@ function MamaSquadsApp() {
     const userId = authData.user.id;
     const isFoundingMember = !!inviteCode;
 
+    // Keep child_name/child_age for backward compat, add kids array
+    const firstKid = (kids || [])[0] || {};
     const { error: profileError } = await supabase.from('users').insert({
       id: userId,
       email,
       name,
       area,
       bio,
-      child_name: childName,
-      child_age: childAge,
+      child_name: firstKid.name || '',
+      child_age: firstKid.age || '',
+      kids: kids || [],
       interests,
       is_verified: isFoundingMember,
       is_founding_member: isFoundingMember,
@@ -1164,16 +1167,22 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
   const [bio, setBio] = useState("");
-  const [childName, setChildName] = useState("");
-  const [childAge, setChildAge] = useState("");
+  const [children, setChildren] = useState([{ name: "", age: "" }]);
   const [selectedInterests, setSelectedInterests] = useState({});
   const [quickAnswers, setQuickAnswers] = useState({});
+
+  const addChild = () => setChildren(prev => [...prev, { name: "", age: "" }]);
+  const removeChild = (index) => setChildren(prev => prev.filter((_, i) => i !== index));
+  const updateChild = (index, field, value) => {
+    setChildren(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
+  };
 
   const goNext = async () => {
     if (step >= 3) {
       setSubmitting(true);
       const interests = Object.keys(selectedInterests).filter(k => selectedInterests[k]);
-      await onComplete({ email, password, name, area, bio, childName, childAge, interests });
+      const kids = children.filter(c => c.name.trim() || c.age.trim());
+      await onComplete({ email, password, name, area, bio, kids, interests });
       setSubmitting(false);
       return;
     }
@@ -1203,9 +1212,24 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
       subtitle: "We'll match you with age-appropriate playdates",
       fields: (
         <div style={styles.onboardFields}>
-          <input style={styles.input} placeholder="Child's name" value={childName} onChange={e => setChildName(e.target.value)} />
-          <input style={styles.input} placeholder="Child's age (e.g., 2 years)" value={childAge} onChange={e => setChildAge(e.target.value)} />
-          <button style={styles.addChildBtn}>+ Add another child</button>
+          {children.map((child, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 8, padding: i > 0 ? "12px 0 0" : 0, borderTop: i > 0 ? "1px solid #f0f0f0" : "none" }}>
+              {i > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Child {i + 1}</span>
+                  <button
+                    style={{ background: "none", border: "none", fontSize: 12, color: "#E53935", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
+                    onClick={() => removeChild(i)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+              <input style={styles.input} placeholder="Child's name" value={child.name} onChange={e => updateChild(i, "name", e.target.value)} />
+              <input style={styles.input} placeholder="Child's age (e.g., 2 years)" value={child.age} onChange={e => updateChild(i, "age", e.target.value)} />
+            </div>
+          ))}
+          <button style={styles.addChildBtn} onClick={addChild}>+ Add another child</button>
         </div>
       ),
     },
@@ -2068,8 +2092,11 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const [editName, setEditName] = useState(user?.name || "");
   const [editArea, setEditArea] = useState(user?.area || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
-  const [editChildName, setEditChildName] = useState(user?.child_name || "");
-  const [editChildAge, setEditChildAge] = useState(user?.child_age || "");
+  const [editChildren, setEditChildren] = useState(() => {
+    if (user?.kids && user.kids.length > 0) return user.kids;
+    if (user?.child_name) return [{ name: user.child_name, age: user.child_age || "" }];
+    return [{ name: "", age: "" }];
+  });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
 
   const displayName = user?.name || "Mom";
@@ -2080,12 +2107,15 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
+    const kids = editChildren.filter(c => c.name.trim() || c.age.trim());
+    const firstKid = kids[0] || {};
     const updates = {
       name: editName.trim(),
       area: editArea.trim(),
       bio: editBio.trim(),
-      child_name: editChildName.trim(),
-      child_age: editChildAge.trim(),
+      child_name: firstKid.name || '',
+      child_age: firstKid.age || '',
+      kids,
       interests: editInterests,
     };
     await supabase.from('users').update(updates).eq('id', user.id);
@@ -2111,8 +2141,17 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
           <input style={styles.input} placeholder="Your name" value={editName} onChange={e => setEditName(e.target.value)} />
           <input style={styles.input} placeholder="Area / zip code" value={editArea} onChange={e => setEditArea(e.target.value)} />
           <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Bio" value={editBio} onChange={e => setEditBio(e.target.value)} />
-          <input style={styles.input} placeholder="Child's name" value={editChildName} onChange={e => setEditChildName(e.target.value)} />
-          <input style={styles.input} placeholder="Child's age" value={editChildAge} onChange={e => setEditChildAge(e.target.value)} />
+          <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Children</p>
+          {editChildren.map((child, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input style={{ ...styles.input, flex: 1 }} placeholder="Child's name" value={child.name} onChange={e => setEditChildren(prev => prev.map((c, j) => j === i ? { ...c, name: e.target.value } : c))} />
+              <input style={{ ...styles.input, flex: 1 }} placeholder="Age" value={child.age} onChange={e => setEditChildren(prev => prev.map((c, j) => j === i ? { ...c, age: e.target.value } : c))} />
+              {i > 0 && (
+                <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setEditChildren(prev => prev.filter((_, j) => j !== i))}>✕</button>
+              )}
+            </div>
+          ))}
+          <button style={styles.addChildBtn} onClick={() => setEditChildren(prev => [...prev, { name: "", age: "" }])}>+ Add another child</button>
           <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Interests</p>
           <div style={styles.interestGrid}>
             {ALL_INTERESTS.map(interest => (
@@ -2172,10 +2211,15 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
         </div>
       )}
 
-      {user?.child_name && (
+      {((user?.kids && user.kids.length > 0) || user?.child_name) && (
         <div style={styles.detailSection}>
           <h3 style={styles.sectionTitle}>My Little Ones</h3>
-          <p style={styles.bioText}>{user.child_name}{user.child_age ? ` (${user.child_age})` : ''}</p>
+          {(user.kids && user.kids.length > 0)
+            ? user.kids.filter(k => k.name || k.age).map((kid, i) => (
+                <p key={i} style={styles.bioText}>{kid.name}{kid.age ? ` (${kid.age})` : ''}</p>
+              ))
+            : <p style={styles.bioText}>{user.child_name}{user.child_age ? ` (${user.child_age})` : ''}</p>
+          }
         </div>
       )}
 
