@@ -155,6 +155,7 @@ function MamaSquadsApp() {
   const [loading, setLoading] = useState(true);
   const [inviteCode, setInviteCode] = useState(null);
   const [signupError, setSignupError] = useState(null);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [tab, setTab] = useState("home");
   const [selectedDay, setSelectedDay] = useState("All");
   const [selectedAge, setSelectedAge] = useState("All Ages");
@@ -215,6 +216,8 @@ function MamaSquadsApp() {
         setUser(null);
         setIsVerified(false);
         setScreen("welcome");
+      } else if (_event === 'PASSWORD_RECOVERY') {
+        setShowResetPassword(true);
       } else if (_event === 'SIGNED_IN') {
         supabase.from('users').select('*').eq('id', session.user.id).single()
           .then(({ data: profile }) => {
@@ -230,6 +233,23 @@ function MamaSquadsApp() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // ─── Forgot password handler ───
+  const handleForgotPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) return { error: error.message };
+    return { success: true };
+  };
+
+  // ─── Update password handler (after reset link) ───
+  const handleUpdatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { error: error.message };
+    setShowResetPassword(false);
+    return { success: true };
+  };
 
   // ─── Sign in handler (for existing users) ───
   const handleSignIn = async (email, password) => {
@@ -263,6 +283,12 @@ function MamaSquadsApp() {
 
     if (authError) {
       setSignupError(authError.message);
+      return;
+    }
+
+    // If email confirmation is enabled and no session, the user still exists
+    if (!authData.user) {
+      setSignupError("Signup failed. Please try again.");
       return;
     }
 
@@ -723,6 +749,11 @@ function MamaSquadsApp() {
     );
   }
 
+  // ─── Reset Password Screen (shown after clicking reset link in email) ───
+  if (showResetPassword) {
+    return <ResetPasswordScreen onUpdatePassword={handleUpdatePassword} />;
+  }
+
   // Welcome / About Us / Onboarding / Access Path
   if (screen === "welcome") return <WelcomeScreen onContinue={() => navigate("screen", "about")} fadeIn={fadeIn} />;
   if (screen === "about") return <AboutScreen onContinue={() => navigate("screen", "access")} fadeIn={fadeIn} />;
@@ -731,6 +762,7 @@ function MamaSquadsApp() {
       onInviteCode={(code) => { setInviteCode(code); setIsBetaMember(true); navigate("screen", "onboard"); }}
       onPublicSignup={() => { setInviteCode(null); setIsBetaMember(false); navigate("screen", "onboard"); }}
       onSignIn={handleSignIn}
+      onForgotPassword={handleForgotPassword}
       fadeIn={fadeIn}
     />
   );
@@ -931,8 +963,80 @@ function VerificationBlockedScreen({ onVerify }) {
   );
 }
 
+// ─── Reset Password Screen (shown after clicking reset link) ───
+function ResetPasswordScreen({ onUpdatePassword }) {
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(false);
+
+  const handleSubmit = async () => {
+    if (newPassword.length < 6) { setError("Password must be at least 6 characters"); return; }
+    if (newPassword !== confirmPassword) { setError("Passwords don't match"); return; }
+    setSaving(true);
+    setError(null);
+    const result = await onUpdatePassword(newPassword);
+    setSaving(false);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setSuccess(true);
+    }
+  };
+
+  return (
+    <div style={{ ...styles.fullScreen, background: "#FFFBFC", overflow: "auto", justifyContent: "center", alignItems: "center", padding: 20 }}>
+      <div style={{ width: "100%", maxWidth: 400 }}>
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <span style={{ fontSize: 44 }}>🔑</span>
+          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, fontWeight: 700, color: "#2D2D2D", marginTop: 8 }}>
+            {success ? "Password Updated!" : "Set New Password"}
+          </h2>
+          <p style={{ fontSize: 14, color: "#888", marginTop: 6 }}>
+            {success ? "You can now sign in with your new password." : "Enter your new password below."}
+          </p>
+        </div>
+        {success ? (
+          <div style={{ textAlign: "center" }}>
+            <span style={{ fontSize: 48 }}>✅</span>
+            <p style={{ fontSize: 14, color: "#2E7D32", marginTop: 12, fontWeight: 600 }}>Your password has been reset successfully. The app will load momentarily.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <input
+              style={styles.input}
+              type="password"
+              placeholder="New password (min 6 characters)"
+              value={newPassword}
+              onChange={e => { setNewPassword(e.target.value); setError(null); }}
+            />
+            <input
+              style={styles.input}
+              type="password"
+              placeholder="Confirm new password"
+              value={confirmPassword}
+              onChange={e => { setConfirmPassword(e.target.value); setError(null); }}
+              onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+            />
+            {error && <p style={{ fontSize: 12, color: "#E53935", textAlign: "center" }}>{error}</p>}
+            <button
+              style={{ ...styles.primaryBtn, opacity: saving ? 0.6 : 1 }}
+              onClick={handleSubmit}
+              disabled={saving}
+            >
+              {saving ? "Updating..." : "Update Password"}
+            </button>
+          </div>
+        )}
+      </div>
+      <style>{keyframes}</style>
+    </div>
+  );
+}
+
 // ─── Access Gate Screen (Beta Invite vs Public Signup) ───
-function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, fadeIn }) {
+function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPassword, fadeIn }) {
   const [mode, setMode] = useState(null); // null, "invite", "public", "signin"
   const [code, setCode] = useState("");
   const [codeError, setCodeError] = useState(false);
@@ -947,6 +1051,13 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, fadeIn }) {
   const [signInPassword, setSignInPassword] = useState("");
   const [signInError, setSignInError] = useState(null);
   const [signingIn, setSigningIn] = useState(false);
+
+  // Forgot password state
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotSending, setForgotSending] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const [forgotError, setForgotError] = useState(null);
 
   const handleCodeSubmit = async () => {
     const trimmed = code.trim().toUpperCase();
@@ -1171,7 +1282,73 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, fadeIn }) {
               >
                 {signingIn ? "Signing in..." : "Sign In"}
               </button>
+              <button
+                style={{ background: "none", border: "none", fontSize: 13, color: "#3B82F6", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, textAlign: "center", width: "100%" }}
+                onClick={() => { setShowForgot(true); setForgotEmail(signInEmail); }}
+              >
+                Forgot password?
+              </button>
             </div>
+          </div>
+        )}
+
+        {/* Forgot Password */}
+        {showForgot && (
+          <div style={{ ...ags.optionCard, border: "2px solid #F59E0B", background: "#FFFBEB", marginTop: 12 }}>
+            {forgotSent ? (
+              <div style={{ textAlign: "center", padding: "12px 0" }}>
+                <span style={{ fontSize: 36 }}>📧</span>
+                <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginTop: 8 }}>Check Your Email!</h3>
+                <p style={{ fontSize: 13, color: "#666", marginTop: 6, lineHeight: 1.5 }}>We sent a password reset link to <strong>{forgotEmail}</strong>. Click the link in the email to set a new password.</p>
+                <button
+                  style={{ ...styles.textBtn, marginTop: 12, fontSize: 13 }}
+                  onClick={() => { setShowForgot(false); setForgotSent(false); }}
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 20 }}>🔑</span>
+                    <h3 style={ags.optionTitle}>Reset Password</h3>
+                  </div>
+                  <button style={{ background: "none", border: "none", fontSize: 16, color: "#999", cursor: "pointer" }} onClick={() => setShowForgot(false)}>✕</button>
+                </div>
+                <p style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Enter your email and we'll send you a link to reset your password.</p>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <input
+                    style={styles.input}
+                    type="email"
+                    placeholder="Email address"
+                    value={forgotEmail}
+                    onChange={e => { setForgotEmail(e.target.value); setForgotError(null); }}
+                  />
+                  {forgotError && (
+                    <p style={{ fontSize: 12, color: "#E53935", textAlign: "center" }}>{forgotError}</p>
+                  )}
+                  <button
+                    style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #F59E0B, #D97706)", boxShadow: "0 4px 16px rgba(245,158,11,0.3)", opacity: forgotSending ? 0.6 : 1 }}
+                    disabled={forgotSending}
+                    onClick={async () => {
+                      if (!forgotEmail.trim()) return;
+                      setForgotSending(true);
+                      setForgotError(null);
+                      const result = await onForgotPassword(forgotEmail.trim());
+                      setForgotSending(false);
+                      if (result.error) {
+                        setForgotError(result.error);
+                      } else {
+                        setForgotSent(true);
+                      }
+                    }}
+                  >
+                    {forgotSending ? "Sending..." : "Send Reset Link"}
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
