@@ -235,9 +235,10 @@ function MamaSquadsApp() {
   }, []);
 
   // ─── Forgot password handler ───
+  const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
   const handleForgotPassword = async (email) => {
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: siteUrl,
     });
     if (error) return { error: error.message };
     return { success: true };
@@ -272,7 +273,6 @@ function MamaSquadsApp() {
     setSignupError(null);
     const { email, password, name, area, bio, kids, interests } = userData;
 
-    const siteUrl = window.location.origin;
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
