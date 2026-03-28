@@ -257,14 +257,39 @@ function MamaSquadsApp() {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) return { error: error.message };
 
-    // Fetch profile
-    const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
-    if (profile) {
-      setUser(profile);
-      setIsVerified(profile.is_verified);
-      setIsBetaMember(profile.is_founding_member);
-      setScreen("main");
+    if (!data.user) return { error: "Sign in failed. Please try again." };
+
+    // Check if email is confirmed (if confirmation is still enabled)
+    if (data.user.email_confirmed_at === null) {
+      return { error: "Please confirm your email before signing in. Check your inbox." };
     }
+
+    // Fetch profile
+    const { data: profile, error: profileError } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+    if (profileError || !profile) {
+      // User exists in auth but not in users table — create a basic profile
+      const { error: insertError } = await supabase.from('users').insert({
+        id: data.user.id,
+        email: data.user.email,
+        name: data.user.email.split('@')[0],
+        kids: [],
+        interests: [],
+        is_verified: false,
+        is_founding_member: false,
+      });
+      if (insertError) return { error: "Could not load your profile. Please try again." };
+
+      const newProfile = { id: data.user.id, email: data.user.email, name: data.user.email.split('@')[0], is_verified: false, is_founding_member: false };
+      setUser(newProfile);
+      setIsVerified(false);
+      setScreen("main");
+      return { success: true };
+    }
+
+    setUser(profile);
+    setIsVerified(profile.is_verified);
+    setIsBetaMember(profile.is_founding_member);
+    setScreen("main");
     return { success: true };
   };
 
