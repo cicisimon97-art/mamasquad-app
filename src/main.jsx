@@ -388,16 +388,18 @@ function MamaSquadsApp() {
   // ─── Load groups from Supabase ───
   useEffect(() => {
     const loadGroups = async () => {
-      const { data } = await supabase.from('groups').select('*, group_members(user_id, role)');
+      const { data } = await supabase.from('groups').select('*, group_members(user_id, role), users!admin_id(full_name)');
       if (data && data.length > 0) {
-        const supaGroups = data.map(g => ({
+        const supaGroups = data.map(g => {
+          const adminName = g.users?.full_name || 'Admin';
+          return {
           id: g.id,
           name: g.name,
           emoji: g.emoji || '👥',
           desc: g.description,
           isPrivate: g.is_private,
-          admin: g.admin_name,
-          adminAvatar: g.admin_name ? g.admin_name.split(' ').map(w => w[0]).join('') : '??',
+          admin: adminName,
+          adminAvatar: adminName.split(' ').map(w => w[0]).join(''),
           adminId: g.admin_id,
           members: g.group_members?.length || 1,
           maxMembers: g.max_members || 30,
@@ -408,7 +410,7 @@ function MamaSquadsApp() {
           color: g.color || '#FF6B8A',
           pendingRequests: [],
           fromSupabase: true,
-        }));
+        };});
         setGroups(prev => [...SAMPLE_GROUPS, ...supaGroups]);
       }
     };
@@ -455,7 +457,6 @@ function MamaSquadsApp() {
       emoji: groupData.emoji || '👥',
       color: groupData.color || '#FF6B8A',
       admin_id: user.id,
-      admin_name: user.full_name || user.email,
     }).select().single();
 
     if (error) return { error: error.message };
