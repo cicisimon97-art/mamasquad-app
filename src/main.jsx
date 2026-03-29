@@ -2630,7 +2630,9 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
 function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about"
+  const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about", "admin-panel"
+  const [adminApps, setAdminApps] = useState([]);
+  const [adminAppsLoaded, setAdminAppsLoaded] = useState(false);
   const [editName, setEditName] = useState(user?.full_name || "");
   const [editArea, setEditArea] = useState(user?.area || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
@@ -2786,6 +2788,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "Discover Moms", icon: "🔍", action: () => onShowDiscover && onShowDiscover() },
           { label: `Notifications${(notifications || []).filter(n => !n.is_read).length > 0 ? ` (${(notifications || []).filter(n => !n.is_read).length})` : ''}`, icon: "🔔", action: () => setMenuView("notifications") },
           { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
+          ...(isAppFounder ? [{ label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") }] : []),
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Sign Out", icon: "👋", action: handleSignOut },
         ].map(item => (
@@ -3008,6 +3011,167 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
             </div>
           </div>
         </div>
+      )}
+
+      {/* ── Admin Panel (Founder Only) ── */}
+      {menuView === "admin-panel" && isAppFounder && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>👑 Admin Panel</h2>
+            </div>
+
+            <AdminPanelContent
+              user={user}
+              adminApps={adminApps}
+              setAdminApps={setAdminApps}
+              adminAppsLoaded={adminAppsLoaded}
+              setAdminAppsLoaded={setAdminAppsLoaded}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Admin Panel Content (Founder Only) ───
+function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, setAdminAppsLoaded }) {
+  const [processing, setProcessing] = useState(null);
+
+  // Load admin applications
+  useEffect(() => {
+    if (adminAppsLoaded) return;
+    supabase.from('admin_applications')
+      .select('*, users!user_id(full_name, email, area, bio)')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setAdminApps(data);
+        setAdminAppsLoaded(true);
+      });
+  }, [adminAppsLoaded]);
+
+  const handleApprove = async (app) => {
+    setProcessing(app.id);
+    // Update application status
+    await supabase.from('admin_applications')
+      .update({ status: 'approved', reviewed_at: new Date().toISOString() })
+      .eq('id', app.id);
+    // Set user role to admin
+    await supabase.from('users')
+      .update({ role: 'admin' })
+      .eq('id', app.user_id);
+    // Update local state
+    setAdminApps(prev => prev.map(a => a.id === app.id ? { ...a, status: 'approved' } : a));
+    setProcessing(null);
+  };
+
+  const handleDeny = async (app) => {
+    setProcessing(app.id);
+    await supabase.from('admin_applications')
+      .update({ status: 'denied', reviewed_at: new Date().toISOString() })
+      .eq('id', app.id);
+    setAdminApps(prev => prev.map(a => a.id === app.id ? { ...a, status: 'denied' } : a));
+    setProcessing(null);
+  };
+
+  const pending = adminApps.filter(a => a.status === 'pending');
+  const reviewed = adminApps.filter(a => a.status !== 'pending');
+
+  if (!adminAppsLoaded) {
+    return <p style={{ fontSize: 14, color: "#888", textAlign: "center", padding: 40 }}>Loading applications...</p>;
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Stats */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ flex: 1, background: "#FFF8E1", borderRadius: 12, padding: 14, textAlign: "center" }}>
+          <strong style={{ fontSize: 22, color: "#F57F17" }}>{pending.length}</strong>
+          <p style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Pending</p>
+        </div>
+        <div style={{ flex: 1, background: "#E8F5E9", borderRadius: 12, padding: 14, textAlign: "center" }}>
+          <strong style={{ fontSize: 22, color: "#2E7D32" }}>{reviewed.filter(a => a.status === 'approved').length}</strong>
+          <p style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Approved</p>
+        </div>
+        <div style={{ flex: 1, background: "#FFEBEE", borderRadius: 12, padding: 14, textAlign: "center" }}>
+          <strong style={{ fontSize: 22, color: "#C62828" }}>{reviewed.filter(a => a.status === 'denied').length}</strong>
+          <p style={{ fontSize: 11, color: "#888", marginTop: 2 }}>Denied</p>
+        </div>
+      </div>
+
+      {/* Pending Applications */}
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D" }}>Pending Applications</h3>
+      {pending.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 24 }}>
+          <span style={{ fontSize: 32 }}>✨</span>
+          <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No pending applications</p>
+        </div>
+      ) : (
+        pending.map(app => (
+          <div key={app.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
+            <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+              <div style={{ width: 44, height: 44, borderRadius: 22, background: "#FF6B8A22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#FF6B8A", flexShrink: 0 }}>
+                {(app.users?.full_name || '?').split(' ').map(w => w[0]).join('')}
+              </div>
+              <div style={{ flex: 1 }}>
+                <strong style={{ fontSize: 15, color: "#2D2D2D" }}>{app.users?.full_name || 'Unknown'}</strong>
+                <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{app.users?.email}</p>
+                {app.area && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>📍 {app.area}</p>}
+                {app.reason && (
+                  <div style={{ background: "#FAFAFA", borderRadius: 8, padding: 10, marginTop: 8 }}>
+                    <p style={{ fontSize: 11, fontWeight: 600, color: "#aaa", marginBottom: 2 }}>WHY THEY WANT TO BE AN ADMIN</p>
+                    <p style={{ fontSize: 13, color: "#555", lineHeight: 1.4 }}>{app.reason}</p>
+                  </div>
+                )}
+                {app.local_connections && <p style={{ fontSize: 12, color: "#666", marginTop: 6 }}>Connects with: {app.local_connections}</p>}
+                {app.experience && <p style={{ fontSize: 12, color: "#666", marginTop: 2 }}>Experience: {app.experience}</p>}
+                <p style={{ fontSize: 11, color: "#bbb", marginTop: 6 }}>Applied {new Date(app.created_at).toLocaleDateString()}</p>
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <button
+                style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#4CAF50", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: processing === app.id ? 0.6 : 1 }}
+                onClick={() => handleApprove(app)}
+                disabled={processing === app.id}
+              >
+                {processing === app.id ? "..." : "✓ Approve"}
+              </button>
+              <button
+                style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#FFEBEE", color: "#C62828", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: processing === app.id ? 0.6 : 1 }}
+                onClick={() => handleDeny(app)}
+                disabled={processing === app.id}
+              >
+                Deny
+              </button>
+            </div>
+          </div>
+        ))
+      )}
+
+      {/* Reviewed Applications */}
+      {reviewed.length > 0 && (
+        <>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginTop: 8 }}>Reviewed</h3>
+          {reviewed.map(app => (
+            <div key={app.id} style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0", opacity: 0.7 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{app.users?.full_name || 'Unknown'}</strong>
+                  <p style={{ fontSize: 12, color: "#888" }}>{app.users?.email}</p>
+                </div>
+                <span style={{
+                  fontSize: 11, fontWeight: 600, padding: "4px 10px", borderRadius: 50,
+                  background: app.status === 'approved' ? "#E8F5E9" : "#FFEBEE",
+                  color: app.status === 'approved' ? "#2E7D32" : "#C62828",
+                }}>
+                  {app.status === 'approved' ? '✓ Approved' : '✕ Denied'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </>
       )}
     </div>
   );
