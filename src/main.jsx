@@ -2651,8 +2651,14 @@ function CreateEventScreen({ onBack, onSubmit }) {
           <input style={styles.input} placeholder="Playdate title (e.g., Park Day!)" value={title} onChange={e => setTitle(e.target.value)} />
           <input style={styles.input} placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
           <div style={{ display: "flex", gap: 10 }}>
-            <input style={{ ...styles.input, flex: 1 }} placeholder="Date (e.g., Mon, Sat)" value={date} onChange={e => setDate(e.target.value)} />
-            <input style={{ ...styles.input, flex: 1 }} placeholder="Time (e.g., 10:00 AM)" value={time} onChange={e => setTime(e.target.value)} />
+            <select style={{ ...styles.input, flex: 1 }} value={date} onChange={e => setDate(e.target.value)}>
+              <option value="">Day</option>
+              {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <select style={{ ...styles.input, flex: 1 }} value={time} onChange={e => setTime(e.target.value)}>
+              <option value="">Time</option>
+              {["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
           </div>
           <select style={styles.input} value={ages} onChange={e => setAges(e.target.value)}>
             <option>All Ages</option>
@@ -3317,8 +3323,14 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" value={pdTitle} onChange={e => setPdTitle(e.target.value)} />
                       <input style={gs.formInput} placeholder="Location" value={pdLocation} onChange={e => setPdLocation(e.target.value)} />
                       <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Date" value={pdDate} onChange={e => setPdDate(e.target.value)} />
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Time" value={pdTime} onChange={e => setPdTime(e.target.value)} />
+                        <select style={{ ...gs.formInput, flex: 1 }} value={pdDate} onChange={e => setPdDate(e.target.value)}>
+                          <option value="">Day</option>
+                          {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => <option key={d} value={d}>{d}</option>)}
+                        </select>
+                        <select style={{ ...gs.formInput, flex: 1 }} value={pdTime} onChange={e => setPdTime(e.target.value)}>
+                          <option value="">Time</option>
+                          {["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
                       </div>
                       <input style={gs.formInput} placeholder="Max kids / families" type="number" value={pdMax} onChange={e => setPdMax(e.target.value)} />
                       <textarea style={{ ...gs.formInput, minHeight: 60, resize: "vertical" }} placeholder="Details — what to bring, what to expect..." value={pdDesc} onChange={e => setPdDesc(e.target.value)} />
