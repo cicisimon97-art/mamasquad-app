@@ -1060,7 +1060,7 @@ function VerificationBlockedScreen({ onVerify }) {
         >
           Complete Verification Now
         </button>
-        <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? Contact support@mamasquads.com</p>
+        <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? Contact mamasquads1@gmail.com</p>
       </div>
       <style>{keyframes}</style>
     </div>
@@ -2853,7 +2853,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 { icon: "💛", title: "Our Mission", desc: "To make it effortless for moms to find their people — nearby moms whose kids are the same age, who share their interests, and who are just as eager to get out of the house." },
                 { icon: "🔒", title: "Safety First", desc: "Every single member is verified. No exceptions. We built MamaSquads so you never have to wonder if the person at the playdate is who they say they are." },
                 { icon: "🌍", title: "Currently Available", desc: "Long Island & Westchester/CT (beta). Nationwide expansion coming 2027." },
-                { icon: "📧", title: "Contact Us", desc: "support@mamasquads.com" },
+                { icon: "📧", title: "Contact Us", desc: "mamasquads1@gmail.com" },
               ].map((item, i) => (
                 <div key={i} style={{ background: "white", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
