@@ -1014,6 +1014,7 @@ function MamaSquadsApp() {
               onCreateGroup={() => setShowCreateGroup(true)}
               joinedGroups={joinedGroups}
               pendingJoins={pendingJoins}
+              userRole={user?.role}
             />
           )}
           {tab === "messages" && (
@@ -3479,7 +3480,7 @@ function AdminApplyScreen({ onBack, user }) {
 }
 
 // ─── Groups Tab ───
-function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pendingJoins }) {
+function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pendingJoins, userRole }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -3495,7 +3496,9 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
     <div style={styles.tabContent}>
       <div style={styles.homeHeader}>
         <h1 style={styles.pageTitle}>Groups</h1>
-        <button style={styles.secondaryBtn} onClick={onCreateGroup}>+ Create Group</button>
+        {(userRole === 'admin' || userRole === 'founder') && (
+          <button style={styles.secondaryBtn} onClick={onCreateGroup}>+ Create Squad</button>
+        )}
       </div>
 
       <div style={styles.searchBar}>
