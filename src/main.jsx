@@ -3748,7 +3748,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
-  const [activeSection, setActiveSection] = useState("feed");
+  const [activeSection, setActiveSection] = useState(isMember ? "feed" : "about");
   const [requestMessage, setRequestMessage] = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinSent, setJoinSent] = useState(false);
@@ -4010,12 +4010,12 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {/* Section tabs */}
         <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #f0f0f0", paddingBottom: 0 }}>
           {[
-            { id: "feed", label: "Feed" },
-            { id: "meetups", label: "Meetups" },
+            ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
+            ...(isMember ? [{ id: "meetups", label: "Meetups" }] : []),
             ...(isMember ? [{ id: "avail", label: "Availability" }] : []),
             { id: "about", label: "About" },
             { id: "rules", label: "Rules" },
-            ...(isAdmin && group.isPrivate ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
+            ...(isAdmin ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
           ].map(s => (
             <button
               key={s.id}
@@ -4412,10 +4412,10 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                 </div>
               </div>
             )}
-            {group.isPrivate && !isMember && (
+            {!isMember && (
               <div style={{ background: "#F5F5F5", borderRadius: 12, padding: 16, textAlign: "center" }}>
                 <span style={{ fontSize: 28 }}>🔒</span>
-                <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>Member list, events, and discussions are only visible to approved members.</p>
+                <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>Member list, events, and discussions are only visible to members. Join to see more!</p>
               </div>
             )}
           </div>
