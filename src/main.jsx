@@ -657,15 +657,14 @@ function MamaSquadsApp() {
     const { data, error } = await supabase.from('comments').insert({
       event_id: eventId,
       user_id: user.id,
-      user_name: user.full_name || user.email,
-      text: text.trim(),
+      content: text.trim(),
     }).select().single();
 
     if (error) return null;
     return {
       id: data.id,
-      user: data.user_name,
-      text: data.text,
+      user: user.full_name || user.email,
+      text: data.content,
       time: 'Just now',
       fromSupabase: true,
     };
@@ -2137,15 +2136,15 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   useEffect(() => {
     if (!event.fromSupabase) return;
     supabase.from('comments')
-      .select('*')
+      .select('*, users!user_id(full_name)')
       .eq('event_id', event.id)
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (data) {
           setComments(data.map(c => ({
             id: c.id,
-            user: c.user_name,
-            text: c.text,
+            user: c.users?.full_name || 'A mom',
+            text: c.content,
             time: new Date(c.created_at).toLocaleDateString(),
             fromSupabase: true,
           })));
