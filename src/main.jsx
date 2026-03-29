@@ -947,6 +947,8 @@ function MamaSquadsApp() {
           {tab === "home" && (
             <HomeTab
               events={events}
+              groups={groups}
+              joinedGroups={joinedGroups}
               selectedDay={selectedDay} setSelectedDay={setSelectedDay}
               selectedAge={selectedAge} setSelectedAge={setSelectedAge}
               onEventSelect={(e) => navigate("event", e)}
@@ -2138,8 +2140,17 @@ const verifyKeyframes = `
 `;
 
 // ─── Home Tab ───
-function HomeTab({ events, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onPoll, joinedEvents }) {
-  const filtered = (events || SAMPLE_EVENTS).filter(e =>
+function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onPoll, joinedEvents }) {
+  // Only show events from: groups user is in, public groups, or events with no group
+  const publicGroupIds = (groups || []).filter(g => !g.isPrivate).map(g => g.id);
+  const visibleEvents = (events || SAMPLE_EVENTS).filter(e => {
+    if (!e.groupId) return true; // no group = public event
+    if (publicGroupIds.includes(e.groupId)) return true; // public group
+    if ((joinedGroups || []).includes(e.groupId)) return true; // member of group
+    return false;
+  });
+
+  const filtered = visibleEvents.filter(e =>
     (selectedDay === "All" || e.date === selectedDay) &&
     (selectedAge === "All Ages" || e.ages === selectedAge)
   );
