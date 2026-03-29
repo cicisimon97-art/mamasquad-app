@@ -2709,7 +2709,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── My Children Sub-screen ── */}
       {menuView === "children" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -2749,7 +2749,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── Notifications Sub-screen ── */}
       {menuView === "notifications" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -2766,7 +2766,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── Privacy & Safety Sub-screen ── */}
       {menuView === "privacy" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -2836,7 +2836,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── About MamaSquads Sub-screen ── */}
       {menuView === "about" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -4510,8 +4510,8 @@ const gray800 = "#2D2D2D";
 const radius = 16;
 
 const styles = {
-  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "env(safe-area-inset-top)" },
-  fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "max(24px, env(safe-area-inset-top))", position: "relative" },
+  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" },
+  fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", position: "relative" },
   mainContent: { flex: 1, overflow: "auto", paddingBottom: 80 },
   tabContent: { padding: "16px 18px" },
 
@@ -4568,8 +4568,8 @@ const styles = {
 
   // Home
   homeHeader: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
-  greeting: { fontSize: 13, color: gray400, marginBottom: 2 },
-  pageTitle: { fontFamily: display, fontSize: 24, color: gray800, marginBottom: 12 },
+  greeting: { fontSize: 14, color: gray400, marginBottom: 2 },
+  pageTitle: { fontFamily: display, fontSize: 26, fontWeight: 700, color: gray800, marginBottom: 12 },
   pollBtn: { display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 50, background: "#F0F7FF", color: "#3B82F6", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: font },
   filterRow: { display: "flex", gap: 6, overflowX: "auto", paddingBottom: 10, marginBottom: 4 },
   dayChip: { padding: "7px 14px", borderRadius: 50, border: "none", background: gray100, fontSize: 13, cursor: "pointer", fontFamily: font, color: gray600, whiteSpace: "nowrap", flexShrink: 0 },
