@@ -261,6 +261,7 @@ function MamaSquadsApp() {
   const [votedPolls, setVotedPolls] = useState({});
   const [connections, setConnections] = useState([]);
   const [conversations, setConversations] = useState([]);
+  const [acceptedChats, setAcceptedChats] = useState(new Set());
   const [events, setEvents] = useState(SAMPLE_EVENTS);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
@@ -846,7 +847,12 @@ function MamaSquadsApp() {
       .select('*, requester:users!requester_id(id, full_name, email, area, bio, kids, interests, mom_age), recipient:users!recipient_id(id, full_name, email, area, bio, kids, interests, mom_age)')
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .then(({ data }) => {
-        if (data) setConnections(data);
+        if (data) {
+          setConnections(data);
+          // Pre-populate acceptedChats from existing accepted connections
+          const accepted = data.filter(c => c.status === 'accepted').map(c => c.requester_id === user.id ? c.recipient_id : c.requester_id);
+          setAcceptedChats(new Set(accepted));
+        }
       });
   }, [user]);
 
@@ -879,7 +885,6 @@ function MamaSquadsApp() {
       await supabase.from('connections').update({ status }).eq('id', connectionId);
       setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, status } : c));
     } else if (accept && otherUserId) {
-      // No connection exists yet — create one as accepted
       const { data: newConn } = await supabase.from('connections').insert({
         requester_id: otherUserId,
         recipient_id: user.id,
@@ -888,12 +893,9 @@ function MamaSquadsApp() {
       if (newConn) setConnections(prev => [...prev, newConn]);
     }
 
-    if (accept && connectionId) {
-      const conn = connections.find(c => c.id === connectionId);
-      if (conn) {
-        const otherId = conn.requester_id === user.id ? conn.recipient_id : conn.requester_id;
-        await createConversation(otherId);
-      }
+    if (accept && otherUserId) {
+      // Mark this user's chat as accepted so it moves to inbox immediately
+      setAcceptedChats(prev => new Set([...prev, otherUserId]));
     }
   };
 
@@ -1246,7 +1248,7 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "messages" && (
-            <MessagesTab conversations={conversations} connectedIds={getConnectedIds()} onChatSelect={(c) => navigate("chat", c)} onRefresh={refreshConversations} />
+            <MessagesTab conversations={conversations} connectedIds={getConnectedIds()} acceptedChats={acceptedChats} onChatSelect={(c) => navigate("chat", c)} onRefresh={refreshConversations} />
           )}
           {tab === "profile" && (
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
@@ -2859,16 +2861,17 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
 }
 
 // ─── Messages Tab ───
-function MessagesTab({ conversations, connectedIds, onChatSelect, onRefresh }) {
+function MessagesTab({ conversations, connectedIds, acceptedChats, onChatSelect, onRefresh }) {
   const [msgTab, setMsgTab] = useState("inbox");
 
   // Refresh conversations when tab mounts
   useEffect(() => { if (onRefresh) onRefresh(); }, []);
 
-  // Split: connected users + group chats go to inbox, others go to requests
+  // Split: connected users, accepted chats, + group chats go to inbox, others go to requests
   const realConvos = conversations || [];
-  const inbox = realConvos.filter(c => c.isGroup || (connectedIds || []).includes(c.otherId));
-  const requests = realConvos.filter(c => !c.isGroup && !(connectedIds || []).includes(c.otherId));
+  const isInbox = (c) => c.isGroup || (connectedIds || []).includes(c.otherId) || (acceptedChats && acceptedChats.has(c.otherId));
+  const inbox = realConvos.filter(c => isInbox(c));
+  const requests = realConvos.filter(c => !isInbox(c));
   const requestCount = requests.length;
 
   const currentList = msgTab === "inbox" ? inbox : requests;
