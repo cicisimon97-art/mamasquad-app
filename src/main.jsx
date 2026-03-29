@@ -4,38 +4,44 @@ import { supabase } from './supabaseClient'
 
 // ─── Birthday Helpers ───
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
-const calcAge = (dateStr) => {
+const parseDateStr = (dateStr) => {
   if (!dateStr) return null;
-  const birth = new Date(dateStr);
-  if (isNaN(birth)) return null;
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return null;
+  return { year: parseInt(parts[0]), month: parseInt(parts[1]), day: parseInt(parts[2]) };
+};
+const calcAge = (dateStr) => {
+  const b = parseDateStr(dateStr);
+  if (!b) return null;
   const today = new Date();
-  let age = today.getFullYear() - birth.getFullYear();
-  const m = today.getMonth() - birth.getMonth();
-  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  let age = today.getFullYear() - b.year;
+  const m = (today.getMonth() + 1) - b.month;
+  if (m < 0 || (m === 0 && today.getDate() < b.day)) age--;
   return age;
 };
 const isBirthdayToday = (dateStr) => {
-  if (!dateStr) return false;
-  const birth = new Date(dateStr);
-  if (isNaN(birth)) return false;
+  const b = parseDateStr(dateStr);
+  if (!b) return false;
   const today = new Date();
-  return birth.getMonth() === today.getMonth() && birth.getDate() === today.getDate();
+  return b.month === today.getMonth() + 1 && b.day === today.getDate();
 };
 const formatAge = (dateStr) => {
   const age = calcAge(dateStr);
   if (age === null) return '';
   if (age < 1) {
-    const birth = new Date(dateStr);
-    const months = (new Date().getFullYear() - birth.getFullYear()) * 12 + new Date().getMonth() - birth.getMonth();
+    const b = parseDateStr(dateStr);
+    const today = new Date();
+    const months = (today.getFullYear() - b.year) * 12 + (today.getMonth() + 1) - b.month;
     return months <= 0 ? 'Newborn' : `${months}mo`;
   }
   return `${age}`;
 };
 function BirthdayPicker({ value, onChange, label, inputStyle }) {
-  const parsed = value ? new Date(value) : null;
-  const m = parsed && !isNaN(parsed) ? parsed.getMonth() + 1 : '';
-  const d = parsed && !isNaN(parsed) ? parsed.getDate() : '';
-  const y = parsed && !isNaN(parsed) ? parsed.getFullYear() : '';
+  // Parse from string directly to avoid timezone offset issues
+  const parts = value ? value.split('-') : [];
+  const y = parts.length === 3 ? parseInt(parts[0]) : '';
+  const m = parts.length === 3 ? parseInt(parts[1]) : '';
+  const d = parts.length === 3 ? parseInt(parts[2]) : '';
   const update = (newM, newD, newY) => {
     if (newM && newD && newY) {
       onChange(`${newY}-${String(newM).padStart(2,'0')}-${String(newD).padStart(2,'0')}`);
