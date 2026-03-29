@@ -2564,25 +2564,81 @@ function ProfileDetail({ profile, onBack, onMessage }) {
 
 // ─── Messages Tab ───
 function MessagesTab({ onChatSelect }) {
+  const [msgTab, setMsgTab] = useState("inbox");
+
+  // Split messages: group chats + connected users go to inbox, others go to requests
+  const connectedNames = ["Sarah Mitchell", "Diana Park"]; // simulated connections
+  const inbox = SAMPLE_MESSAGES.filter(c => c.isGroup || connectedNames.includes(c.name));
+  const requests = SAMPLE_MESSAGES.filter(c => !c.isGroup && !connectedNames.includes(c.name));
+  const requestCount = requests.reduce((sum, c) => sum + (c.unread || 0), 0);
+
+  const currentList = msgTab === "inbox" ? inbox : requests;
+
   return (
     <div style={styles.tabContent}>
       <h1 style={styles.pageTitle}>Messages</h1>
+
+      {/* Inbox / Requests tabs */}
+      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #f0f0f0", marginBottom: 12 }}>
+        <button
+          style={{
+            flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer",
+            fontFamily: "'DM Sans', sans-serif",
+            borderBottom: msgTab === "inbox" ? "2px solid #FF6B8A" : "2px solid transparent",
+            color: msgTab === "inbox" ? "#FF6B8A" : "#999",
+          }}
+          onClick={() => setMsgTab("inbox")}
+        >
+          Inbox
+        </button>
+        <button
+          style={{
+            flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer",
+            fontFamily: "'DM Sans', sans-serif",
+            borderBottom: msgTab === "requests" ? "2px solid #FF6B8A" : "2px solid transparent",
+            color: msgTab === "requests" ? "#FF6B8A" : "#999",
+            position: "relative",
+          }}
+          onClick={() => setMsgTab("requests")}
+        >
+          Requests
+          {requestCount > 0 && (
+            <span style={{ position: "absolute", top: 4, marginLeft: 4, background: "#FF6B8A", color: "white", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 50, minWidth: 18, textAlign: "center" }}>{requestCount}</span>
+          )}
+        </button>
+      </div>
+
+      {msgTab === "requests" && requests.length > 0 && (
+        <div style={{ background: "#FFF8E1", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+          <p style={{ fontSize: 12, color: "#F57F17", lineHeight: 1.4 }}>📬 These are messages from moms you're not connected with. Accept to move them to your inbox.</p>
+        </div>
+      )}
+
       <div style={styles.chatList}>
-        {SAMPLE_MESSAGES.map((chat, i) => (
-          <div key={chat.id} style={{ ...styles.chatRow, animationDelay: `${i * 0.04}s` }} onClick={() => onChatSelect(chat)}>
-            <div style={{ ...styles.chatAvatar, background: chat.isGroup ? "#E8F5E9" : "#FEE2E8" }}>
-              {chat.isGroup ? Icons.users : chat.avatar}
-            </div>
-            <div style={styles.chatInfo}>
-              <div style={styles.chatTop}>
-                <strong style={styles.chatName}>{chat.name}</strong>
-                <span style={styles.chatTime}>{chat.time}</span>
-              </div>
-              <p style={styles.chatPreview}>{chat.lastMsg}</p>
-            </div>
-            {chat.unread > 0 && <span style={styles.unreadBadge}>{chat.unread}</span>}
+        {currentList.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <span style={{ fontSize: 40 }}>{msgTab === "inbox" ? "💬" : "📬"}</span>
+            <p style={{ fontSize: 14, color: "#888", marginTop: 12 }}>
+              {msgTab === "inbox" ? "No messages yet. Connect with moms to start chatting!" : "No message requests right now."}
+            </p>
           </div>
-        ))}
+        ) : (
+          currentList.map((chat, i) => (
+            <div key={chat.id} style={{ ...styles.chatRow, animationDelay: `${i * 0.04}s` }} onClick={() => onChatSelect(chat)}>
+              <div style={{ ...styles.chatAvatar, background: chat.isGroup ? "#E8F5E9" : "#FEE2E8" }}>
+                {chat.isGroup ? Icons.users : chat.avatar}
+              </div>
+              <div style={styles.chatInfo}>
+                <div style={styles.chatTop}>
+                  <strong style={styles.chatName}>{chat.name}</strong>
+                  <span style={styles.chatTime}>{chat.time}</span>
+                </div>
+                <p style={styles.chatPreview}>{chat.lastMsg}</p>
+              </div>
+              {chat.unread > 0 && <span style={styles.unreadBadge}>{chat.unread}</span>}
+            </div>
+          ))
+        )}
       </div>
       <style>{keyframes}</style>
     </div>
@@ -2591,6 +2647,10 @@ function MessagesTab({ onChatSelect }) {
 
 // ─── Chat Detail ───
 function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
+  const connectedNames = ["Sarah Mitchell", "Diana Park"];
+  const isConnected = chat.isGroup || connectedNames.includes(chat.name);
+  const [accepted, setAccepted] = useState(isConnected);
+
   const sampleMsgs = [
     { from: "them", text: "Hey! Are you coming to the playdate tomorrow?", time: "10:30 AM" },
     { from: "me", text: "Yes! Can't wait. Should I bring anything?", time: "10:32 AM" },
@@ -2605,9 +2665,32 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
         <div style={styles.chatHeaderInfo}>
           <strong>{chat.name}</strong>
           {chat.isGroup && <span style={styles.groupLabel}>Group · {Math.floor(Math.random() * 15 + 5)} members</span>}
+          {!isConnected && !accepted && <span style={{ fontSize: 11, color: "#F57F17" }}>Message Request</span>}
         </div>
         <div style={{ width: 40 }} />
       </div>
+
+      {/* Accept/Decline bar for requests */}
+      {!isConnected && !accepted && (
+        <div style={{ padding: "12px 16px", background: "#FFF8E1", borderBottom: "1px solid #FFE082", display: "flex", flexDirection: "column", gap: 8 }}>
+          <p style={{ fontSize: 12, color: "#F57F17", lineHeight: 1.4 }}>📬 {chat.name} wants to message you. You're not connected yet.</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#4CAF50", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={() => setAccepted(true)}
+            >
+              Accept
+            </button>
+            <button
+              style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#FFEBEE", color: "#C62828", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={onBack}
+            >
+              Decline
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={styles.messagesBody}>
         {sampleMsgs.map((msg, i) => (
           <div key={i} style={{ ...styles.messageBubbleRow, justifyContent: msg.from === "me" ? "flex-end" : "flex-start" }}>
@@ -2618,10 +2701,17 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
           </div>
         ))}
       </div>
-      <div style={styles.messageInputRow}>
-        <input style={styles.msgInput} placeholder="Type a message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} />
-        <button style={styles.sendBtn}>{Icons.send}</button>
-      </div>
+
+      {accepted ? (
+        <div style={styles.messageInputRow}>
+          <input style={styles.msgInput} placeholder="Type a message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} />
+          <button style={styles.sendBtn}>{Icons.send}</button>
+        </div>
+      ) : (
+        <div style={{ padding: "14px 16px", background: "#F5F5F5", textAlign: "center", borderTop: "1px solid #f0f0f0" }}>
+          <p style={{ fontSize: 13, color: "#888" }}>Accept this request to reply</p>
+        </div>
+      )}
     </div>
   );
 }
