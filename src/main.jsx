@@ -360,7 +360,6 @@ function MamaSquadsApp() {
       await supabase.from('invite_codes').update({
         is_used: true,
         used_by: userId,
-        used_at: new Date().toISOString(),
       }).eq('code', inviteCode);
     }
 
