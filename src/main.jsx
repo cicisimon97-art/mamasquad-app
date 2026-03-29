@@ -1039,15 +1039,15 @@ function WelcomeScreen({ onContinue, fadeIn }) {
     <div style={{ ...styles.fullScreen, background: "#EDDFE0" }}>
       <div style={{ ...styles.welcomeContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(30px)", transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <img src="/logo.png" alt="MamaSquads" style={{ width: 340, maxWidth: "90%", objectFit: "contain", marginBottom: 8 }} />
-        <p style={{ ...styles.welcomeSubtitle, marginTop: 0 }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
+        <p style={{ ...styles.welcomeSubtitle, marginTop: 0, color: "#6B2C3B" }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
         <div style={{ ...styles.welcomeFeatures, opacity: show ? 1 : 0, transition: "opacity 1s ease 0.4s" }}>
           {["Verified moms only", "ID + background checked", "Safe, trusted playdates"].map((f, i) => (
-            <div key={i} style={{ ...styles.welcomeFeature, animationDelay: `${0.6 + i * 0.15}s` }}>
-              <span style={styles.featureDot} />{f}
+            <div key={i} style={{ ...styles.welcomeFeature, color: "#6B2C3B", animationDelay: `${0.6 + i * 0.15}s` }}>
+              <span style={{ ...styles.featureDot, background: "#6B2C3B" }} />{f}
             </div>
           ))}
         </div>
-        <button style={styles.primaryBtn} onClick={onContinue}>
+        <button style={{ ...styles.primaryBtn, background: "#6B2C3B", boxShadow: "0 4px 16px rgba(107,44,59,0.3)" }} onClick={onContinue}>
           Get Started
         </button>
       </div>
