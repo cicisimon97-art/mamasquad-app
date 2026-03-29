@@ -210,7 +210,7 @@ function MamaSquadsApp() {
             if (profile) {
               setUser(profile);
               setIsVerified(profile.is_verified);
-              setIsBetaMember(profile.is_founding_member);
+              setIsBetaMember(profile.is_founding_memeber);
               setScreen("main");
             }
             setLoading(false);
@@ -233,7 +233,7 @@ function MamaSquadsApp() {
             if (profile) {
               setUser(profile);
               setIsVerified(profile.is_verified);
-              setIsBetaMember(profile.is_founding_member);
+              setIsBetaMember(profile.is_founding_memeber);
               setScreen("main");
             }
           });
@@ -280,7 +280,7 @@ function MamaSquadsApp() {
       const newProfile = {
         id: data.user.id,
         email: data.user.email,
-        name: data.user.email.split('@')[0],
+        full_name: data.user.email.split('@')[0],
       };
       const { error: insertError } = await supabase.from('users').insert(newProfile);
       if (insertError) {
@@ -289,14 +289,14 @@ function MamaSquadsApp() {
         if (retryProfile) {
           setUser(retryProfile);
           setIsVerified(retryProfile.is_verified);
-          setIsBetaMember(retryProfile.is_founding_member);
+          setIsBetaMember(retryProfile.is_founding_memeber);
           setScreen("main");
           return { success: true };
         }
         return { error: "Could not create your profile: " + insertError.message };
       }
 
-      setUser({ ...newProfile, is_verified: false, is_founding_member: false, kids: [], interests: [] });
+      setUser({ ...newProfile, is_verified: false, is_founding_memeber: false, kids: [], interests: [] });
       setIsVerified(false);
       setScreen("main");
       return { success: true };
@@ -304,7 +304,7 @@ function MamaSquadsApp() {
 
     setUser(profile);
     setIsVerified(profile.is_verified);
-    setIsBetaMember(profile.is_founding_member);
+    setIsBetaMember(profile.is_founding_memeber);
     setScreen("main");
     return { success: true };
   };
@@ -339,7 +339,7 @@ function MamaSquadsApp() {
     const { error: profileError } = await supabase.from('users').insert({
       id: userId,
       email,
-      name,
+      full_name: name,
       area,
       bio,
       mom_age: momAge || null,
@@ -347,7 +347,7 @@ function MamaSquadsApp() {
       interests,
       quick_answers: quickAnswers || {},
       is_verified: isFoundingMember,
-      is_founding_member: isFoundingMember,
+      is_founding_memeber: isFoundingMember,
     });
 
     if (profileError) {
@@ -364,7 +364,7 @@ function MamaSquadsApp() {
       }).eq('code', inviteCode);
     }
 
-    setUser({ id: userId, email, name, is_verified: isFoundingMember, is_founding_member: isFoundingMember });
+    setUser({ id: userId, email, full_name: name, is_verified: isFoundingMember, is_founding_memeber: isFoundingMember });
 
     if (isFoundingMember) {
       setIsVerified(true);
@@ -455,7 +455,7 @@ function MamaSquadsApp() {
       emoji: groupData.emoji || '👥',
       color: groupData.color || '#FF6B8A',
       admin_id: user.id,
-      admin_name: user.name || user.email,
+      admin_name: user.full_name || user.email,
     }).select().single();
 
     if (error) return { error: error.message };
@@ -474,8 +474,8 @@ function MamaSquadsApp() {
       emoji: data.emoji || '👥',
       desc: data.description,
       isPrivate: data.is_private,
-      admin: user.name || user.email,
-      adminAvatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
+      admin: user.full_name || user.email,
+      adminAvatar: (user.full_name || 'U').split(' ').map(w => w[0]).join(''),
       adminId: user.id,
       members: 1,
       maxMembers: data.max_members,
@@ -500,8 +500,8 @@ function MamaSquadsApp() {
     const { error } = await supabase.from('join_requests').insert({
       group_id: groupId,
       user_id: user.id,
-      user_name: user.name || user.email,
-      user_avatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
+      user_name: user.full_name || user.email,
+      user_avatar: (user.full_name || 'U').split(' ').map(w => w[0]).join(''),
       user_bio: user.bio || '',
       child_age: (user.kids && user.kids[0]?.age) || '',
       message,
@@ -598,7 +598,7 @@ function MamaSquadsApp() {
       max_attendees: eventData.maxAttendees || 15,
       description: eventData.description,
       host_id: user.id,
-      host_name: user.name || user.email,
+      host_name: user.full_name || user.email,
       group_id: eventData.groupId || null,
       color,
     }).select().single();
@@ -618,7 +618,7 @@ function MamaSquadsApp() {
       time: data.time,
       date: data.date,
       ages: data.ages || 'All Ages',
-      host: user.name || user.email,
+      host: user.full_name || user.email,
       hostId: user.id,
       attendees: 1,
       maxAttendees: data.max_attendees,
@@ -665,7 +665,7 @@ function MamaSquadsApp() {
     const { data, error } = await supabase.from('comments').insert({
       event_id: eventId,
       user_id: user.id,
-      user_name: user.name || user.email,
+      user_name: user.full_name || user.email,
       text: text.trim(),
     }).select().single();
 
@@ -692,8 +692,8 @@ function MamaSquadsApp() {
     const payload = {
       group_id: groupId,
       user_id: user.id,
-      user_name: user.name || user.email,
-      user_avatar: (user.name || 'U').split(' ').map(w => w[0]).join(''),
+      user_name: user.full_name || user.email,
+      user_avatar: (user.full_name || 'U').split(' ').map(w => w[0]).join(''),
       days: availability,
       note: note || '',
     };
@@ -741,7 +741,7 @@ function MamaSquadsApp() {
     const { data, error } = await supabase.from('meetup_proposals').insert({
       group_id: groupId,
       proposed_by: user.id,
-      proposed_by_name: user.name || user.email,
+      proposed_by_name: user.full_name || user.email,
       title: proposal.title,
       description: proposal.description,
       time_options: proposal.timeOptions,
@@ -2449,7 +2449,7 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
 function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editName, setEditName] = useState(user?.name || "");
+  const [editName, setEditName] = useState(user?.full_name || "");
   const [editArea, setEditArea] = useState(user?.area || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editChildren, setEditChildren] = useState(() => {
@@ -2459,17 +2459,17 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
 
-  const displayName = user?.name || "Mom";
+  const displayName = user?.full_name || "Mom";
   const avatar = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const isVerified = user?.is_verified;
-  const isFoundingMember = user?.is_founding_member || isBetaMember;
+  const isFoundingMember = user?.is_founding_memeber || isBetaMember;
 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
     const kids = editChildren.filter(c => c.name.trim() || c.age.trim());
     const updates = {
-      name: editName.trim(),
+      full_name: editName.trim(),
       area: editArea.trim(),
       bio: editBio.trim(),
       kids,
@@ -2734,7 +2734,7 @@ function AdminApplyScreen({ onBack, user }) {
   const [error, setError] = useState(null);
 
   // Controlled form fields
-  const [fullName, setFullName] = useState(user?.name || "");
+  const [fullName, setFullName] = useState(user?.full_name || "");
   const [area, setArea] = useState(user?.area || "");
   const [phone, setPhone] = useState("");
   const [motivation, setMotivation] = useState("");
@@ -3007,7 +3007,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
 function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
-  const isAdmin = user ? (group.adminId === user.id || group.admin === user.name) : group.admin === "Sarah Mitchell";
+  const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
   const [activeSection, setActiveSection] = useState("feed");
   const [requestMessage, setRequestMessage] = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);

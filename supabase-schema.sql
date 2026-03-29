@@ -4,7 +4,8 @@
 create table if not exists public.users (
   id uuid references auth.users(id) on delete cascade primary key,
   email text not null,
-  name text,
+  full_name text,
+  avatar_url text,
   area text,
   bio text,
   mom_age text,
@@ -12,7 +13,11 @@ create table if not exists public.users (
   interests text[] default '{}',
   quick_answers jsonb default '{}',
   is_verified boolean default false,
-  is_founding_member boolean default false,
+  is_beta_member boolean default false,
+  is_founding_memeber boolean default false,
+  verification_status text,
+  stripe_verification_id text,
+  role text,
   created_at timestamptz default now()
 );
 
