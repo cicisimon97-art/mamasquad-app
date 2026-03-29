@@ -1556,6 +1556,15 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const numKidSlides = Math.max(kidsWithNames.length, 1);
   const totalSteps = 3 + numKidSlides + 2; // account + kids + vibe + [per-child slides] + mom + matching
   const goNext = async () => {
+    // Validate password on step 0
+    if (step === 0) {
+      const pw = password;
+      if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+        setSignupError("Please meet all password requirements before continuing.");
+        return;
+      }
+      setSignupError(null);
+    }
     if (step >= totalSteps - 1) {
       setSubmitting(true);
       const interests = Object.keys(selectedInterests).filter(k => selectedInterests[k]);
@@ -1580,6 +1589,19 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
           <input style={styles.input} placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
           <input style={styles.input} placeholder="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           <input style={styles.input} placeholder="Create a password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: -4 }}>
+            {[
+              { label: "8+ characters", met: password.length >= 8 },
+              { label: "1 uppercase", met: /[A-Z]/.test(password) },
+              { label: "1 lowercase", met: /[a-z]/.test(password) },
+              { label: "1 number", met: /[0-9]/.test(password) },
+              { label: "1 special (!@#$)", met: /[^A-Za-z0-9]/.test(password) },
+            ].map((req, i) => (
+              <span key={i} style={{ fontSize: 11, color: password ? (req.met ? "#2E7D32" : "#E53935") : "#bbb", display: "flex", alignItems: "center", gap: 3 }}>
+                {password ? (req.met ? "✓" : "✕") : "○"} {req.label}
+              </span>
+            ))}
+          </div>
           <BirthdayPicker value={momBirthday} onChange={setMomBirthday} label="Your birthday" inputStyle={styles.input} />
           <input style={styles.input} placeholder="Your area / zip code" value={area} onChange={e => setArea(e.target.value)} />
           <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Write a short bio... (e.g., Coffee-loving boy mom, always at the park!)" value={bio} onChange={e => setBio(e.target.value)} />
@@ -1696,7 +1718,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
         <h2 style={styles.onboardTitle}>{s.title}</h2>
         <p style={styles.onboardSubtitle}>{s.subtitle}</p>
         {s.fields}
-        {signupError && step >= totalSteps - 1 && (
+        {signupError && (step === 0 || step >= totalSteps - 1) && (
           <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginBottom: 8 }}>{signupError}</p>
         )}
         <button style={{ ...styles.primaryBtn, opacity: submitting ? 0.6 : 1 }} onClick={goNext} disabled={submitting}>
