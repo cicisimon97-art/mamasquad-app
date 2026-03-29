@@ -1539,6 +1539,7 @@ function AboutScreen({ onContinue, fadeIn }) {
 function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const [show, setShow] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [localError, setLocalError] = useState(null);
 
   // Controlled form state
   const [email, setEmail] = useState("");
@@ -1562,14 +1563,18 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const numKidSlides = Math.max(kidsWithNames.length, 1);
   const totalSteps = 3 + numKidSlides + 2; // account + kids + vibe + [per-child slides] + mom + matching
   const goNext = async () => {
+    setLocalError(null);
     // Validate password on step 0
     if (step === 0) {
-      const pw = password;
-      if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
-        setSignupError("Please meet all password requirements before continuing.");
+      if (!email.trim() || !password || !name.trim()) {
+        setLocalError("Please fill in your name, email, and password.");
         return;
       }
-      setSignupError(null);
+      const pw = password;
+      if (pw.length < 8 || !/[A-Z]/.test(pw) || !/[a-z]/.test(pw) || !/[0-9]/.test(pw) || !/[^A-Za-z0-9]/.test(pw)) {
+        setLocalError("Please meet all password requirements before continuing.");
+        return;
+      }
     }
     if (step >= totalSteps - 1) {
       setSubmitting(true);
@@ -1724,7 +1729,10 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
         <h2 style={styles.onboardTitle}>{s.title}</h2>
         <p style={styles.onboardSubtitle}>{s.subtitle}</p>
         {s.fields}
-        {signupError && (step === 0 || step >= totalSteps - 1) && (
+        {localError && (
+          <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginBottom: 8 }}>{localError}</p>
+        )}
+        {signupError && step >= totalSteps - 1 && (
           <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginBottom: 8 }}>{signupError}</p>
         )}
         <button style={{ ...styles.primaryBtn, opacity: submitting ? 0.6 : 1 }} onClick={goNext} disabled={submitting}>
