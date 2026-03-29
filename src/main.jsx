@@ -4714,7 +4714,7 @@ const styles = {
   app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" },
   fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", position: "relative" },
   mainContent: { flex: 1, overflow: "auto", paddingBottom: 80 },
-  tabContent: { padding: "16px 18px" },
+  tabContent: { padding: "24px 18px", paddingTop: 28 },
 
   // Welcome
   welcomeContent: { textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
