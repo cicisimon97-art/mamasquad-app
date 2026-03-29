@@ -4598,7 +4598,7 @@ const styles = {
 
   // Detail screens
   detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC" },
-  detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
+  detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 12px", paddingTop: "calc(16px + env(safe-area-inset-top, 0px))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 16, fontWeight: 600, color: gray800 },
   detailBody: { flex: 1, overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 16 },
