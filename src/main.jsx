@@ -748,7 +748,7 @@ function MamaSquadsApp() {
   const loadMeetupProposals = async (groupId) => {
     const { data } = await supabase
       .from('meetup_proposals')
-      .select('*, votes(id, user_id, option_type, option_value), users!created_by(full_name)')
+      .select('*, votes(id, user_id, vote_type, option_index), users!created_by(full_name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false });
     return data || [];
@@ -762,14 +762,14 @@ function MamaSquadsApp() {
       .delete()
       .eq('proposal_id', proposalId)
       .eq('user_id', user.id)
-      .eq('option_type', optionType);
+      .eq('vote_type', optionType);
 
     // Insert new vote
     await supabase.from('votes').insert({
       proposal_id: proposalId,
       user_id: user.id,
-      option_type: optionType,
-      option_value: optionValue,
+      vote_type: optionType,
+      option_index: optionValue,
     });
   };
 
@@ -3059,7 +3059,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         data.forEach(p => {
           (p.votes || []).forEach(v => {
             if (v.user_id === user.id) {
-              votes[`${p.id}_${v.option_type}`] = v.option_value;
+              votes[`${p.id}_${v.vote_type}`] = v.option_index;
             }
           });
         });
@@ -3479,8 +3479,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   const timeVotes = {};
                   const locVotes = {};
                   (proposal.votes || []).forEach(v => {
-                    if (v.option_type === 'time') timeVotes[v.option_value] = (timeVotes[v.option_value] || 0) + 1;
-                    if (v.option_type === 'location') locVotes[v.option_value] = (locVotes[v.option_value] || 0) + 1;
+                    if (v.vote_type === 'time') timeVotes[v.option_index] = (timeVotes[v.option_index] || 0) + 1;
+                    if (v.vote_type === 'location') locVotes[v.option_index] = (locVotes[v.option_index] || 0) + 1;
                   });
                   const myTimeVote = myVotes[`${proposal.id}_time`];
                   const myLocVote = myVotes[`${proposal.id}_location`];
@@ -3522,8 +3522,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                                       // Update local vote counts
                                       setMeetups(prev => prev.map(p => {
                                         if (p.id !== proposal.id) return p;
-                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.option_type === 'time'));
-                                        newVotes.push({ user_id: user?.id, option_type: 'time', option_value: opt });
+                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'time'));
+                                        newVotes.push({ user_id: user?.id, vote_type: 'time', option_index: opt });
                                         return { ...p, votes: newVotes };
                                       }));
                                     }
@@ -3562,8 +3562,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                                       setMyVotes(prev => ({ ...prev, [`${proposal.id}_location`]: opt }));
                                       setMeetups(prev => prev.map(p => {
                                         if (p.id !== proposal.id) return p;
-                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.option_type === 'location'));
-                                        newVotes.push({ user_id: user?.id, option_type: 'location', option_value: opt });
+                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'location'));
+                                        newVotes.push({ user_id: user?.id, vote_type: 'location', option_index: opt });
                                         return { ...p, votes: newVotes };
                                       }));
                                     }
