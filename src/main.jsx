@@ -872,13 +872,23 @@ function MamaSquadsApp() {
   };
 
   // ─── Accept/decline connection ───
-  const respondToConnection = async (connectionId, accept) => {
+  const respondToConnection = async (connectionId, accept, otherUserId) => {
     const status = accept ? 'accepted' : 'declined';
-    await supabase.from('connections').update({ status }).eq('id', connectionId);
-    setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, status } : c));
 
-    if (accept) {
-      // Create a DM conversation
+    if (connectionId) {
+      await supabase.from('connections').update({ status }).eq('id', connectionId);
+      setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, status } : c));
+    } else if (accept && otherUserId) {
+      // No connection exists yet — create one as accepted
+      const { data: newConn } = await supabase.from('connections').insert({
+        requester_id: otherUserId,
+        recipient_id: user.id,
+        status: 'accepted',
+      }).select().single();
+      if (newConn) setConnections(prev => [...prev, newConn]);
+    }
+
+    if (accept && connectionId) {
       const conn = connections.find(c => c.id === connectionId);
       if (conn) {
         const otherId = conn.requester_id === user.id ? conn.recipient_id : conn.requester_id;
@@ -981,6 +991,12 @@ function MamaSquadsApp() {
       { conversation_id: conv.id, user_id: user.id },
       { conversation_id: conv.id, user_id: otherUserId },
     ]);
+
+    // Send connection request if not already connected
+    const connStatus = getConnectionStatus(otherUserId);
+    if (connStatus === 'none') {
+      await sendConnectionRequest(otherUserId);
+    }
 
     // Get other user's name
     const { data: otherUser } = await supabase.from('users').select('full_name').eq('id', otherUserId).single();
@@ -2991,8 +3007,8 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, connectedId
       c.status === 'pending' &&
       (c.requester_id === chat.otherId || c.recipient_id === chat.otherId)
     );
-    if (conn && onAcceptConnection) {
-      await onAcceptConnection(conn.id, true);
+    if (onAcceptConnection) {
+      await onAcceptConnection(conn?.id || null, true, chat.otherId);
     }
     setAccepted(true);
   };
