@@ -2772,11 +2772,50 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Privacy & Safety</h2>
             </div>
+
+            {/* Profile Visibility Toggle */}
+            <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0", marginBottom: 16 }}>
+              <h4 style={{ fontSize: 15, fontWeight: 700, color: "#2D2D2D", marginBottom: 12 }}>Profile Visibility</h4>
+              {[
+                { value: "public", label: "Public", desc: "All verified members can see your full profile, bio, interests, and kids' ages.", icon: "🌐" },
+                { value: "private", label: "Private", desc: "Only moms you're connected with or in the same groups can see your full profile.", icon: "🔒" },
+              ].map(opt => {
+                const isSelected = (user?.profile_visibility || "public") === opt.value;
+                return (
+                  <div
+                    key={opt.value}
+                    style={{
+                      display: "flex", alignItems: "flex-start", gap: 12, padding: 14, borderRadius: 12, cursor: "pointer", marginBottom: 8,
+                      border: isSelected ? "2px solid #FF6B8A" : "1.5px solid #f0f0f0",
+                      background: isSelected ? "#FFF5F7" : "white",
+                    }}
+                    onClick={async () => {
+                      if (user) {
+                        await supabase.from('users').update({ profile_visibility: opt.value }).eq('id', user.id);
+                        setUser(prev => ({ ...prev, profile_visibility: opt.value }));
+                      }
+                    }}
+                  >
+                    <span style={{ fontSize: 22 }}>{opt.icon}</span>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{opt.label}</strong>
+                        {isSelected && <span style={{ fontSize: 11, fontWeight: 600, color: "#FF6B8A", background: "#FFF0F3", padding: "2px 8px", borderRadius: 50 }}>Current</span>}
+                      </div>
+                      <p style={{ fontSize: 12, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{opt.desc}</p>
+                    </div>
+                    <div style={{ width: 20, height: 20, borderRadius: 10, border: isSelected ? "none" : "2px solid #ddd", background: isSelected ? "#FF6B8A" : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                      {isSelected && <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 { icon: "🔒", title: "Verified Community", desc: "Every member is identity-verified to keep our community safe for moms and kids." },
                 { icon: "🛡️", title: "Data Protection", desc: "Your personal information is encrypted and never shared with third parties." },
-                { icon: "👁️", title: "Profile Visibility", desc: "Only verified members can see your profile, bio, and children's information." },
                 { icon: "🚫", title: "Blocking & Reporting", desc: "You can block or report any member. Our team reviews all reports within 24 hours." },
                 { icon: "📍", title: "Location Privacy", desc: "Your exact location is never shared. Only your general area is visible to other moms." },
               ].map((item, i) => (
