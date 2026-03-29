@@ -2961,6 +2961,33 @@ function CreateEventScreen({ onBack, onSubmit }) {
 
 // ─── Poll Screen ───
 function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
+  const [showCreate, setShowCreate] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [options, setOptions] = useState(["", "", ""]);
+  const [createdPolls, setCreatedPolls] = useState([]);
+
+  const addOption = () => setOptions(prev => [...prev, ""]);
+  const updateOption = (i, val) => setOptions(prev => prev.map((o, j) => j === i ? val : o));
+  const removeOption = (i) => setOptions(prev => prev.filter((_, j) => j !== i));
+
+  const handleCreate = () => {
+    if (!question.trim() || options.filter(o => o.trim()).length < 2) return;
+    const newPoll = {
+      id: Date.now(),
+      question: question.trim(),
+      group: "Your Poll",
+      options: options.filter(o => o.trim()).map(o => ({ text: o.trim(), votes: 0 })),
+      totalVoters: 0,
+      endsIn: "7 days",
+    };
+    setCreatedPolls(prev => [newPoll, ...prev]);
+    setQuestion("");
+    setOptions(["", "", ""]);
+    setShowCreate(false);
+  };
+
+  const allPolls = [...createdPolls, ...polls];
+
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -2969,7 +2996,45 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
         <div style={{ width: 40 }} />
       </div>
       <div style={styles.detailBody}>
-        {polls.map(poll => {
+        <button style={{ ...styles.secondaryBtn, width: "100%" }} onClick={() => setShowCreate(!showCreate)}>
+          {showCreate ? "Cancel" : "＋ Create New Poll"}
+        </button>
+
+        {showCreate && (
+          <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 12 }}>New Poll</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <input
+                style={styles.input}
+                placeholder="Ask a question..."
+                value={question}
+                onChange={e => setQuestion(e.target.value)}
+              />
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Options</p>
+              {options.map((opt, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input
+                    style={{ ...styles.input, flex: 1 }}
+                    placeholder={`Option ${i + 1}`}
+                    value={opt}
+                    onChange={e => updateOption(i, e.target.value)}
+                  />
+                  {options.length > 2 && (
+                    <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => removeOption(i)}>✕</button>
+                  )}
+                </div>
+              ))}
+              {options.length < 6 && (
+                <button style={{ ...styles.addChildBtn, fontSize: 13 }} onClick={addOption}>+ Add option</button>
+              )}
+              <button style={{ ...styles.primaryBtn, marginTop: 4 }} onClick={handleCreate}>
+                Post Poll
+              </button>
+            </div>
+          </div>
+        )}
+
+        {allPolls.map(poll => {
           const voted = votedPolls[poll.id];
           const maxVotes = Math.max(...poll.options.map(o => o.votes));
           return (
@@ -2978,8 +3043,9 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
               <h3 style={styles.pollQuestion}>{poll.question}</h3>
               <div style={styles.pollOptions}>
                 {poll.options.map((opt, i) => {
-                  const pct = Math.round((opt.votes / poll.totalVoters) * 100);
-                  const isWinning = opt.votes === maxVotes;
+                  const totalVotes = poll.totalVoters || poll.options.reduce((s, o) => s + o.votes, 0) || 1;
+                  const pct = Math.round((opt.votes / totalVotes) * 100);
+                  const isWinning = opt.votes === maxVotes && opt.votes > 0;
                   return (
                     <button
                       key={i}
@@ -2994,14 +3060,10 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
                   );
                 })}
               </div>
-              <p style={styles.pollMeta}>{poll.totalVoters} votes · Ends in {poll.endsIn}</p>
+              <p style={styles.pollMeta}>{poll.totalVoters || 0} votes · Ends in {poll.endsIn}</p>
             </div>
           );
         })}
-
-        <button style={{ ...styles.secondaryBtn, width: "100%", marginTop: 16 }}>
-          Create New Poll
-        </button>
       </div>
     </div>
   );
