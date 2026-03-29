@@ -251,6 +251,7 @@ function MamaSquadsApp() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
   const [groupRequests, setGroupRequests] = useState({});
+  const [notifications, setNotifications] = useState([]);
   const [groups, setGroups] = useState(SAMPLE_GROUPS);
   const [joinedGroups, setJoinedGroups] = useState([3, 5]);
   const [pendingJoins, setPendingJoins] = useState([]);
@@ -798,6 +799,44 @@ function MamaSquadsApp() {
     return null;
   };
 
+  // ─── Load notifications ───
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50)
+      .then(({ data }) => {
+        if (data) setNotifications(data);
+      });
+  }, [user]);
+
+  // ─── Create notification for group members ───
+  const notifyGroupMembers = async (groupId, type, title, body) => {
+    // Get all members of this group
+    const { data: members } = await supabase
+      .from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId);
+    if (!members || members.length === 0) return;
+
+    // Create a notification for each member (except the sender)
+    const notifs = members
+      .filter(m => m.user_id !== user?.id)
+      .map(m => ({
+        user_id: m.user_id,
+        type,
+        title,
+        body,
+        group_id: groupId,
+        is_read: false,
+      }));
+    if (notifs.length > 0) {
+      await supabase.from('notifications').insert(notifs);
+    }
+  };
+
   // ─── Propose meetup handler ───
   const handleProposeMeetup = async (groupId, proposal) => {
     if (!user) return { error: 'Not logged in' };
@@ -812,6 +851,11 @@ function MamaSquadsApp() {
     }).select().single();
 
     if (error) return { error: error.message };
+
+    // Notify group members about new poll
+    const groupName = (groups || []).find(g => g.id === groupId)?.name || 'your group';
+    await notifyGroupMembers(groupId, 'new_poll', 'New Poll', `${user.full_name || 'A member'} posted a new poll in ${groupName}: "${proposal.title}". Vote now!`);
+
     return { data };
   };
 
@@ -976,7 +1020,7 @@ function MamaSquadsApp() {
             <MessagesTab onChatSelect={(c) => navigate("chat", c)} />
           )}
           {tab === "profile" && (
-            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} />
+            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
           )}
         </div>
         <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} />
@@ -2582,7 +2626,7 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
 }
 
 // ─── My Profile Tab ───
-function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover }) {
+function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about"
@@ -2739,7 +2783,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "Edit Profile", icon: "✏️", action: () => setEditing(true) },
           { label: "My Children", icon: "👶", action: () => setMenuView("children") },
           { label: "Discover Moms", icon: "🔍", action: () => onShowDiscover && onShowDiscover() },
-          { label: "Notifications", icon: "🔔", action: () => setMenuView("notifications") },
+          { label: `Notifications${(notifications || []).filter(n => !n.is_read).length > 0 ? ` (${(notifications || []).filter(n => !n.is_read).length})` : ''}`, icon: "🔔", action: () => setMenuView("notifications") },
           { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Sign Out", icon: "👋", action: handleSignOut },
@@ -2795,15 +2839,66 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       {menuView === "notifications" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
-              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Notifications</h2>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+                <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Notifications</h2>
+              </div>
+              {(notifications || []).some(n => !n.is_read) && (
+                <button
+                  style={{ background: "none", border: "none", fontSize: 12, color: "#3B82F6", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
+                  onClick={async () => {
+                    if (user) {
+                      await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
+                      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+                    }
+                  }}
+                >
+                  Mark all read
+                </button>
+              )}
             </div>
-            <div style={{ textAlign: "center", padding: 40 }}>
-              <span style={{ fontSize: 40 }}>🔔</span>
-              <p style={{ fontSize: 16, fontWeight: 600, color: "#2D2D2D", marginTop: 12 }}>You're all caught up!</p>
-              <p style={{ fontSize: 13, color: "#888", marginTop: 6 }}>Notifications for playdates, group activity, and messages will appear here.</p>
-            </div>
+            {(!notifications || notifications.length === 0) ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <span style={{ fontSize: 40 }}>🔔</span>
+                <p style={{ fontSize: 16, fontWeight: 600, color: "#2D2D2D", marginTop: 12 }}>You're all caught up!</p>
+                <p style={{ fontSize: 13, color: "#888", marginTop: 6 }}>Notifications for polls, confirmed meetups, and group activity will appear here.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {notifications.map(notif => (
+                  <div
+                    key={notif.id}
+                    style={{
+                      background: notif.is_read ? "white" : "#F0F7FF",
+                      borderRadius: 12, padding: 14,
+                      border: notif.is_read ? "1px solid #f0f0f0" : "1px solid #BFDBFE",
+                      cursor: "pointer",
+                    }}
+                    onClick={async () => {
+                      if (!notif.is_read && user) {
+                        await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+                        setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+                      }
+                    }}
+                  >
+                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                      <span style={{ fontSize: 22 }}>
+                        {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : '🔔'}
+                      </span>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <strong style={{ fontSize: 13, color: "#2D2D2D" }}>{notif.title}</strong>
+                          {!notif.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#3B82F6", flexShrink: 0 }} />}
+                        </div>
+                        <p style={{ fontSize: 12, color: "#666", marginTop: 4, lineHeight: 1.4 }}>{notif.body}</p>
+                        <p style={{ fontSize: 11, color: "#bbb", marginTop: 6 }}>{new Date(notif.created_at).toLocaleDateString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
