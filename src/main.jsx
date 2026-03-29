@@ -732,8 +732,7 @@ function MamaSquadsApp() {
     if (!user) return { error: 'Not logged in' };
     const { data, error } = await supabase.from('meetup_proposals').insert({
       group_id: groupId,
-      proposed_by: user.id,
-      proposed_by_name: user.full_name || user.email,
+      created_by: user.id,
       title: proposal.title,
       description: proposal.description,
       time_options: proposal.timeOptions,
@@ -749,7 +748,7 @@ function MamaSquadsApp() {
   const loadMeetupProposals = async (groupId) => {
     const { data } = await supabase
       .from('meetup_proposals')
-      .select('*, votes(id, user_id, option_type, option_value)')
+      .select('*, votes(id, user_id, option_type, option_value), users!created_by(full_name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false });
     return data || [];
@@ -3496,7 +3495,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       </div>
                       <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 4 }}>{proposal.title}</h3>
                       {proposal.description && <p style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>{proposal.description}</p>}
-                      <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>by {proposal.proposed_by_name}</p>
+                      <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>by {proposal.users?.full_name || 'A mom'}</p>
 
                       {/* Time voting */}
                       {(proposal.time_options || []).length > 0 && (
