@@ -2709,7 +2709,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── My Children Sub-screen ── */}
       {menuView === "children" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -2749,7 +2749,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── Notifications Sub-screen ── */}
       {menuView === "notifications" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -2766,7 +2766,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── Privacy & Safety Sub-screen ── */}
       {menuView === "privacy" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -2797,7 +2797,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
       {/* ── About MamaSquads Sub-screen ── */}
       {menuView === "about" && (
-        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
@@ -4451,8 +4451,8 @@ const gray800 = "#2D2D2D";
 const radius = 16;
 
 const styles = {
-  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden" },
-  fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, position: "relative" },
+  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "env(safe-area-inset-top)" },
+  fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "max(24px, env(safe-area-inset-top))", position: "relative" },
   mainContent: { flex: 1, overflow: "auto", paddingBottom: 80 },
   tabContent: { padding: "16px 18px" },
 
@@ -4539,7 +4539,7 @@ const styles = {
 
   // Detail screens
   detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC" },
-  detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", borderBottom: `1px solid ${gray100}`, background: "white", position: "sticky", top: 0, zIndex: 10 },
+  detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", paddingTop: "max(12px, env(safe-area-inset-top))", borderBottom: `1px solid ${gray100}`, background: "white", position: "sticky", top: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 16, fontWeight: 600, color: gray800 },
   detailBody: { flex: 1, overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 16 },
