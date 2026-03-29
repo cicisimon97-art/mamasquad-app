@@ -279,6 +279,9 @@ function MamaSquadsApp() {
               setIsVerified(profile.is_verified);
               setIsBetaMember(profile.is_founding_member);
               setScreen("main");
+            } else {
+              // Auth user exists but no profile — incomplete signup, sign them out
+              supabase.auth.signOut();
             }
             setLoading(false);
           });
@@ -341,32 +344,11 @@ function MamaSquadsApp() {
     }
 
     // Fetch profile
-    const { data: profile, error: profileError } = await supabase.from('users').select('*').eq('id', data.user.id).single();
-    if (profileError || !profile) {
-      // User exists in auth but not in users table — create a basic profile
-      const newProfile = {
-        id: data.user.id,
-        email: data.user.email,
-        full_name: data.user.email.split('@')[0],
-      };
-      const { error: insertError } = await supabase.from('users').insert(newProfile);
-      if (insertError) {
-        // If insert fails due to duplicate, try fetching again
-        const { data: retryProfile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
-        if (retryProfile) {
-          setUser(retryProfile);
-          setIsVerified(retryProfile.is_verified);
-          setIsBetaMember(retryProfile.is_founding_member);
-          setScreen("main");
-          return { success: true };
-        }
-        return { error: "Could not create your profile: " + insertError.message };
-      }
-
-      setUser({ ...newProfile, is_verified: false, is_founding_member: false, kids: [], interests: [] });
-      setIsVerified(false);
-      setScreen("main");
-      return { success: true };
+    const { data: profile } = await supabase.from('users').select('*').eq('id', data.user.id).single();
+    if (!profile) {
+      // Auth user exists but signup was never completed — sign out the dangling auth user
+      await supabase.auth.signOut();
+      return { error: "No account found. Please sign up first." };
     }
 
     setUser(profile);
@@ -381,6 +363,9 @@ function MamaSquadsApp() {
     setSignupError(null);
     const { email, password, name, area, bio, momBirthday, kids, interests, quickAnswers } = userData;
 
+    let userId;
+
+    // Try signup first
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
@@ -390,17 +375,31 @@ function MamaSquadsApp() {
     });
 
     if (authError) {
-      setSignupError(authError.message);
-      return;
+      // If user already registered (incomplete signup), try signing in instead
+      if (authError.message.toLowerCase().includes('already registered') || authError.message.toLowerCase().includes('already been registered')) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) {
+          setSignupError("An account with this email already exists. Try signing in or use a different email.");
+          return;
+        }
+        userId = signInData.user.id;
+        // Check if profile already exists
+        const { data: existingProfile } = await supabase.from('users').select('id').eq('id', userId).single();
+        if (existingProfile) {
+          setSignupError("This account already exists. Please sign in instead.");
+          return;
+        }
+      } else {
+        setSignupError(authError.message);
+        return;
+      }
+    } else {
+      if (!authData.user) {
+        setSignupError("Signup failed. Please try again.");
+        return;
+      }
+      userId = authData.user.id;
     }
-
-    // If email confirmation is enabled and no session, the user still exists
-    if (!authData.user) {
-      setSignupError("Signup failed. Please try again.");
-      return;
-    }
-
-    const userId = authData.user.id;
     const isFoundingMember = !!inviteCode;
 
     const { error: profileError } = await supabase.from('users').insert({
@@ -2518,6 +2517,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const displayName = user?.full_name || "Mom";
   const momBdayToday = isBirthdayToday(user?.mom_age);
   const momAgeDisplay = formatAge(user?.mom_age);
+  const isAppFounder = user?.role === 'founder';
   const avatar = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const isVerified = user?.is_verified;
   const isFoundingMember = user?.is_founding_member || isBetaMember;
@@ -2604,13 +2604,18 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
           <div style={styles.myAvatar}>{avatar}</div>
           {isVerified && <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13 }} title="Verified">✓</div>}
         </div>
-        {isFoundingMember && (
+        {isAppFounder && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", background: "#F3E8FF", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>👑 FOUNDER</span>
+          </div>
+        )}
+        {!isAppFounder && isFoundingMember && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: "#FF8F00", background: "#FFF8E1", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>⭐ FOUNDING MEMBER</span>
           </div>
         )}
         {isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>}
-        <h2 style={styles.myName}>{momBdayToday ? '🎂 ' : ''}{displayName}{momAgeDisplay ? `, ${momAgeDisplay}` : ''}</h2>
+        <h2 style={styles.myName}>{momBdayToday ? '🎂 ' : ''}{isAppFounder ? '👑 ' : ''}{displayName}{momAgeDisplay ? `, ${momAgeDisplay}` : ''}</h2>
         {(user?.area) && <p style={styles.myArea}>{Icons.location} {user.area}</p>}
         <div style={styles.statRow}>
           <div style={styles.stat}><strong>{joinedEvents?.length || 0}</strong><span>Playdates</span></div>
