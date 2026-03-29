@@ -1107,7 +1107,7 @@ function VerificationBlockedScreen({ onVerify }) {
         >
           Complete Verification Now
         </button>
-        <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? Contact mamasquads1@gmail.com</p>
+        <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? <a href="mailto:mama.squads1@gmail.com" style={{ color: "#FF6B8A", textDecoration: "none" }}>mama.squads1@gmail.com</a></p>
       </div>
       <style>{keyframes}</style>
     </div>
@@ -3206,14 +3206,18 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 { icon: "💛", title: "Our Mission", desc: "To make it effortless for moms to find their people — nearby moms whose kids are the same age, who share their interests, and who are just as eager to get out of the house." },
                 { icon: "🔒", title: "Safety First", desc: "Every single member is verified. No exceptions. We built MamaSquads so you never have to wonder if the person at the playdate is who they say they are." },
                 { icon: "🌍", title: "Currently Available", desc: "Long Island & Westchester/CT (beta). Nationwide expansion coming 2027." },
-                { icon: "📧", title: "Contact Us", desc: "mamasquads1@gmail.com" },
+                { icon: "📧", title: "Contact Us", desc: "mama.squads1@gmail.com", link: "mailto:mama.squads1@gmail.com" },
               ].map((item, i) => (
                 <div key={i} style={{ background: "white", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
                   <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                     <span style={{ fontSize: 20 }}>{item.icon}</span>
                     <div>
                       <h4 style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>{item.title}</h4>
-                      <p style={{ fontSize: 13, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{item.desc}</p>
+                      {item.link ? (
+                        <a href={item.link} style={{ fontSize: 13, color: "#FF6B8A", marginTop: 4, lineHeight: 1.4, display: "block", textDecoration: "none" }}>{item.desc}</a>
+                      ) : (
+                        <p style={{ fontSize: 13, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{item.desc}</p>
+                      )}
                     </div>
                   </div>
                 </div>
