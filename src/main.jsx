@@ -1161,6 +1161,7 @@ function MamaSquadsApp() {
         </div>
         <div style={{ flex: 1, overflow: "auto" }}>
           <DiscoverTab
+            user={user}
             onProfileSelect={(p) => { setShowDiscover(false); setSelectedProfile(p); }}
             onAdminApply={() => { setShowDiscover(false); setShowAdminApply(true); }}
           />
@@ -1210,6 +1211,7 @@ function MamaSquadsApp() {
           )}
           {tab === "discover" && (
             <DiscoverTab
+              user={user}
               onProfileSelect={(p) => navigate("profile", p)}
               onAdminApply={() => setShowAdminApply(true)}
             />
@@ -2650,11 +2652,45 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 }
 
 // ─── Discover Tab ───
-function DiscoverTab({ onProfileSelect, onAdminApply }) {
+function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
   const [search, setSearch] = useState("");
-  const filtered = SAMPLE_MOMS.filter(m =>
+  const [realMoms, setRealMoms] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  // Load real users from Supabase
+  useEffect(() => {
+    if (loaded) return;
+    supabase.from('users')
+      .select('id, full_name, area, bio, kids, interests, is_verified, role, mom_age')
+      .neq('id', user?.id || '')
+      .then(({ data }) => {
+        if (data) {
+          const mapped = data.map(m => {
+            const name = m.full_name || 'A mom';
+            const kidAges = (m.kids || []).map(k => formatAge(k.birthday)).filter(Boolean);
+            return {
+              id: m.id,
+              name,
+              avatar: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+              bio: m.bio || '',
+              ages: kidAges.length > 0 ? kidAges.map(a => a + ' yrs').join(', ') : '',
+              interests: m.interests || [],
+              area: m.area || '',
+              admin: m.role === 'admin' || m.role === 'founder',
+              isVerified: m.is_verified,
+              fromSupabase: true,
+            };
+          });
+          setRealMoms(mapped);
+        }
+        setLoaded(true);
+      });
+  }, [loaded, user]);
+
+  const allMoms = [...realMoms];
+  const filtered = allMoms.filter(m =>
     m.name.toLowerCase().includes(search.toLowerCase()) ||
-    m.interests.some(i => i.toLowerCase().includes(search.toLowerCase())) ||
+    (m.interests || []).some(i => i.toLowerCase().includes(search.toLowerCase())) ||
     m.area.toLowerCase().includes(search.toLowerCase())
   );
 
@@ -2666,26 +2702,39 @@ function DiscoverTab({ onProfileSelect, onAdminApply }) {
         <input style={styles.searchInput} placeholder="Search by name, interest, or area..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      <div style={styles.profileGrid}>
-        {filtered.map((mom, i) => (
-          <div key={mom.id} style={{ ...styles.profileCard, animationDelay: `${i * 0.05}s` }} onClick={() => onProfileSelect(mom)}>
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <div style={styles.profileAvatar}>{mom.avatar}</div>
-              <div style={styles.verifiedDot} title="Verified Mom">✓</div>
+      {!loaded ? (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <p style={{ fontSize: 14, color: "#888" }}>Loading...</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <span style={{ fontSize: 40 }}>👩‍👧</span>
+          <p style={{ fontSize: 14, color: "#888", marginTop: 12 }}>{search ? "No moms match your search" : "No other moms have joined yet. Be the first to invite!"}</p>
+        </div>
+      ) : (
+        <div style={styles.profileGrid}>
+          {filtered.map((mom, i) => (
+            <div key={mom.id} style={{ ...styles.profileCard, animationDelay: `${i * 0.05}s` }} onClick={() => onProfileSelect(mom)}>
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <div style={styles.profileAvatar}>{mom.avatar}</div>
+                {mom.isVerified && <div style={styles.verifiedDot} title="Verified Mom">✓</div>}
+              </div>
+              {mom.admin && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
+              <h3 style={styles.profileName}>{mom.name}</h3>
+              {mom.area && <p style={styles.profileArea}>{Icons.location} {mom.area}</p>}
+              {mom.isVerified && <span style={styles.verifiedMomTag}>✓ Verified Mom</span>}
+              {mom.ages && <p style={styles.profileAges}>Kids: {mom.ages}</p>}
+              {(mom.interests || []).length > 0 && (
+                <div style={styles.profileInterests}>
+                  {mom.interests.slice(0, 2).map(i => (
+                    <span key={i} style={styles.interestTag}>{i}</span>
+                  ))}
+                </div>
+              )}
             </div>
-            {mom.admin && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
-            <h3 style={styles.profileName}>{mom.name}</h3>
-            <p style={styles.profileArea}>{Icons.location} {mom.area}</p>
-            <span style={styles.verifiedMomTag}>✓ Verified Mom</span>
-            <p style={styles.profileAges}>Kids: {mom.ages}</p>
-            <div style={styles.profileInterests}>
-              {mom.interests.slice(0, 2).map(i => (
-                <span key={i} style={styles.interestTag}>{i}</span>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
       {/* Apply to Be an Admin - Gated */}
       <div style={styles.adminApplyBanner}>
