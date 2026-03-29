@@ -2731,6 +2731,9 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
     return [{ name: "", birthday: "" }];
   });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
+  const [mySchedule, setMySchedule] = useState(user?.general_availability || {});
+  const [editingAvail, setEditingAvail] = useState(false);
+  const [savingAvail, setSavingAvail] = useState(false);
 
   const displayName = user?.full_name || "Mom";
   const momBdayToday = isBirthdayToday(user?.mom_age);
@@ -2870,6 +2873,123 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           </div>
         </div>
       )}
+
+      {/* ── My Availability ── */}
+      <div style={styles.detailSection}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h3 style={styles.sectionTitle}>My Availability</h3>
+          <button
+            style={{ ...styles.secondaryBtn, padding: "6px 14px", fontSize: 12, opacity: savingAvail ? 0.6 : 1 }}
+            disabled={savingAvail}
+            onClick={async () => {
+              if (editingAvail) {
+                setSavingAvail(true);
+                await supabase.from('users').update({ general_availability: mySchedule }).eq('id', user.id);
+                setUser(prev => ({ ...prev, general_availability: mySchedule }));
+                setSavingAvail(false);
+                setEditingAvail(false);
+              } else {
+                setEditingAvail(true);
+              }
+            }}
+          >
+            {savingAvail ? "Saving..." : editingAvail ? "Save" : "✏️ Edit"}
+          </button>
+        </div>
+
+        {editingAvail ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+            {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => {
+              const daySlots = mySchedule[day] || [];
+              return (
+                <div key={day} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{day}</strong>
+                    <button
+                      style={{ fontSize: 11, color: daySlots.length > 0 && daySlots[0] === "all-day" ? "#2E7D32" : "#3B82F6", background: daySlots.length > 0 && daySlots[0] === "all-day" ? "#E8F5E9" : "#F0F7FF", border: "none", borderRadius: 50, padding: "4px 10px", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}
+                      onClick={() => {
+                        if (daySlots.length > 0 && daySlots[0] === "all-day") {
+                          setMySchedule(prev => ({ ...prev, [day]: [] }));
+                        } else {
+                          setMySchedule(prev => ({ ...prev, [day]: ["all-day"] }));
+                        }
+                      }}
+                    >
+                      {daySlots.length > 0 && daySlots[0] === "all-day" ? "✓ All Day" : "All Day"}
+                    </button>
+                  </div>
+                  {!(daySlots.length > 0 && daySlots[0] === "all-day") && (
+                    <>
+                      {daySlots.filter(s => s !== "all-day").map((slot, si) => (
+                        <div key={si} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                          <select style={{ ...styles.input, flex: 1, padding: "8px 10px", fontSize: 12 }} value={slot.from || ''} onChange={e => {
+                            setMySchedule(prev => {
+                              const updated = [...(prev[day] || [])];
+                              updated[si] = { ...updated[si], from: e.target.value };
+                              return { ...prev, [day]: updated };
+                            });
+                          }}>
+                            <option value="">From</option>
+                            {["6:00 AM","7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                          <span style={{ fontSize: 12, color: "#888" }}>to</span>
+                          <select style={{ ...styles.input, flex: 1, padding: "8px 10px", fontSize: 12 }} value={slot.to || ''} onChange={e => {
+                            setMySchedule(prev => {
+                              const updated = [...(prev[day] || [])];
+                              updated[si] = { ...updated[si], to: e.target.value };
+                              return { ...prev, [day]: updated };
+                            });
+                          }}>
+                            <option value="">To</option>
+                            {["7:00 AM","8:00 AM","9:00 AM","10:00 AM","11:00 AM","12:00 PM","1:00 PM","2:00 PM","3:00 PM","4:00 PM","5:00 PM","6:00 PM","7:00 PM","8:00 PM","9:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+                          </select>
+                          <button style={{ background: "none", border: "none", fontSize: 16, color: "#E53935", cursor: "pointer" }} onClick={() => {
+                            setMySchedule(prev => ({ ...prev, [day]: (prev[day] || []).filter((_, i) => i !== si) }));
+                          }}>✕</button>
+                        </div>
+                      ))}
+                      <button
+                        style={{ fontSize: 12, color: "#3B82F6", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", padding: "4px 0" }}
+                        onClick={() => setMySchedule(prev => ({ ...prev, [day]: [...(prev[day] || []).filter(s => s !== "all-day"), { from: "", to: "" }] }))}
+                      >
+                        + Add time slot
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+            {Object.keys(mySchedule).length === 0 || Object.values(mySchedule).every(v => !v || v.length === 0) ? (
+              <div style={{ background: "#FFF8E1", borderRadius: 10, padding: 14, textAlign: "center" }}>
+                <span style={{ fontSize: 24 }}>📅</span>
+                <p style={{ fontSize: 13, color: "#666", marginTop: 6 }}>Tap Edit to set your weekly availability so other moms know when you're free!</p>
+              </div>
+            ) : (
+              ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(day => {
+                const slots = mySchedule[day];
+                if (!slots || slots.length === 0) return null;
+                return (
+                  <div key={day} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <strong style={{ fontSize: 13, color: "#2D2D2D", width: 36, flexShrink: 0 }}>{day.slice(0, 3)}</strong>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                      {slots[0] === "all-day" ? (
+                        <span style={{ fontSize: 12, color: "#2E7D32", background: "#E8F5E9", padding: "3px 10px", borderRadius: 50, fontWeight: 600 }}>All Day</span>
+                      ) : (
+                        slots.filter(s => s.from && s.to).map((slot, i) => (
+                          <span key={i} style={{ fontSize: 12, color: "#3B82F6", background: "#F0F7FF", padding: "3px 10px", borderRadius: 50, fontWeight: 500 }}>{slot.from} – {slot.to}</span>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        )}
+      </div>
 
       <div style={styles.menuList}>
         {[
