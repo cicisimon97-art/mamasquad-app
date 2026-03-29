@@ -683,9 +683,7 @@ function MamaSquadsApp() {
     const payload = {
       group_id: groupId,
       user_id: user.id,
-      user_name: user.full_name || user.email,
-      user_avatar: (user.full_name || 'U').split(' ').map(w => w[0]).join(''),
-      days: availability,
+      schedule: availability,
       note: note || '',
     };
 
@@ -701,16 +699,19 @@ function MamaSquadsApp() {
     if (!user) return [];
     const { data } = await supabase
       .from('availability')
-      .select('*')
+      .select('*, users!user_id(full_name)')
       .eq('group_id', groupId)
       .neq('user_id', user.id);
-    return (data || []).map(a => ({
-      name: a.user_name,
-      avatar: a.user_avatar,
-      days: a.days || {},
-      note: a.note || '',
-      fromSupabase: true,
-    }));
+    return (data || []).map(a => {
+      const name = a.users?.full_name || 'A mom';
+      return {
+        name,
+        avatar: name.split(' ').map(w => w[0]).join(''),
+        days: a.schedule || {},
+        note: a.note || '',
+        fromSupabase: true,
+      };
+    });
   };
 
   // ─── Load my availability for a group ───
@@ -722,7 +723,7 @@ function MamaSquadsApp() {
       .eq('group_id', groupId)
       .eq('user_id', user.id)
       .single();
-    if (data) return { days: data.days || {}, note: data.note || '' };
+    if (data) return { days: data.schedule || {}, note: data.note || '' };
     return null;
   };
 
