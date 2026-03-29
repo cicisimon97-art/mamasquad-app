@@ -974,7 +974,7 @@ function MamaSquadsApp() {
             <MessagesTab onChatSelect={(c) => navigate("chat", c)} />
           )}
           {tab === "profile" && (
-            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} />
+            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} />
           )}
         </div>
         <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} />
@@ -2538,9 +2538,10 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
 }
 
 // ─── My Profile Tab ───
-function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups }) {
+function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about"
   const [editName, setEditName] = useState(user?.full_name || "");
   const [editArea, setEditArea] = useState(user?.area || "");
   const [editBio, setEditBio] = useState(user?.bio || "");
@@ -2692,19 +2693,143 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
       <div style={styles.menuList}>
         {[
           { label: "Edit Profile", icon: "✏️", action: () => setEditing(true) },
-          { label: "My Children", icon: "👶" },
-          { label: "Discover Moms", icon: "🔍" },
-          { label: "Notifications", icon: "🔔" },
-          { label: "Privacy & Safety", icon: "🔒" },
-          { label: "About MamaSquads", icon: "💛" },
+          { label: "My Children", icon: "👶", action: () => setMenuView("children") },
+          { label: "Discover Moms", icon: "🔍", action: () => onShowDiscover && onShowDiscover() },
+          { label: "Notifications", icon: "🔔", action: () => setMenuView("notifications") },
+          { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
+          { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Sign Out", icon: "👋", action: handleSignOut },
         ].map(item => (
-          <div key={item.label} style={styles.menuItem} onClick={item.action || undefined}>
+          <div key={item.label} style={styles.menuItem} onClick={item.action}>
             <span>{item.icon} {item.label}</span>
             <span style={{ color: "#ccc" }}>›</span>
           </div>
         ))}
       </div>
+
+      {/* ── My Children Sub-screen ── */}
+      {menuView === "children" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>My Children</h2>
+            </div>
+            {(user?.kids || []).length === 0 ? (
+              <div style={{ textAlign: "center", padding: 40 }}>
+                <span style={{ fontSize: 40 }}>👶</span>
+                <p style={{ fontSize: 14, color: "#888", marginTop: 12 }}>No children added yet. Tap Edit Profile to add them.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                {user.kids.filter(k => k.name || k.birthday).map((kid, i) => {
+                  const kidAge = formatAge(kid.birthday);
+                  const kidBday = isBirthdayToday(kid.birthday);
+                  return (
+                    <div key={i} style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 22, background: "#FF6B8A22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                          {kidBday ? '🎂' : '👶'}
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D" }}>{kidBday ? '🎂 ' : ''}{kid.name}</h3>
+                          {kidAge && <p style={{ fontSize: 13, color: "#888", marginTop: 2 }}>{kidAge} years old</p>}
+                          {kid.birthday && <p style={{ fontSize: 12, color: "#bbb", marginTop: 2 }}>Birthday: {MONTHS[parseInt(kid.birthday.split('-')[1]) - 1]} {parseInt(kid.birthday.split('-')[2])}</p>}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+            <button style={{ ...styles.textBtn, marginTop: 16 }} onClick={() => { setMenuView(null); setEditing(true); }}>Edit Children</button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Notifications Sub-screen ── */}
+      {menuView === "notifications" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Notifications</h2>
+            </div>
+            <div style={{ textAlign: "center", padding: 40 }}>
+              <span style={{ fontSize: 40 }}>🔔</span>
+              <p style={{ fontSize: 16, fontWeight: 600, color: "#2D2D2D", marginTop: 12 }}>You're all caught up!</p>
+              <p style={{ fontSize: 13, color: "#888", marginTop: 6 }}>Notifications for playdates, group activity, and messages will appear here.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Privacy & Safety Sub-screen ── */}
+      {menuView === "privacy" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Privacy & Safety</h2>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { icon: "🔒", title: "Verified Community", desc: "Every member is identity-verified to keep our community safe for moms and kids." },
+                { icon: "🛡️", title: "Data Protection", desc: "Your personal information is encrypted and never shared with third parties." },
+                { icon: "👁️", title: "Profile Visibility", desc: "Only verified members can see your profile, bio, and children's information." },
+                { icon: "🚫", title: "Blocking & Reporting", desc: "You can block or report any member. Our team reviews all reports within 24 hours." },
+                { icon: "📍", title: "Location Privacy", desc: "Your exact location is never shared. Only your general area is visible to other moms." },
+              ].map((item, i) => (
+                <div key={i} style={{ background: "white", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 20 }}>{item.icon}</span>
+                    <div>
+                      <h4 style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>{item.title}</h4>
+                      <p style={{ fontSize: 13, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{item.desc}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── About MamaSquads Sub-screen ── */}
+      {menuView === "about" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>About MamaSquads</h2>
+            </div>
+            <div style={{ textAlign: "center", marginBottom: 24 }}>
+              <span style={{ fontSize: 48 }}>🌸</span>
+              <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, color: "#2D2D2D", marginTop: 8 }}>MamaSquads</h3>
+              <p style={{ fontSize: 13, color: "#888", marginTop: 4 }}>The verified, moms-only playdate community</p>
+              <p style={{ fontSize: 12, color: "#bbb", marginTop: 8 }}>Version 1.0.0</p>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {[
+                { icon: "💛", title: "Our Mission", desc: "To make it effortless for moms to find their people — nearby moms whose kids are the same age, who share their interests, and who are just as eager to get out of the house." },
+                { icon: "🔒", title: "Safety First", desc: "Every single member is verified. No exceptions. We built MamaSquads so you never have to wonder if the person at the playdate is who they say they are." },
+                { icon: "🌍", title: "Currently Available", desc: "Long Island & Westchester/CT (beta). Nationwide expansion coming 2027." },
+                { icon: "📧", title: "Contact Us", desc: "support@mamasquads.com" },
+              ].map((item, i) => (
+                <div key={i} style={{ background: "white", borderRadius: 12, padding: 16, boxShadow: "0 2px 8px rgba(0,0,0,0.03)", border: "1px solid #f0f0f0" }}>
+                  <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 20 }}>{item.icon}</span>
+                    <div>
+                      <h4 style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>{item.title}</h4>
+                      <p style={{ fontSize: 13, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{item.desc}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
