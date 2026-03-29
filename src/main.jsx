@@ -2710,7 +2710,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       {/* ── My Children Sub-screen ── */}
       {menuView === "children" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
-          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>My Children</h2>
@@ -2750,7 +2750,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       {/* ── Notifications Sub-screen ── */}
       {menuView === "notifications" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
-          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Notifications</h2>
@@ -2767,7 +2767,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       {/* ── Privacy & Safety Sub-screen ── */}
       {menuView === "privacy" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
-          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Privacy & Safety</h2>
@@ -2837,7 +2837,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       {/* ── About MamaSquads Sub-screen ── */}
       {menuView === "about" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "env(safe-area-inset-top)" }}>
-          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16 }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
               <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>About MamaSquads</h2>
