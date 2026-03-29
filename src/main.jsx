@@ -2,6 +2,73 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
 import { supabase } from './supabaseClient'
 
+// ─── Birthday Helpers ───
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const calcAge = (dateStr) => {
+  if (!dateStr) return null;
+  const birth = new Date(dateStr);
+  if (isNaN(birth)) return null;
+  const today = new Date();
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age;
+};
+const isBirthdayToday = (dateStr) => {
+  if (!dateStr) return false;
+  const birth = new Date(dateStr);
+  if (isNaN(birth)) return false;
+  const today = new Date();
+  return birth.getMonth() === today.getMonth() && birth.getDate() === today.getDate();
+};
+const formatAge = (dateStr) => {
+  const age = calcAge(dateStr);
+  if (age === null) return '';
+  if (age < 1) {
+    const birth = new Date(dateStr);
+    const months = (new Date().getFullYear() - birth.getFullYear()) * 12 + new Date().getMonth() - birth.getMonth();
+    return months <= 0 ? 'Newborn' : `${months}mo`;
+  }
+  return `${age}`;
+};
+function BirthdayPicker({ value, onChange, label, inputStyle }) {
+  const parsed = value ? new Date(value) : null;
+  const m = parsed && !isNaN(parsed) ? parsed.getMonth() + 1 : '';
+  const d = parsed && !isNaN(parsed) ? parsed.getDate() : '';
+  const y = parsed && !isNaN(parsed) ? parsed.getFullYear() : '';
+  const update = (newM, newD, newY) => {
+    if (newM && newD && newY) {
+      onChange(`${newY}-${String(newM).padStart(2,'0')}-${String(newD).padStart(2,'0')}`);
+    } else {
+      onChange('');
+    }
+  };
+  const currentYear = new Date().getFullYear();
+  const years = [];
+  for (let i = currentYear; i >= currentYear - 100; i--) years.push(i);
+  const days = [];
+  for (let i = 1; i <= 31; i++) days.push(i);
+  return (
+    <div>
+      {label && <p style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 4 }}>{label}</p>}
+      <div style={{ display: "flex", gap: 6 }}>
+        <select style={{ ...inputStyle, flex: 2 }} value={m} onChange={e => update(e.target.value, d || 1, y || currentYear)}>
+          <option value="">Month</option>
+          {MONTHS.map((mn, i) => <option key={i} value={i + 1}>{mn}</option>)}
+        </select>
+        <select style={{ ...inputStyle, flex: 1 }} value={d} onChange={e => update(m || 1, e.target.value, y || currentYear)}>
+          <option value="">Day</option>
+          {days.map(day => <option key={day} value={day}>{day}</option>)}
+        </select>
+        <select style={{ ...inputStyle, flex: 1.2 }} value={y} onChange={e => update(m || 1, d || 1, e.target.value)}>
+          <option value="">Year</option>
+          {years.map(yr => <option key={yr} value={yr}>{yr}</option>)}
+        </select>
+      </div>
+    </div>
+  );
+}
+
 // ─── Icons ───
 const Icons = {
   home: (
@@ -312,7 +379,7 @@ function MamaSquadsApp() {
   // ─── Signup handler (called when onboarding completes) ───
   const handleSignup = async (userData) => {
     setSignupError(null);
-    const { email, password, name, area, bio, momAge, kids, interests, quickAnswers } = userData;
+    const { email, password, name, area, bio, momBirthday, kids, interests, quickAnswers } = userData;
 
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
@@ -342,7 +409,7 @@ function MamaSquadsApp() {
       full_name: name,
       area,
       bio,
-      mom_age: momAge || null,
+      mom_age: momBirthday || null,
       kids: kids || [],
       interests,
       quick_answers: quickAnswers || {},
@@ -1474,12 +1541,12 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
   const [name, setName] = useState("");
   const [area, setArea] = useState("");
   const [bio, setBio] = useState("");
-  const [children, setChildren] = useState([{ name: "", age: "" }]);
-  const [momAge, setMomAge] = useState("");
+  const [children, setChildren] = useState([{ name: "", birthday: "" }]);
+  const [momBirthday, setMomBirthday] = useState("");
   const [selectedInterests, setSelectedInterests] = useState({});
   const [quickAnswers, setQuickAnswers] = useState({});
 
-  const addChild = () => setChildren(prev => [...prev, { name: "", age: "" }]);
+  const addChild = () => setChildren(prev => [...prev, { name: "", birthday: "" }]);
   const removeChild = (index) => setChildren(prev => prev.filter((_, i) => i !== index));
   const updateChild = (index, field, value) => {
     setChildren(prev => prev.map((c, i) => i === index ? { ...c, [field]: value } : c));
@@ -1493,8 +1560,8 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
     if (step >= totalSteps - 1) {
       setSubmitting(true);
       const interests = Object.keys(selectedInterests).filter(k => selectedInterests[k]);
-      const kids = children.filter(c => c.name.trim() || c.age.trim());
-      await onComplete({ email, password, name, area, bio, momAge, kids, interests, quickAnswers });
+      const kids = children.filter(c => c.name.trim() || c.birthday);
+      await onComplete({ email, password, name, area, bio, momBirthday, kids, interests, quickAnswers });
       setSubmitting(false);
       return;
     }
@@ -1514,7 +1581,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
           <input style={styles.input} placeholder="Your name" value={name} onChange={e => setName(e.target.value)} />
           <input style={styles.input} placeholder="Email address" type="email" value={email} onChange={e => setEmail(e.target.value)} />
           <input style={styles.input} placeholder="Create a password" type="password" value={password} onChange={e => setPassword(e.target.value)} />
-          <input style={styles.input} placeholder="Your age" type="number" value={momAge} onChange={e => setMomAge(e.target.value)} />
+          <BirthdayPicker value={momBirthday} onChange={setMomBirthday} label="Your birthday" inputStyle={styles.input} />
           <input style={styles.input} placeholder="Your area / zip code" value={area} onChange={e => setArea(e.target.value)} />
           <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Write a short bio... (e.g., Coffee-loving boy mom, always at the park!)" value={bio} onChange={e => setBio(e.target.value)} />
         </div>
@@ -1539,7 +1606,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
                 </div>
               )}
               <input style={styles.input} placeholder="Child's name" value={child.name} onChange={e => updateChild(i, "name", e.target.value)} />
-              <input style={styles.input} placeholder="Child's age (e.g., 2 years)" value={child.age} onChange={e => updateChild(i, "age", e.target.value)} />
+              <BirthdayPicker value={child.birthday || ''} onChange={val => updateChild(i, "birthday", val)} label="Birthday" inputStyle={styles.input} />
             </div>
           ))}
           <button style={styles.addChildBtn} onClick={addChild}>+ Add another child</button>
@@ -2444,12 +2511,13 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const [editBio, setEditBio] = useState(user?.bio || "");
   const [editChildren, setEditChildren] = useState(() => {
     if (user?.kids && user.kids.length > 0) return user.kids;
-    if (user?.kids && user.kids.length > 0) return user.kids;
-    return [{ name: "", age: "" }];
+    return [{ name: "", birthday: "" }];
   });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
 
   const displayName = user?.full_name || "Mom";
+  const momBdayToday = isBirthdayToday(user?.mom_age);
+  const momAgeDisplay = formatAge(user?.mom_age);
   const avatar = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const isVerified = user?.is_verified;
   const isFoundingMember = user?.is_founding_member || isBetaMember;
@@ -2457,7 +2525,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const kids = editChildren.filter(c => c.name.trim() || c.age.trim());
+    const kids = editChildren.filter(c => c.name.trim() || c.birthday);
     const updates = {
       full_name: editName.trim(),
       area: editArea.trim(),
@@ -2491,14 +2559,14 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
           <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Children</p>
           {editChildren.map((child, i) => (
             <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input style={{ ...styles.input, flex: 1 }} placeholder="Child's name" value={child.name} onChange={e => setEditChildren(prev => prev.map((c, j) => j === i ? { ...c, name: e.target.value } : c))} />
-              <input style={{ ...styles.input, flex: 1 }} placeholder="Age" value={child.age} onChange={e => setEditChildren(prev => prev.map((c, j) => j === i ? { ...c, age: e.target.value } : c))} />
+              <input style={styles.input} placeholder="Child's name" value={child.name} onChange={e => setEditChildren(prev => prev.map((c, j) => j === i ? { ...c, name: e.target.value } : c))} />
+              <BirthdayPicker value={child.birthday || ''} onChange={val => setEditChildren(prev => prev.map((c, j) => j === i ? { ...c, birthday: val } : c))} label="Birthday" inputStyle={styles.input} />
               {i > 0 && (
                 <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setEditChildren(prev => prev.filter((_, j) => j !== i))}>✕</button>
               )}
             </div>
           ))}
-          <button style={styles.addChildBtn} onClick={() => setEditChildren(prev => [...prev, { name: "", age: "" }])}>+ Add another child</button>
+          <button style={styles.addChildBtn} onClick={() => setEditChildren(prev => [...prev, { name: "", birthday: "" }])}>+ Add another child</button>
           <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Interests</p>
           <div style={styles.interestGrid}>
             {ALL_INTERESTS.map(interest => (
@@ -2542,7 +2610,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
           </div>
         )}
         {isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>}
-        <h2 style={styles.myName}>{displayName}</h2>
+        <h2 style={styles.myName}>{momBdayToday ? '🎂 ' : ''}{displayName}{momAgeDisplay ? `, ${momAgeDisplay}` : ''}</h2>
         {(user?.area) && <p style={styles.myArea}>{Icons.location} {user.area}</p>}
         <div style={styles.statRow}>
           <div style={styles.stat}><strong>{joinedEvents?.length || 0}</strong><span>Playdates</span></div>
@@ -2561,9 +2629,11 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
       {(user?.kids && user.kids.length > 0) && (
         <div style={styles.detailSection}>
           <h3 style={styles.sectionTitle}>My Little Ones</h3>
-          {user.kids.filter(k => k.name || k.age).map((kid, i) => (
-            <p key={i} style={styles.bioText}>{kid.name}{kid.age ? ` (${kid.age})` : ''}</p>
-          ))}
+          {user.kids.filter(k => k.name || k.birthday).map((kid, i) => {
+            const kidAge = formatAge(kid.birthday);
+            const kidBday = isBirthdayToday(kid.birthday);
+            return <p key={i} style={styles.bioText}>{kidBday ? '🎂 ' : ''}{kid.name}{kidAge ? ` (${kidAge} yrs)` : ''}</p>;
+          })}
         </div>
       )}
 
@@ -3080,7 +3150,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           name: userName,
           avatar: userName.split(' ').map(w => w[0]).join(''),
           bio: r.users?.bio || r.message || '',
-          ages: kids.map(k => k.age).filter(Boolean).join(', ') || '',
+          ages: kids.map(k => { const a = formatAge(k.birthday); return a ? `${a} yrs` : ''; }).filter(Boolean).join(', ') || '',
           requestedAt: new Date(r.created_at).toLocaleDateString(),
           fromSupabase: true,
         };
