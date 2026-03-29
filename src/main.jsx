@@ -501,10 +501,6 @@ function MamaSquadsApp() {
     const { error } = await supabase.from('join_requests').insert({
       group_id: groupId,
       user_id: user.id,
-      user_name: user.full_name || user.email,
-      user_avatar: (user.full_name || 'U').split(' ').map(w => w[0]).join(''),
-      user_bio: user.bio || '',
-      child_age: (user.kids && user.kids[0]?.age) || '',
       message,
       status: 'pending',
     });
@@ -3045,7 +3041,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   useEffect(() => {
     if (!isAdmin || !group.fromSupabase) return;
     supabase.from('join_requests')
-      .select('*')
+      .select('*, users!user_id(full_name, bio, kids)')
       .eq('group_id', group.id)
       .eq('status', 'pending')
       .then(({ data }) => {
@@ -3081,16 +3077,20 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
     r => !approvedRequests.includes(r.id) && !deniedRequests.includes(r.id)
   );
   const pending = group.fromSupabase
-    ? supaRequests.map(r => ({
-        id: r.id,
-        userId: r.user_id,
-        name: r.user_name,
-        avatar: r.user_avatar,
-        bio: r.user_bio || r.message || '',
-        ages: r.child_age || '',
-        requestedAt: new Date(r.created_at).toLocaleDateString(),
-        fromSupabase: true,
-      }))
+    ? supaRequests.map(r => {
+        const userName = r.users?.full_name || 'A mom';
+        const kids = r.users?.kids || [];
+        return {
+          id: r.id,
+          userId: r.user_id,
+          name: userName,
+          avatar: userName.split(' ').map(w => w[0]).join(''),
+          bio: r.users?.bio || r.message || '',
+          ages: kids.map(k => k.age).filter(Boolean).join(', ') || '',
+          requestedAt: new Date(r.created_at).toLocaleDateString(),
+          fromSupabase: true,
+        };
+      })
     : samplePending;
 
   const handleApprove = async (reqId) => {
