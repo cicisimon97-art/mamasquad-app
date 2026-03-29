@@ -259,6 +259,8 @@ function MamaSquadsApp() {
   const [newComment, setNewComment] = useState("");
   const [newMessage, setNewMessage] = useState("");
   const [votedPolls, setVotedPolls] = useState({});
+  const [connections, setConnections] = useState([]);
+  const [conversations, setConversations] = useState([]);
   const [events, setEvents] = useState(SAMPLE_EVENTS);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
@@ -837,6 +839,211 @@ function MamaSquadsApp() {
     }
   };
 
+  // ─── Load connections ───
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('connections')
+      .select('*, requester:users!requester_id(id, full_name, email, area, bio, kids, interests, mom_age), recipient:users!recipient_id(id, full_name, email, area, bio, kids, interests, mom_age)')
+      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+      .then(({ data }) => {
+        if (data) setConnections(data);
+      });
+  }, [user]);
+
+  // ─── Send connection request ───
+  const sendConnectionRequest = async (recipientId) => {
+    if (!user) return { error: 'Not logged in' };
+    const { data, error } = await supabase.from('connections').insert({
+      requester_id: user.id,
+      recipient_id: recipientId,
+      status: 'pending',
+    }).select().single();
+    if (error) return { error: error.message };
+    setConnections(prev => [...prev, data]);
+    // Notify the recipient
+    await supabase.from('notifications').insert({
+      user_id: recipientId,
+      type: 'connection_request',
+      title: 'New Connection Request',
+      body: `${user.full_name || 'A mom'} wants to connect with you!`,
+      is_read: false,
+    });
+    return { success: true };
+  };
+
+  // ─── Accept/decline connection ───
+  const respondToConnection = async (connectionId, accept) => {
+    const status = accept ? 'accepted' : 'declined';
+    await supabase.from('connections').update({ status }).eq('id', connectionId);
+    setConnections(prev => prev.map(c => c.id === connectionId ? { ...c, status } : c));
+
+    if (accept) {
+      // Create a DM conversation
+      const conn = connections.find(c => c.id === connectionId);
+      if (conn) {
+        const otherId = conn.requester_id === user.id ? conn.recipient_id : conn.requester_id;
+        await createConversation(otherId);
+      }
+    }
+  };
+
+  // ─── Get connection status with a user ───
+  const getConnectionStatus = (otherId) => {
+    const conn = connections.find(c =>
+      (c.requester_id === otherId || c.recipient_id === otherId)
+    );
+    if (!conn) return 'none';
+    if (conn.status === 'accepted') return 'connected';
+    if (conn.status === 'pending' && conn.requester_id === user?.id) return 'sent';
+    if (conn.status === 'pending' && conn.recipient_id === user?.id) return 'received';
+    return 'none';
+  };
+
+  // ─── Get list of connected user IDs ───
+  const getConnectedIds = () => {
+    return connections
+      .filter(c => c.status === 'accepted')
+      .map(c => c.requester_id === user?.id ? c.recipient_id : c.requester_id);
+  };
+
+  // ─── Load conversations ───
+  useEffect(() => {
+    if (!user) return;
+    const loadConversations = async () => {
+      // Get conversations the user is part of
+      const { data: participations } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', user.id);
+      if (!participations || participations.length === 0) return;
+
+      const convIds = participations.map(p => p.conversation_id);
+      const { data: convos } = await supabase
+        .from('conversations')
+        .select('*')
+        .in('id', convIds);
+      if (!convos) return;
+
+      // For each conversation, get participants and last message
+      const enriched = await Promise.all(convos.map(async (conv) => {
+        const { data: parts } = await supabase
+          .from('conversation_participants')
+          .select('user_id, users!user_id(full_name)')
+          .eq('conversation_id', conv.id);
+
+        const { data: lastMsg } = await supabase
+          .from('messages')
+          .select('content, created_at, sender_id')
+          .eq('conversation_id', conv.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .single();
+
+        const { count } = await supabase
+          .from('messages')
+          .select('id', { count: 'exact', head: true })
+          .eq('conversation_id', conv.id);
+
+        const otherParticipants = (parts || []).filter(p => p.user_id !== user.id);
+        const otherName = otherParticipants[0]?.users?.full_name || 'A mom';
+        const otherAvatar = otherName.split(' ').map(w => w[0]).join('').slice(0, 2);
+        const otherId = otherParticipants[0]?.user_id;
+
+        return {
+          id: conv.id,
+          type: conv.type,
+          name: conv.type === 'group' ? 'Group Chat' : otherName,
+          avatar: otherAvatar,
+          otherId,
+          lastMsg: lastMsg?.content || '',
+          lastMsgTime: lastMsg?.created_at,
+          messageCount: count || 0,
+          isGroup: conv.type === 'group',
+          fromSupabase: true,
+        };
+      }));
+
+      setConversations(enriched.sort((a, b) => {
+        const aTime = a.lastMsgTime || '0';
+        const bTime = b.lastMsgTime || '0';
+        return bTime.localeCompare(aTime);
+      }));
+    };
+    loadConversations();
+  }, [user]);
+
+  // ─── Create a DM conversation ───
+  const createConversation = async (otherUserId) => {
+    if (!user) return null;
+
+    // Check if conversation already exists
+    const existing = conversations.find(c => !c.isGroup && c.otherId === otherUserId);
+    if (existing) return existing;
+
+    const { data: conv, error } = await supabase.from('conversations').insert({
+      type: 'dm',
+    }).select().single();
+    if (error || !conv) return null;
+
+    // Add both participants
+    await supabase.from('conversation_participants').insert([
+      { conversation_id: conv.id, user_id: user.id },
+      { conversation_id: conv.id, user_id: otherUserId },
+    ]);
+
+    // Get other user's name
+    const { data: otherUser } = await supabase.from('users').select('full_name').eq('id', otherUserId).single();
+    const otherName = otherUser?.full_name || 'A mom';
+
+    const newConv = {
+      id: conv.id,
+      type: 'dm',
+      name: otherName,
+      avatar: otherName.split(' ').map(w => w[0]).join('').slice(0, 2),
+      otherId: otherUserId,
+      lastMsg: '',
+      lastMsgTime: null,
+      messageCount: 0,
+      isGroup: false,
+      fromSupabase: true,
+    };
+    setConversations(prev => [newConv, ...prev]);
+    return newConv;
+  };
+
+  // ─── Send message ───
+  const sendMessage = async (conversationId, content) => {
+    if (!user || !content.trim()) return null;
+    const { data, error } = await supabase.from('messages').insert({
+      conversation_id: conversationId,
+      sender_id: user.id,
+      content: content.trim(),
+    }).select().single();
+    if (error) return null;
+
+    // Update local conversation with last message
+    setConversations(prev => prev.map(c =>
+      c.id === conversationId ? { ...c, lastMsg: content.trim(), lastMsgTime: data.created_at, messageCount: (c.messageCount || 0) + 1 } : c
+    ));
+    return data;
+  };
+
+  // ─── Load messages for a conversation ───
+  const loadMessages = async (conversationId) => {
+    const { data } = await supabase
+      .from('messages')
+      .select('*, users!sender_id(full_name)')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+    return (data || []).map(m => ({
+      id: m.id,
+      from: m.sender_id === user?.id ? 'me' : 'them',
+      text: m.content,
+      senderName: m.users?.full_name || 'A mom',
+      time: new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+    }));
+  };
+
   // ─── Propose meetup handler ───
   const handleProposeMeetup = async (groupId, proposal) => {
     if (!user) return { error: 'Not logged in' };
@@ -936,10 +1143,10 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
     if (selectedChat) return (
-      <ChatDetail chat={selectedChat} onBack={() => setSelectedChat(null)} newMessage={newMessage} setNewMessage={setNewMessage} fadeIn={fadeIn} />
+      <ChatDetail chat={selectedChat} onBack={() => setSelectedChat(null)} newMessage={newMessage} setNewMessage={setNewMessage} user={user} connectedIds={getConnectedIds()} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={() => { setSelectedProfile(null); setTab("messages"); }} fadeIn={fadeIn} />
+      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { await createConversation(selectedProfile.id); } setSelectedProfile(null); setTab("messages"); }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
     if (showPoll) return <PollScreen polls={POLLS} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
@@ -1018,7 +1225,7 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "messages" && (
-            <MessagesTab onChatSelect={(c) => navigate("chat", c)} />
+            <MessagesTab conversations={conversations} connectedIds={getConnectedIds()} onChatSelect={(c) => navigate("chat", c)} />
           )}
           {tab === "profile" && (
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
@@ -2508,7 +2715,9 @@ function DiscoverTab({ onProfileSelect, onAdminApply }) {
 }
 
 // ─── Profile Detail ───
-function ProfileDetail({ profile, onBack, onMessage }) {
+function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus }) {
+  const [connectLoading, setConnectLoading] = useState(false);
+  const [localStatus, setLocalStatus] = useState(connectionStatus);
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -2547,23 +2756,49 @@ function ProfileDetail({ profile, onBack, onMessage }) {
           </div>
         </div>
 
-        <button style={{ ...styles.primaryBtn, width: "100%" }} onClick={onMessage}>
-          Send Message
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {localStatus === 'connected' ? (
+            <button style={{ ...styles.primaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
+              ✓ Connected
+            </button>
+          ) : localStatus === 'sent' ? (
+            <button style={{ ...styles.secondaryBtn, flex: 1, cursor: "default" }}>
+              Request Sent
+            </button>
+          ) : (
+            <button
+              style={{ ...styles.secondaryBtn, flex: 1, opacity: connectLoading ? 0.6 : 1 }}
+              disabled={connectLoading}
+              onClick={async () => {
+                if (onConnect && profile.id) {
+                  setConnectLoading(true);
+                  await onConnect(profile.id);
+                  setLocalStatus('sent');
+                  setConnectLoading(false);
+                }
+              }}
+            >
+              {connectLoading ? "..." : "Connect"}
+            </button>
+          )}
+          <button style={{ ...styles.primaryBtn, flex: 1 }} onClick={onMessage}>
+            Send Message
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
 // ─── Messages Tab ───
-function MessagesTab({ onChatSelect }) {
+function MessagesTab({ conversations, connectedIds, onChatSelect }) {
   const [msgTab, setMsgTab] = useState("inbox");
 
-  // Split messages: group chats + connected users go to inbox, others go to requests
-  const connectedNames = ["Sarah Mitchell", "Diana Park"]; // simulated connections
-  const inbox = SAMPLE_MESSAGES.filter(c => c.isGroup || connectedNames.includes(c.name));
-  const requests = SAMPLE_MESSAGES.filter(c => !c.isGroup && !connectedNames.includes(c.name));
-  const requestCount = requests.reduce((sum, c) => sum + (c.unread || 0), 0);
+  // Split: connected users + group chats go to inbox, others go to requests
+  const realConvos = conversations || [];
+  const inbox = realConvos.filter(c => c.isGroup || (connectedIds || []).includes(c.otherId));
+  const requests = realConvos.filter(c => !c.isGroup && !(connectedIds || []).includes(c.otherId));
+  const requestCount = requests.length;
 
   const currentList = msgTab === "inbox" ? inbox : requests;
 
@@ -2639,17 +2874,50 @@ function MessagesTab({ onChatSelect }) {
 }
 
 // ─── Chat Detail ───
-function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
-  const connectedNames = ["Sarah Mitchell", "Diana Park"];
-  const isConnected = chat.isGroup || connectedNames.includes(chat.name);
+function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, connectedIds, onSendMessage, loadMessages, onAcceptConnection, connections }) {
+  const isConnected = chat.isGroup || (connectedIds || []).includes(chat.otherId);
   const [accepted, setAccepted] = useState(isConnected);
+  const [messages, setMessages] = useState([]);
+  const [sending, setSending] = useState(false);
 
-  const sampleMsgs = [
-    { from: "them", text: "Hey! Are you coming to the playdate tomorrow?", time: "10:30 AM" },
-    { from: "me", text: "Yes! Can't wait. Should I bring anything?", time: "10:32 AM" },
-    { from: "them", text: "Maybe some extra sunscreen? It's going to be hot!", time: "10:33 AM" },
-    { from: "me", text: "Perfect, I'll grab some. See you there! 🌞", time: "10:35 AM" },
-  ];
+  // Load messages from Supabase
+  useEffect(() => {
+    if (!chat.fromSupabase || !loadMessages) return;
+    loadMessages(chat.id).then(msgs => setMessages(msgs));
+  }, [chat.id, chat.fromSupabase]);
+
+  const handleSend = async () => {
+    if (!newMessage.trim()) return;
+    if (chat.fromSupabase && onSendMessage) {
+      setSending(true);
+      const result = await onSendMessage(chat.id, newMessage);
+      if (result) {
+        setMessages(prev => [...prev, {
+          id: result.id,
+          from: 'me',
+          text: result.content,
+          senderName: user?.full_name || 'Me',
+          time: new Date(result.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+        }]);
+      }
+      setSending(false);
+    } else {
+      setMessages(prev => [...prev, { from: 'me', text: newMessage, time: 'Now' }]);
+    }
+    setNewMessage("");
+  };
+
+  const handleAccept = async () => {
+    // Find the pending connection for this chat
+    const conn = (connections || []).find(c =>
+      c.status === 'pending' &&
+      (c.requester_id === chat.otherId || c.recipient_id === chat.otherId)
+    );
+    if (conn && onAcceptConnection) {
+      await onAcceptConnection(conn.id, true);
+    }
+    setAccepted(true);
+  };
 
   return (
     <div style={styles.detailScreen}>
@@ -2657,7 +2925,7 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
         <button style={styles.backBtn} onClick={onBack}>{Icons.back}</button>
         <div style={styles.chatHeaderInfo}>
           <strong>{chat.name}</strong>
-          {chat.isGroup && <span style={styles.groupLabel}>Group · {Math.floor(Math.random() * 15 + 5)} members</span>}
+          {chat.isGroup && <span style={styles.groupLabel}>Group</span>}
           {!isConnected && !accepted && <span style={{ fontSize: 11, color: "#F57F17" }}>Message Request</span>}
         </div>
         <div style={{ width: 40 }} />
@@ -2670,7 +2938,7 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
           <div style={{ display: "flex", gap: 8 }}>
             <button
               style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#4CAF50", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onClick={() => setAccepted(true)}
+              onClick={handleAccept}
             >
               Accept
             </button>
@@ -2685,8 +2953,14 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
       )}
 
       <div style={styles.messagesBody}>
-        {sampleMsgs.map((msg, i) => (
-          <div key={i} style={{ ...styles.messageBubbleRow, justifyContent: msg.from === "me" ? "flex-end" : "flex-start" }}>
+        {messages.length === 0 && (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <span style={{ fontSize: 32 }}>💬</span>
+            <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No messages yet. Say hi!</p>
+          </div>
+        )}
+        {messages.map((msg, i) => (
+          <div key={msg.id || i} style={{ ...styles.messageBubbleRow, justifyContent: msg.from === "me" ? "flex-end" : "flex-start" }}>
             <div style={{ ...(msg.from === "me" ? styles.myBubble : styles.theirBubble) }}>
               <p style={styles.bubbleText}>{msg.text}</p>
               <span style={styles.bubbleTime}>{msg.time}</span>
@@ -2697,8 +2971,14 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage }) {
 
       {accepted ? (
         <div style={styles.messageInputRow}>
-          <input style={styles.msgInput} placeholder="Type a message..." value={newMessage} onChange={e => setNewMessage(e.target.value)} />
-          <button style={styles.sendBtn}>{Icons.send}</button>
+          <input
+            style={styles.msgInput}
+            placeholder="Type a message..."
+            value={newMessage}
+            onChange={e => setNewMessage(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleSend()}
+          />
+          <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>
         </div>
       ) : (
         <div style={{ padding: "14px 16px", background: "#F5F5F5", textAlign: "center", borderTop: "1px solid #f0f0f0" }}>
