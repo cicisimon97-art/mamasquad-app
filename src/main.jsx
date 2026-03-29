@@ -2141,13 +2141,30 @@ const verifyKeyframes = `
 
 // ─── Home Tab ───
 function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onPoll, joinedEvents }) {
-  // Only show events from: groups user is in, public groups, or events with no group
+  const [feedFilter, setFeedFilter] = useState("all");
+
   const publicGroupIds = (groups || []).filter(g => !g.isPrivate).map(g => g.id);
+  const privateJoinedIds = (groups || []).filter(g => g.isPrivate && (joinedGroups || []).includes(g.id)).map(g => g.id);
+
   const visibleEvents = (events || SAMPLE_EVENTS).filter(e => {
-    if (!e.groupId) return true; // no group = public event
-    if (publicGroupIds.includes(e.groupId)) return true; // public group
-    if ((joinedGroups || []).includes(e.groupId)) return true; // member of group
-    return false;
+    // First: visibility check (can the user see this event?)
+    if (e.groupId) {
+      const isPublicGroup = publicGroupIds.includes(e.groupId);
+      const isJoinedGroup = (joinedGroups || []).includes(e.groupId);
+      if (!isPublicGroup && !isJoinedGroup) return false;
+    }
+
+    // Then: feed filter tab
+    if (feedFilter === "my-groups") {
+      return e.groupId && (joinedGroups || []).includes(e.groupId);
+    }
+    if (feedFilter === "public") {
+      return !e.groupId || publicGroupIds.includes(e.groupId);
+    }
+    if (feedFilter === "my-playdates") {
+      return joinedEvents.includes(e.id);
+    }
+    return true; // "all"
   });
 
   const filtered = visibleEvents.filter(e =>
@@ -2163,6 +2180,22 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
           <h1 style={styles.pageTitle}>This Week's Playdates</h1>
         </div>
         <button style={styles.pollBtn} onClick={onPoll}>{Icons.vote} Polls</button>
+      </div>
+
+      {/* Feed filter tabs */}
+      <div style={styles.filterRow}>
+        {[
+          { id: "all", label: "All" },
+          { id: "my-groups", label: "My Groups" },
+          { id: "public", label: "🌐 Public" },
+          { id: "my-playdates", label: "✓ Joined" },
+        ].map(f => (
+          <button
+            key={f.id}
+            style={{ ...styles.dayChip, ...(feedFilter === f.id ? styles.dayChipActive : {}) }}
+            onClick={() => setFeedFilter(f.id)}
+          >{f.label}</button>
+        ))}
       </div>
 
       {/* Day filter */}
