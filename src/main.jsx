@@ -1036,7 +1036,7 @@ function WelcomeScreen({ onContinue, fadeIn }) {
   const [show, setShow] = useState(false);
   useEffect(() => { setTimeout(() => setShow(true), 100); }, []);
   return (
-    <div style={{ ...styles.fullScreen, background: "#DBBFC4" }}>
+    <div style={{ ...styles.fullScreen, background: "#D1B0B6" }}>
       <div style={{ ...styles.welcomeContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(30px)", transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <img src="/logo.png" alt="MamaSquads" style={{ width: 340, maxWidth: "90%", objectFit: "contain", marginBottom: 8 }} />
         <p style={{ ...styles.welcomeSubtitle, marginTop: 0, color: "#6B2C3B" }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
