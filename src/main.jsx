@@ -891,7 +891,7 @@ function MamaSquadsApp() {
   if (loading) {
     return (
       <div style={{ ...styles.fullScreen, background: "#FFFBFC", justifyContent: "center", alignItems: "center" }}>
-        <span style={{ fontSize: 40 }}>🌸</span>
+        <img src="/logo.png" alt="MamaSquads" style={{ width: 80, height: 80, objectFit: "contain" }} />
         <p style={{ marginTop: 16, fontSize: 14, color: "#888" }}>Loading...</p>
       </div>
     );
@@ -1040,7 +1040,7 @@ function WelcomeScreen({ onContinue, fadeIn }) {
       <div style={{ ...styles.welcomeContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(30px)", transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}>
         <div style={styles.logoContainer}>
           <div style={styles.logoBubble}>
-            <span style={{ fontSize: 44 }}>🌸</span>
+            <img src="/logo.png" alt="MamaSquads" style={{ width: 100, height: 100, objectFit: "contain" }} />
           </div>
           <div style={{ ...styles.logoRing, animationDelay: "0s" }} />
           <div style={{ ...styles.logoRing2, animationDelay: "0.5s" }} />
@@ -1240,7 +1240,7 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
       <div style={{ width: "100%", maxWidth: 400, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s ease" }}>
 
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <span style={{ fontSize: 44 }}>🌸</span>
+          <img src="/logo.png" alt="MamaSquads" style={{ width: 100, height: 100, objectFit: "contain" }} />
           <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 700, color: "#2D2D2D", marginTop: 8 }}>Join MamaSquads</h2>
           <p style={{ fontSize: 14, color: "#888", marginTop: 6, lineHeight: 1.5 }}>Choose how you'd like to get started</p>
         </div>
@@ -3196,7 +3196,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>About MamaSquads</h2>
             </div>
             <div style={{ textAlign: "center", marginBottom: 24 }}>
-              <span style={{ fontSize: 48 }}>🌸</span>
+              <img src="/logo.png" alt="MamaSquads" style={{ width: 120, height: 120, objectFit: "contain" }} />
               <h3 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 22, color: "#2D2D2D", marginTop: 8 }}>MamaSquads</h3>
               <p style={{ fontSize: 13, color: "#888", marginTop: 4 }}>The verified, moms-only playdate community</p>
               <p style={{ fontSize: 12, color: "#bbb", marginTop: 8 }}>Version 1.0.0</p>

@@ -1,7 +1,7 @@
 {
   "name": "MamaSquads",
   "short_name": "MamaSquads",
-  "description": "The verified, moms-only playdate community",
+  "description": "The verified, moms-only playdate community. Less Chaos. More Playdates.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#FFFBFC",
@@ -10,15 +10,9 @@
   "scope": "/",
   "icons": [
     {
-      "src": "/icon-192.svg",
-      "sizes": "192x192",
-      "type": "image/svg+xml",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-512.svg",
+      "src": "/logo.png",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
