@@ -2756,14 +2756,10 @@ function AdminApplyScreen({ onBack, user }) {
 
     const { error: insertError } = await supabase.from('admin_applications').insert({
       user_id: user?.id,
-      full_name: fullName.trim(),
       area: area.trim(),
-      phone: phone.trim(),
-      motivation: motivation.trim(),
-      network_size: networkSize,
-      event_experience: experience,
-      references: references.trim(),
-      checklist: agreed,
+      reason: motivation.trim(),
+      local_connections: networkSize,
+      experience: experience,
       status: 'pending',
     });
 
