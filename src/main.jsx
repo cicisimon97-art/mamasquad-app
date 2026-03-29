@@ -1038,15 +1038,8 @@ function WelcomeScreen({ onContinue, fadeIn }) {
   return (
     <div style={{ ...styles.fullScreen, background: "linear-gradient(145deg, #FFF5F7 0%, #FEE2E8 30%, #FECDD6 60%, #FDB4C4 100%)" }}>
       <div style={{ ...styles.welcomeContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(30px)", transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}>
-        <div style={styles.logoContainer}>
-          <div style={styles.logoBubble}>
-            <img src="/logo.png" alt="MamaSquads" style={{ width: 100, height: 100, objectFit: "contain" }} />
-          </div>
-          <div style={{ ...styles.logoRing, animationDelay: "0s" }} />
-          <div style={{ ...styles.logoRing2, animationDelay: "0.5s" }} />
-        </div>
-        <h1 style={styles.welcomeTitle}>MamaSquads</h1>
-        <p style={styles.welcomeSubtitle}>The verified, moms-only community<br />where kids play & friendships bloom</p>
+        <img src="/logo.png" alt="MamaSquads" style={{ width: 260, maxWidth: "80%", objectFit: "contain", marginBottom: 8 }} />
+        <p style={{ ...styles.welcomeSubtitle, marginTop: 0 }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
         <div style={{ ...styles.welcomeFeatures, opacity: show ? 1 : 0, transition: "opacity 1s ease 0.4s" }}>
           {["Verified moms only", "ID + background checked", "Safe, trusted playdates"].map((f, i) => (
             <div key={i} style={{ ...styles.welcomeFeature, animationDelay: `${0.6 + i * 0.15}s` }}>
