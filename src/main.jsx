@@ -847,12 +847,7 @@ function MamaSquadsApp() {
       .select('*, requester:users!requester_id(id, full_name, email, area, bio, kids, interests, mom_age), recipient:users!recipient_id(id, full_name, email, area, bio, kids, interests, mom_age)')
       .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
       .then(({ data }) => {
-        if (data) {
-          setConnections(data);
-          // Pre-populate acceptedChats from existing accepted connections
-          const accepted = data.filter(c => c.status === 'accepted').map(c => c.requester_id === user.id ? c.recipient_id : c.requester_id);
-          setAcceptedChats(new Set(accepted));
-        }
+        if (data) setConnections(data);
       });
   }, [user]);
 
@@ -893,9 +888,9 @@ function MamaSquadsApp() {
       if (newConn) setConnections(prev => [...prev, newConn]);
     }
 
-    if (accept && otherUserId) {
-      // Mark this user's chat as accepted so it moves to inbox immediately
-      setAcceptedChats(prev => new Set([...prev, otherUserId]));
+    if (accept) {
+      // Refresh conversations so isAccepted recalculates
+      await refreshConversations();
     }
   };
 
@@ -953,6 +948,20 @@ function MamaSquadsApp() {
       const otherAvatar = otherName.split(' ').map(w => w[0]).join('').slice(0, 2);
       const otherId = otherParticipants[0]?.user_id;
 
+      // Check if connected to this person
+      const isConnectedToOther = otherId && connections.some(c =>
+        c.status === 'accepted' && (c.requester_id === otherId || c.recipient_id === otherId)
+      );
+      // Check if I started this conversation (I messaged first = I initiated)
+      const { data: firstMsg } = await supabase
+        .from('messages')
+        .select('sender_id')
+        .eq('conversation_id', conv.id)
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .single();
+      const iStarted = firstMsg?.sender_id === user.id;
+
       return {
         id: conv.id,
         type: conv.type,
@@ -962,6 +971,7 @@ function MamaSquadsApp() {
         lastMsg: lastMsg?.content || '',
         lastMsgTime: lastMsg?.created_at,
         isGroup: conv.type === 'group',
+        isAccepted: isConnectedToOther || iStarted, // inbox if connected or if I started it
         fromSupabase: true,
       };
     }));
@@ -1164,7 +1174,7 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
     if (selectedChat) return (
-      <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} connectedIds={getConnectedIds()} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
+      <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { await createConversation(selectedProfile.id); } setSelectedProfile(null); setTab("messages"); }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
@@ -1248,7 +1258,7 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "messages" && (
-            <MessagesTab conversations={conversations} connectedIds={getConnectedIds()} acceptedChats={acceptedChats} onChatSelect={(c) => navigate("chat", c)} onRefresh={refreshConversations} />
+            <MessagesTab conversations={conversations} onChatSelect={(c) => navigate("chat", c)} onRefresh={refreshConversations} />
           )}
           {tab === "profile" && (
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
@@ -2861,17 +2871,15 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
 }
 
 // ─── Messages Tab ───
-function MessagesTab({ conversations, connectedIds, acceptedChats, onChatSelect, onRefresh }) {
+function MessagesTab({ conversations, onChatSelect, onRefresh }) {
   const [msgTab, setMsgTab] = useState("inbox");
 
   // Refresh conversations when tab mounts
   useEffect(() => { if (onRefresh) onRefresh(); }, []);
 
-  // Split: connected users, accepted chats, + group chats go to inbox, others go to requests
   const realConvos = conversations || [];
-  const isInbox = (c) => c.isGroup || (connectedIds || []).includes(c.otherId) || (acceptedChats && acceptedChats.has(c.otherId));
-  const inbox = realConvos.filter(c => isInbox(c));
-  const requests = realConvos.filter(c => !isInbox(c));
+  const inbox = realConvos.filter(c => c.isGroup || c.isAccepted);
+  const requests = realConvos.filter(c => !c.isGroup && !c.isAccepted);
   const requestCount = requests.length;
 
   const currentList = msgTab === "inbox" ? inbox : requests;
@@ -2948,9 +2956,8 @@ function MessagesTab({ conversations, connectedIds, acceptedChats, onChatSelect,
 }
 
 // ─── Chat Detail ───
-function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, connectedIds, onSendMessage, loadMessages, onAcceptConnection, connections }) {
-  const isConnected = chat.isGroup || (connectedIds || []).includes(chat.otherId);
-  const [accepted, setAccepted] = useState(isConnected);
+function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessage, loadMessages, onAcceptConnection, connections }) {
+  const [accepted, setAccepted] = useState(chat.isGroup || chat.isAccepted);
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
 
@@ -3023,13 +3030,13 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, connectedId
         <div style={styles.chatHeaderInfo}>
           <strong>{chat.name}</strong>
           {chat.isGroup && <span style={styles.groupLabel}>Group</span>}
-          {!isConnected && !accepted && <span style={{ fontSize: 11, color: "#F57F17" }}>Message Request</span>}
+          {!accepted && <span style={{ fontSize: 11, color: "#F57F17" }}>Message Request</span>}
         </div>
         <div style={{ width: 40 }} />
       </div>
 
       {/* Accept/Decline bar for requests */}
-      {!isConnected && !accepted && (
+      {!accepted && (
         <div style={{ padding: "12px 16px", background: "#FFF8E1", borderBottom: "1px solid #FFE082", display: "flex", flexDirection: "column", gap: 8 }}>
           <p style={{ fontSize: 12, color: "#F57F17", lineHeight: 1.4 }}>📬 {chat.name} wants to message you. You're not connected yet.</p>
           <div style={{ display: "flex", gap: 8 }}>
