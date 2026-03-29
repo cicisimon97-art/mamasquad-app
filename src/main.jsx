@@ -210,7 +210,7 @@ function MamaSquadsApp() {
             if (profile) {
               setUser(profile);
               setIsVerified(profile.is_verified);
-              setIsBetaMember(profile.is_founding_memeber);
+              setIsBetaMember(profile.is_founding_member);
               setScreen("main");
             }
             setLoading(false);
@@ -233,7 +233,7 @@ function MamaSquadsApp() {
             if (profile) {
               setUser(profile);
               setIsVerified(profile.is_verified);
-              setIsBetaMember(profile.is_founding_memeber);
+              setIsBetaMember(profile.is_founding_member);
               setScreen("main");
             }
           });
@@ -289,14 +289,14 @@ function MamaSquadsApp() {
         if (retryProfile) {
           setUser(retryProfile);
           setIsVerified(retryProfile.is_verified);
-          setIsBetaMember(retryProfile.is_founding_memeber);
+          setIsBetaMember(retryProfile.is_founding_member);
           setScreen("main");
           return { success: true };
         }
         return { error: "Could not create your profile: " + insertError.message };
       }
 
-      setUser({ ...newProfile, is_verified: false, is_founding_memeber: false, kids: [], interests: [] });
+      setUser({ ...newProfile, is_verified: false, is_founding_member: false, kids: [], interests: [] });
       setIsVerified(false);
       setScreen("main");
       return { success: true };
@@ -304,7 +304,7 @@ function MamaSquadsApp() {
 
     setUser(profile);
     setIsVerified(profile.is_verified);
-    setIsBetaMember(profile.is_founding_memeber);
+    setIsBetaMember(profile.is_founding_member);
     setScreen("main");
     return { success: true };
   };
@@ -347,7 +347,7 @@ function MamaSquadsApp() {
       interests,
       quick_answers: quickAnswers || {},
       is_verified: isFoundingMember,
-      is_founding_memeber: isFoundingMember,
+      is_founding_member: isFoundingMember,
     });
 
     if (profileError) {
@@ -364,7 +364,7 @@ function MamaSquadsApp() {
       }).eq('code', inviteCode);
     }
 
-    setUser({ id: userId, email, full_name: name, is_verified: isFoundingMember, is_founding_memeber: isFoundingMember });
+    setUser({ id: userId, email, full_name: name, is_verified: isFoundingMember, is_founding_member: isFoundingMember });
 
     if (isFoundingMember) {
       setIsVerified(true);
@@ -2462,7 +2462,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups 
   const displayName = user?.full_name || "Mom";
   const avatar = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const isVerified = user?.is_verified;
-  const isFoundingMember = user?.is_founding_memeber || isBetaMember;
+  const isFoundingMember = user?.is_founding_member || isBetaMember;
 
   const handleSave = async () => {
     if (!user) return;

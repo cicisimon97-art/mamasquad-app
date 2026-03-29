@@ -14,7 +14,7 @@ create table if not exists public.users (
   quick_answers jsonb default '{}',
   is_verified boolean default false,
   is_beta_member boolean default false,
-  is_founding_memeber boolean default false,
+  is_founding_member boolean default false,
   verification_status text,
   stripe_verification_id text,
   role text,
