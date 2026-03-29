@@ -2935,10 +2935,33 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, connectedId
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
 
-  // Load messages from Supabase
+  // Load messages from Supabase + subscribe to real-time
   useEffect(() => {
     if (!chat.fromSupabase || !loadMessages) return;
     loadMessages(chat.id).then(msgs => setMessages(msgs));
+
+    // Subscribe to new messages in this conversation
+    const channel = supabase
+      .channel(`messages-${chat.id}`)
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `conversation_id=eq.${chat.id}`,
+      }, (payload) => {
+        const msg = payload.new;
+        if (msg.sender_id === user?.id) return; // skip own messages (already added locally)
+        setMessages(prev => [...prev, {
+          id: msg.id,
+          from: 'them',
+          text: msg.content,
+          senderName: '',
+          time: new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+        }]);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
   }, [chat.id, chat.fromSupabase]);
 
   const handleSend = async () => {
