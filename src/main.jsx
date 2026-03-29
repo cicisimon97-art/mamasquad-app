@@ -907,70 +907,61 @@ function MamaSquadsApp() {
   };
 
   // ─── Load conversations ───
-  useEffect(() => {
+  const refreshConversations = useCallback(async () => {
     if (!user) return;
-    const loadConversations = async () => {
-      // Get conversations the user is part of
-      const { data: participations } = await supabase
+    const { data: participations } = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('user_id', user.id);
+    if (!participations || participations.length === 0) { setConversations([]); return; }
+
+    const convIds = participations.map(p => p.conversation_id);
+    const { data: convos } = await supabase
+      .from('conversations')
+      .select('*')
+      .in('id', convIds);
+    if (!convos) return;
+
+    const enriched = await Promise.all(convos.map(async (conv) => {
+      const { data: parts } = await supabase
         .from('conversation_participants')
-        .select('conversation_id')
-        .eq('user_id', user.id);
-      if (!participations || participations.length === 0) return;
+        .select('user_id, users!user_id(full_name)')
+        .eq('conversation_id', conv.id);
 
-      const convIds = participations.map(p => p.conversation_id);
-      const { data: convos } = await supabase
-        .from('conversations')
-        .select('*')
-        .in('id', convIds);
-      if (!convos) return;
+      const { data: lastMsg } = await supabase
+        .from('messages')
+        .select('content, created_at, sender_id')
+        .eq('conversation_id', conv.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
 
-      // For each conversation, get participants and last message
-      const enriched = await Promise.all(convos.map(async (conv) => {
-        const { data: parts } = await supabase
-          .from('conversation_participants')
-          .select('user_id, users!user_id(full_name)')
-          .eq('conversation_id', conv.id);
+      const otherParticipants = (parts || []).filter(p => p.user_id !== user.id);
+      const otherName = otherParticipants[0]?.users?.full_name || 'A mom';
+      const otherAvatar = otherName.split(' ').map(w => w[0]).join('').slice(0, 2);
+      const otherId = otherParticipants[0]?.user_id;
 
-        const { data: lastMsg } = await supabase
-          .from('messages')
-          .select('content, created_at, sender_id')
-          .eq('conversation_id', conv.id)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .single();
+      return {
+        id: conv.id,
+        type: conv.type,
+        name: conv.type === 'group' ? 'Group Chat' : otherName,
+        avatar: otherAvatar,
+        otherId,
+        lastMsg: lastMsg?.content || '',
+        lastMsgTime: lastMsg?.created_at,
+        isGroup: conv.type === 'group',
+        fromSupabase: true,
+      };
+    }));
 
-        const { count } = await supabase
-          .from('messages')
-          .select('id', { count: 'exact', head: true })
-          .eq('conversation_id', conv.id);
-
-        const otherParticipants = (parts || []).filter(p => p.user_id !== user.id);
-        const otherName = otherParticipants[0]?.users?.full_name || 'A mom';
-        const otherAvatar = otherName.split(' ').map(w => w[0]).join('').slice(0, 2);
-        const otherId = otherParticipants[0]?.user_id;
-
-        return {
-          id: conv.id,
-          type: conv.type,
-          name: conv.type === 'group' ? 'Group Chat' : otherName,
-          avatar: otherAvatar,
-          otherId,
-          lastMsg: lastMsg?.content || '',
-          lastMsgTime: lastMsg?.created_at,
-          messageCount: count || 0,
-          isGroup: conv.type === 'group',
-          fromSupabase: true,
-        };
-      }));
-
-      setConversations(enriched.sort((a, b) => {
-        const aTime = a.lastMsgTime || '0';
-        const bTime = b.lastMsgTime || '0';
-        return bTime.localeCompare(aTime);
-      }));
-    };
-    loadConversations();
+    setConversations(enriched.sort((a, b) => {
+      const aTime = a.lastMsgTime || '0';
+      const bTime = b.lastMsgTime || '0';
+      return bTime.localeCompare(aTime);
+    }));
   }, [user]);
+
+  useEffect(() => { refreshConversations(); }, [refreshConversations]);
 
   // ─── Create a DM conversation ───
   const createConversation = async (otherUserId) => {
@@ -1023,8 +1014,20 @@ function MamaSquadsApp() {
 
     // Update local conversation with last message
     setConversations(prev => prev.map(c =>
-      c.id === conversationId ? { ...c, lastMsg: content.trim(), lastMsgTime: data.created_at, messageCount: (c.messageCount || 0) + 1 } : c
+      c.id === conversationId ? { ...c, lastMsg: content.trim(), lastMsgTime: data.created_at } : c
     ));
+
+    // Notify the other person
+    const conv = conversations.find(c => c.id === conversationId);
+    if (conv && conv.otherId) {
+      await supabase.from('notifications').insert({
+        user_id: conv.otherId,
+        type: 'new_message',
+        title: 'New Message',
+        body: `${user.full_name || 'A mom'}: ${content.trim().slice(0, 50)}${content.trim().length > 50 ? '...' : ''}`,
+        is_read: false,
+      });
+    }
     return data;
   };
 
@@ -1143,7 +1146,7 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
     if (selectedChat) return (
-      <ChatDetail chat={selectedChat} onBack={() => setSelectedChat(null)} newMessage={newMessage} setNewMessage={setNewMessage} user={user} connectedIds={getConnectedIds()} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
+      <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} connectedIds={getConnectedIds()} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { await createConversation(selectedProfile.id); } setSelectedProfile(null); setTab("messages"); }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
@@ -1227,7 +1230,7 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "messages" && (
-            <MessagesTab conversations={conversations} connectedIds={getConnectedIds()} onChatSelect={(c) => navigate("chat", c)} />
+            <MessagesTab conversations={conversations} connectedIds={getConnectedIds()} onChatSelect={(c) => navigate("chat", c)} onRefresh={refreshConversations} />
           )}
           {tab === "profile" && (
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
@@ -2840,8 +2843,11 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
 }
 
 // ─── Messages Tab ───
-function MessagesTab({ conversations, connectedIds, onChatSelect }) {
+function MessagesTab({ conversations, connectedIds, onChatSelect, onRefresh }) {
   const [msgTab, setMsgTab] = useState("inbox");
+
+  // Refresh conversations when tab mounts
+  useEffect(() => { if (onRefresh) onRefresh(); }, []);
 
   // Split: connected users + group chats go to inbox, others go to requests
   const realConvos = conversations || [];
