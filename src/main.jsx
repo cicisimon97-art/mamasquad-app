@@ -543,22 +543,22 @@ function MamaSquadsApp() {
     const loadEvents = async () => {
       const { data } = await supabase
         .from('events')
-        .select('*, event_rsvps(user_id), comments(id)')
+        .select('*, event_rsvps(user_id), comments(id), users!created_by(full_name)')
         .order('created_at', { ascending: false });
       if (data && data.length > 0) {
         const supaEvents = data.map(e => ({
           id: e.id,
           title: e.title,
           location: e.location,
-          time: e.time,
-          date: e.date,
-          ages: e.ages || 'All Ages',
-          host: e.host_name,
-          hostId: e.host_id,
+          time: e.event_time,
+          date: e.event_date,
+          ages: e.age_group || 'All Ages',
+          host: e.users?.full_name || 'A mom',
+          hostId: e.created_by,
           attendees: e.event_rsvps?.length || 0,
           maxAttendees: e.max_attendees || 15,
           comments: [],
-          color: e.color || '#FF6B8A',
+          color: '#FF6B8A',
           description: e.description,
           groupId: e.group_id,
           fromSupabase: true,
@@ -586,21 +586,16 @@ function MamaSquadsApp() {
   const handleCreateEvent = async (eventData) => {
     if (!user) return { error: 'Not logged in' };
 
-    const COLORS = ["#FF6B8A", "#4ECDC4", "#FFD93D", "#A78BFA", "#F97316", "#10B981", "#EC4899"];
-    const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-
     const { data, error } = await supabase.from('events').insert({
       title: eventData.title,
       location: eventData.location,
-      date: eventData.date,
-      time: eventData.time,
-      ages: eventData.ages,
+      event_date: eventData.date,
+      event_time: eventData.time,
+      age_group: eventData.ages,
       max_attendees: eventData.maxAttendees || 15,
       description: eventData.description,
-      host_id: user.id,
-      host_name: user.full_name || user.email,
+      created_by: user.id,
       group_id: eventData.groupId || null,
-      color,
     }).select().single();
 
     if (error) return { error: error.message };
@@ -615,15 +610,15 @@ function MamaSquadsApp() {
       id: data.id,
       title: data.title,
       location: data.location,
-      time: data.time,
-      date: data.date,
-      ages: data.ages || 'All Ages',
+      time: data.event_time,
+      date: data.event_date,
+      ages: data.age_group || 'All Ages',
       host: user.full_name || user.email,
       hostId: user.id,
       attendees: 1,
       maxAttendees: data.max_attendees,
       comments: [],
-      color,
+      color: '#FF6B8A',
       description: data.description,
       groupId: data.group_id,
       fromSupabase: true,
