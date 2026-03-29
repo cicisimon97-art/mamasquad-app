@@ -2964,25 +2964,45 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
   const [showCreate, setShowCreate] = useState(false);
   const [question, setQuestion] = useState("");
   const [options, setOptions] = useState(["", "", ""]);
+  const [timeOptions, setTimeOptions] = useState([{ day: "", time: "" }, { day: "", time: "" }]);
+  const [locationOptions, setLocationOptions] = useState(["", ""]);
   const [createdPolls, setCreatedPolls] = useState([]);
 
   const addOption = () => setOptions(prev => [...prev, ""]);
   const updateOption = (i, val) => setOptions(prev => prev.map((o, j) => j === i ? val : o));
   const removeOption = (i) => setOptions(prev => prev.filter((_, j) => j !== i));
 
+  const TIMES = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"];
+  const POLL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
   const handleCreate = () => {
-    if (!question.trim() || options.filter(o => o.trim()).length < 2) return;
+    if (!question.trim()) return;
+    const validOptions = options.filter(o => o.trim());
+    const validTimes = timeOptions.filter(t => t.day && t.time).map(t => `${t.day} ${t.time}`);
+    const validLocations = locationOptions.filter(l => l.trim());
+
+    const allOpts = [];
+    if (validOptions.length > 0) allOpts.push(...validOptions.map(o => ({ text: o.trim(), votes: 0, type: "option" })));
+    if (validTimes.length > 0) allOpts.push(...validTimes.map(t => ({ text: t, votes: 0, type: "time" })));
+    if (validLocations.length > 0) allOpts.push(...validLocations.map(l => ({ text: l.trim(), votes: 0, type: "location" })));
+
+    if (allOpts.length < 2) return;
+
     const newPoll = {
       id: Date.now(),
       question: question.trim(),
       group: "Your Poll",
-      options: options.filter(o => o.trim()).map(o => ({ text: o.trim(), votes: 0 })),
+      options: allOpts,
       totalVoters: 0,
       endsIn: "7 days",
+      hasTimeOptions: validTimes.length > 0,
+      hasLocationOptions: validLocations.length > 0,
     };
     setCreatedPolls(prev => [newPoll, ...prev]);
     setQuestion("");
     setOptions(["", "", ""]);
+    setTimeOptions([{ day: "", time: "" }, { day: "", time: "" }]);
+    setLocationOptions(["", ""]);
     setShowCreate(false);
   };
 
@@ -3006,11 +3026,13 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               <input
                 style={styles.input}
-                placeholder="Ask a question..."
+                placeholder="Ask a question... (e.g., When should we meet?)"
                 value={question}
                 onChange={e => setQuestion(e.target.value)}
               />
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Options</p>
+
+              {/* Custom Options */}
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Custom Options (optional)</p>
               {options.map((opt, i) => (
                 <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <input
@@ -3027,7 +3049,52 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
               {options.length < 6 && (
                 <button style={{ ...styles.addChildBtn, fontSize: 13 }} onClick={addOption}>+ Add option</button>
               )}
-              <button style={{ ...styles.primaryBtn, marginTop: 4 }} onClick={handleCreate}>
+
+              {/* Time Options */}
+              <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 4 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 }}>🕐 Time Options (let members vote on when)</p>
+                {timeOptions.map((t, i) => (
+                  <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
+                    <select style={{ ...styles.input, flex: 1 }} value={t.day} onChange={e => setTimeOptions(prev => prev.map((o, j) => j === i ? { ...o, day: e.target.value } : o))}>
+                      <option value="">Day</option>
+                      {POLL_DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                    </select>
+                    <select style={{ ...styles.input, flex: 1 }} value={t.time} onChange={e => setTimeOptions(prev => prev.map((o, j) => j === i ? { ...o, time: e.target.value } : o))}>
+                      <option value="">Time</option>
+                      {TIMES.map(tm => <option key={tm} value={tm}>{tm}</option>)}
+                    </select>
+                    {timeOptions.length > 2 && (
+                      <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setTimeOptions(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                    )}
+                  </div>
+                ))}
+                {timeOptions.length < 5 && (
+                  <button style={{ ...styles.addChildBtn, fontSize: 12 }} onClick={() => setTimeOptions(prev => [...prev, { day: "", time: "" }])}>+ Add time option</button>
+                )}
+              </div>
+
+              {/* Location Options */}
+              <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 4 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 }}>📍 Location Options (let members vote on where)</p>
+                {locationOptions.map((loc, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+                    <input
+                      style={{ ...styles.input, flex: 1 }}
+                      placeholder={`Location ${i + 1} (e.g., Sunflower Park)`}
+                      value={loc}
+                      onChange={e => setLocationOptions(prev => prev.map((o, j) => j === i ? e.target.value : o))}
+                    />
+                    {locationOptions.length > 2 && (
+                      <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setLocationOptions(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                    )}
+                  </div>
+                ))}
+                {locationOptions.length < 5 && (
+                  <button style={{ ...styles.addChildBtn, fontSize: 12 }} onClick={() => setLocationOptions(prev => [...prev, ""])}>+ Add location option</button>
+                )}
+              </div>
+
+              <button style={{ ...styles.primaryBtn, marginTop: 8 }} onClick={handleCreate}>
                 Post Poll
               </button>
             </div>
@@ -3036,30 +3103,58 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
 
         {allPolls.map(poll => {
           const voted = votedPolls[poll.id];
+          const timeOpts = poll.options.filter(o => o.type === "time");
+          const locOpts = poll.options.filter(o => o.type === "location");
+          const regularOpts = poll.options.filter(o => !o.type || o.type === "option");
           const maxVotes = Math.max(...poll.options.map(o => o.votes));
+
+          const renderOption = (opt, i, globalIdx) => {
+            const totalVotes = poll.totalVoters || poll.options.reduce((s, o) => s + o.votes, 0) || 1;
+            const pct = Math.round((opt.votes / totalVotes) * 100);
+            const isWinning = opt.votes === maxVotes && opt.votes > 0;
+            return (
+              <button
+                key={globalIdx}
+                style={{ ...styles.pollOption, ...(voted === globalIdx ? styles.pollOptionVoted : {}) }}
+                onClick={() => setVotedPolls(v => ({ ...v, [poll.id]: globalIdx }))}
+              >
+                <div style={{ ...styles.pollBar, width: `${pct}%`, background: isWinning ? "#FF6B8A22" : "#f0f0f0" }} />
+                <span style={styles.pollOptText}>{opt.text}</span>
+                <span style={styles.pollPct}>{pct}%</span>
+                {voted === globalIdx && <span style={styles.pollCheck}>{Icons.check}</span>}
+              </button>
+            );
+          };
+
           return (
             <div key={poll.id} style={styles.pollCard}>
               <p style={styles.pollGroup}>{poll.group}</p>
               <h3 style={styles.pollQuestion}>{poll.question}</h3>
-              <div style={styles.pollOptions}>
-                {poll.options.map((opt, i) => {
-                  const totalVotes = poll.totalVoters || poll.options.reduce((s, o) => s + o.votes, 0) || 1;
-                  const pct = Math.round((opt.votes / totalVotes) * 100);
-                  const isWinning = opt.votes === maxVotes && opt.votes > 0;
-                  return (
-                    <button
-                      key={i}
-                      style={{ ...styles.pollOption, ...(voted === i ? styles.pollOptionVoted : {}) }}
-                      onClick={() => setVotedPolls(v => ({ ...v, [poll.id]: i }))}
-                    >
-                      <div style={{ ...styles.pollBar, width: `${pct}%`, background: isWinning ? "#FF6B8A22" : "#f0f0f0" }} />
-                      <span style={styles.pollOptText}>{opt.text}</span>
-                      <span style={styles.pollPct}>{pct}%</span>
-                      {voted === i && <span style={styles.pollCheck}>{Icons.check}</span>}
-                    </button>
-                  );
-                })}
-              </div>
+
+              {regularOpts.length > 0 && (
+                <div style={styles.pollOptions}>
+                  {regularOpts.map((opt, i) => renderOption(opt, i, poll.options.indexOf(opt)))}
+                </div>
+              )}
+
+              {timeOpts.length > 0 && (
+                <div style={{ marginTop: regularOpts.length > 0 ? 10 : 0 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6 }}>🕐 When?</p>
+                  <div style={styles.pollOptions}>
+                    {timeOpts.map((opt, i) => renderOption(opt, i, poll.options.indexOf(opt)))}
+                  </div>
+                </div>
+              )}
+
+              {locOpts.length > 0 && (
+                <div style={{ marginTop: 10 }}>
+                  <p style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6 }}>📍 Where?</p>
+                  <div style={styles.pollOptions}>
+                    {locOpts.map((opt, i) => renderOption(opt, i, poll.options.indexOf(opt)))}
+                  </div>
+                </div>
+              )}
+
               <p style={styles.pollMeta}>{poll.totalVoters || 0} votes · Ends in {poll.endsIn}</p>
             </div>
           );
