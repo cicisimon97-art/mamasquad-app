@@ -802,17 +802,22 @@ function MamaSquadsApp() {
     return null;
   };
 
-  // ─── Load notifications ───
+  // ─── Load notifications + poll for updates ───
   useEffect(() => {
     if (!user) return;
-    supabase.from('notifications')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        if (data) setNotifications(data);
-      });
+    const loadNotifs = () => {
+      supabase.from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50)
+        .then(({ data }) => {
+          if (data) setNotifications(data);
+        });
+    };
+    loadNotifs();
+    const poll = setInterval(loadNotifs, 5000);
+    return () => clearInterval(poll);
   }, [user]);
 
   // ─── Create notification for group members ───
@@ -1261,7 +1266,7 @@ function MamaSquadsApp() {
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
           )}
         </div>
-        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
+        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadMessages={(notifications || []).filter(n => !n.is_read && n.type === 'new_message').length} unreadNotifications={(notifications || []).filter(n => !n.is_read && n.type !== 'new_message').length} />
       </div>
     );
   }
@@ -2912,12 +2917,12 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessa
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
 
-  // Load messages from Supabase + subscribe to real-time
+  // Load messages from Supabase + subscribe to real-time + poll as fallback
   useEffect(() => {
     if (!chat.fromSupabase || !loadMessages) return;
     loadMessages(chat.id).then(msgs => setMessages(msgs));
 
-    // Subscribe to new messages in this conversation
+    // Subscribe to new messages in this conversation (real-time)
     const channel = supabase
       .channel(`messages-${chat.id}`)
       .on('postgres_changes', {
@@ -2927,18 +2932,26 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessa
         filter: `conversation_id=eq.${chat.id}`,
       }, (payload) => {
         const msg = payload.new;
-        if (msg.sender_id === user?.id) return; // skip own messages (already added locally)
-        setMessages(prev => [...prev, {
-          id: msg.id,
-          from: 'them',
-          text: msg.content,
-          senderName: '',
-          time: new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-        }]);
+        if (msg.sender_id === user?.id) return;
+        setMessages(prev => {
+          if (prev.some(m => m.id === msg.id)) return prev;
+          return [...prev, {
+            id: msg.id,
+            from: 'them',
+            text: msg.content,
+            senderName: '',
+            time: new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
+          }];
+        });
       })
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    // Poll every 3 seconds as fallback in case real-time isn't enabled
+    const poll = setInterval(() => {
+      loadMessages(chat.id).then(msgs => setMessages(msgs));
+    }, 3000);
+
+    return () => { supabase.removeChannel(channel); clearInterval(poll); };
   }, [chat.id, chat.fromSupabase]);
 
   const handleSend = async () => {
