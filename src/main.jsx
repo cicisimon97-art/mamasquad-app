@@ -3015,6 +3015,9 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
     return [{ name: "", birthday: "" }];
   });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
+  const [photoToAdjust, setPhotoToAdjust] = useState(null);
+  const [photoZoom, setPhotoZoom] = useState(1);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [mySchedule, setMySchedule] = useState(user?.general_availability || {});
   const [editingAvail, setEditingAvail] = useState(false);
   const [savingAvail, setSavingAvail] = useState(false);
@@ -3105,17 +3108,19 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
     <div style={styles.tabContent}>
       <h1 style={styles.pageTitle}>My Profile</h1>
       <div style={styles.myProfileCard}>
-        <div style={{ position: "relative", width: 88, height: 88, margin: "0 auto" }}>
-          <Avatar url={user?.avatar_url} name={displayName} size={80} style={{ margin: "0 auto" }} />
-          {isVerified && <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13, position: "absolute", top: 0, right: 0 }} title="Verified">✓</div>}
-          <label style={{ position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, background: "#FF6B8A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.25)", zIndex: 5 }}>
-            <span style={{ color: "white", fontSize: 15 }}>📷</span>
-            <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+        <div style={{ position: "relative", width: 90, height: 90, margin: "0 auto" }}>
+          <div style={{ width: 80, height: 80, margin: "5px auto 0" }}>
+            <Avatar url={user?.avatar_url} name={displayName} size={80} />
+          </div>
+          <label style={{ position: "absolute", bottom: 0, right: 2, width: 32, height: 32, borderRadius: 16, background: "#FF6B8A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.25)", zIndex: 5, border: "2px solid white" }}>
+            <span style={{ color: "white", fontSize: 16, lineHeight: 1 }}>+</span>
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file && onUploadPhoto) await onUploadPhoto(file);
+              if (file) setPhotoToAdjust(file);
             }} />
           </label>
         </div>
+        {isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 11, padding: "3px 10px" }}>✓ Verified</span>}
         {isAppFounder && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", background: "#F3E8FF", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>👑 FOUNDER</span>
@@ -3126,7 +3131,6 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
             <span style={{ fontSize: 10, fontWeight: 700, color: "#FF8F00", background: "#FFF8E1", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>⭐ FOUNDING MEMBER</span>
           </div>
         )}
-        {isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>}
         <h2 style={styles.myName}>{momBdayToday ? '🎂 ' : ''}{isAppFounder ? '👑 ' : ''}{displayName}{momAgeDisplay ? `, ${momAgeDisplay}` : ''}</h2>
         {(user?.area) && <p style={styles.myArea}>{Icons.location} {user.area}</p>}
         <div style={styles.statRow}>
@@ -3299,6 +3303,55 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           </div>
         ))}
       </div>
+
+      {/* ── Photo Adjust Modal ── */}
+      {photoToAdjust && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ maxWidth: 360, width: "100%", padding: 20 }}>
+            <h3 style={{ color: "white", textAlign: "center", fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Adjust Your Photo</h3>
+            <div style={{ width: 200, height: 200, borderRadius: 100, overflow: "hidden", margin: "0 auto", border: "3px solid white" }}>
+              <img
+                src={URL.createObjectURL(photoToAdjust)}
+                alt="Preview"
+                style={{ width: "100%", height: "100%", objectFit: "cover", transform: `scale(${photoZoom})`, transition: "transform 0.1s ease" }}
+              />
+            </div>
+            <div style={{ marginTop: 20 }}>
+              <p style={{ color: "#aaa", fontSize: 12, textAlign: "center", marginBottom: 8 }}>Zoom</p>
+              <input
+                type="range"
+                min="1"
+                max="3"
+                step="0.1"
+                value={photoZoom}
+                onChange={e => setPhotoZoom(parseFloat(e.target.value))}
+                style={{ width: "100%", accentColor: "#FF6B8A" }}
+              />
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
+              <button
+                style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "none", border: "1px solid #666", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                onClick={() => { setPhotoToAdjust(null); setPhotoZoom(1); }}
+              >
+                Cancel
+              </button>
+              <button
+                style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "#FF6B8A", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: photoUploading ? 0.6 : 1 }}
+                disabled={photoUploading}
+                onClick={async () => {
+                  setPhotoUploading(true);
+                  if (onUploadPhoto) await onUploadPhoto(photoToAdjust);
+                  setPhotoUploading(false);
+                  setPhotoToAdjust(null);
+                  setPhotoZoom(1);
+                }}
+              >
+                {photoUploading ? "Uploading..." : "Save Photo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── My Children Sub-screen ── */}
       {menuView === "children" && (
