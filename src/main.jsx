@@ -146,69 +146,8 @@ const Icons = {
 };
 
 // ─── Data ───
-const SAMPLE_EVENTS = [
-  { id: 1, title: "Toddler Splash Pad Party", location: "Sunflower Park", time: "10:00 AM", date: "Mon", ages: "1-3", host: "Sarah M.", attendees: 8, maxAttendees: 15, comments: [{ user: "Jess K.", text: "Can't wait! Bringing extra towels 🌊", time: "2h ago" }, { user: "Maria T.", text: "Is there shade nearby?", time: "1h ago" }], color: "#FF6B8A" },
-  { id: 2, title: "Nature Walk & Scavenger Hunt", location: "Maple Trail", time: "9:30 AM", date: "Tue", ages: "3-5", host: "Emily R.", attendees: 5, maxAttendees: 10, comments: [{ user: "Amy L.", text: "Perfect for my explorer! 🌿", time: "3h ago" }], color: "#4ECDC4" },
-  { id: 3, title: "LEGO Build Challenge", location: "Community Center", time: "2:00 PM", date: "Wed", ages: "5-8", host: "Diana P.", attendees: 12, maxAttendees: 20, comments: [], color: "#FFD93D" },
-  { id: 4, title: "Baby Sensory Play", location: "Little Stars Studio", time: "11:00 AM", date: "Thu", ages: "0-1", host: "Lisa W.", attendees: 6, maxAttendees: 8, comments: [{ user: "Kate B.", text: "My LO loved this last time!", time: "5h ago" }], color: "#A78BFA" },
-  { id: 5, title: "Storytime & Crafts", location: "Public Library", time: "3:00 PM", date: "Fri", ages: "3-5", host: "Priya S.", attendees: 9, maxAttendees: 12, comments: [], color: "#F97316" },
-  { id: 6, title: "Soccer Tots", location: "Green Meadow Field", time: "4:00 PM", date: "Sat", ages: "5-8", host: "Rachel H.", attendees: 14, maxAttendees: 18, comments: [{ user: "Meg D.", text: "Bringing oranges for halftime! 🍊", time: "30m ago" }], color: "#10B981" },
-  { id: 7, title: "Mom & Baby Yoga", location: "Zen Space", time: "9:00 AM", date: "Sun", ages: "0-1", host: "Nina J.", attendees: 7, maxAttendees: 10, comments: [], color: "#EC4899" },
-];
-
-const SAMPLE_MOMS = [
-  { id: 1, name: "Sarah Mitchell", avatar: "SM", bio: "Boy mom x2, coffee addict, always looking for outdoor adventures! Former teacher turned SAHM.", ages: "2, 4", interests: ["Outdoors", "Crafts", "Cooking"], area: "Westside", admin: true },
-  { id: 2, name: "Emily Rodriguez", avatar: "ER", bio: "Plant-based mama of twins. Love hiking, farmers markets, and messy play!", ages: "3, 3", interests: ["Hiking", "Gardening", "Reading"], area: "Downtown" },
-  { id: 3, name: "Diana Park", avatar: "DP", bio: "Engineer by day, LEGO builder by night. My 6yo runs the show.", ages: "6", interests: ["STEM", "Board Games", "Baking"], area: "Eastside", admin: true },
-  { id: 4, name: "Lisa Wang", avatar: "LW", bio: "First-time mom figuring it out one day at a time. Love music and baby sensory activities!", ages: "8mo", interests: ["Music", "Yoga", "Photography"], area: "Northside" },
-];
-
-const SAMPLE_MESSAGES = [
-  { id: 1, name: "Sarah Mitchell", avatar: "SM", lastMsg: "See you at the splash pad tomorrow!", time: "2m", unread: 2 },
-  { id: 2, name: "Toddler Group Chat", avatar: "TG", lastMsg: "Emily: Who's bringing snacks?", time: "15m", unread: 5, isGroup: true },
-  { id: 3, name: "Diana Park", avatar: "DP", lastMsg: "Thanks for the LEGO set recommendation!", time: "1h", unread: 0 },
-  { id: 4, name: "Westside Moms", avatar: "WM", lastMsg: "Lisa: New event posted for Saturday!", time: "3h", unread: 12, isGroup: true },
-];
-
-const POLLS = [
-  { id: 1, question: "Best time for Saturday playdate?", group: "Westside Moms", options: [{ text: "9:00 AM", votes: 8 }, { text: "10:30 AM", votes: 12 }, { text: "1:00 PM", votes: 5 }], totalVoters: 25, endsIn: "2 days" },
-  { id: 2, question: "Where should we meet this week?", group: "Toddler Group", options: [{ text: "Sunflower Park", votes: 6 }, { text: "Community Center", votes: 4 }, { text: "Indoor Playground", votes: 9 }], totalVoters: 19, endsIn: "1 day" },
-];
-
-const SAMPLE_GROUPS = [
-  { id: 1, name: "Westside Toddler Moms", emoji: "🧸", desc: "For moms with toddlers (1-3) in the Westside area. Weekly park meetups, messy play, and coffee runs!", isPrivate: true, admin: "Sarah Mitchell", adminAvatar: "SM", members: 24, maxMembers: 30, ages: "1-3", area: "Westside", rules: ["Be kind & respectful", "No selling or soliciting", "Keep kids supervised", "RSVP if you commit"], recentActivity: "New event posted 2h ago", color: "#FF6B8A", pendingRequests: [
-    { id: 101, name: "Anna Chen", avatar: "AC", bio: "Mom of a 2-year-old. Just moved to Westside!", ages: "2", requestedAt: "1 day ago" },
-    { id: 102, name: "Rachel Kim", avatar: "RK", bio: "Twin boys, 18 months. Looking for playdate friends!", ages: "1.5, 1.5", requestedAt: "3 hours ago" },
-  ]},
-  { id: 2, name: "STEM Kids Collective", emoji: "🔬", desc: "Science experiments, coding for kids, robotics meetups. For curious minds ages 5-8!", isPrivate: true, admin: "Diana Park", adminAvatar: "DP", members: 18, maxMembers: 20, ages: "5-8", area: "Eastside", rules: ["Bring your own supplies when noted", "Ages 5-8 only", "Parents must stay for activities"], recentActivity: "LEGO challenge this Saturday", color: "#4ECDC4", pendingRequests: [
-    { id: 103, name: "Priya Sharma", avatar: "PS", bio: "My 6yo is obsessed with dinosaurs and volcanoes!", ages: "6", requestedAt: "5 hours ago" },
-  ]},
-  { id: 3, name: "Downtown Mama Runners", emoji: "🏃‍♀️", desc: "Stroller-friendly running group! We meet 3x/week for jogs and let the kids play after.", isPrivate: false, admin: "Emily Rodriguez", adminAvatar: "ER", members: 31, maxMembers: 50, ages: "All Ages", area: "Downtown", rules: ["All paces welcome", "Bring water & snacks", "Weather cancellations posted by 7am"], recentActivity: "Morning run tomorrow at 7:30am", color: "#FFD93D", pendingRequests: [] },
-  { id: 4, name: "Baby's First Year", emoji: "👶", desc: "Safe space for first-time moms with babies 0-12 months. No judgment, just support.", isPrivate: true, admin: "Lisa Wang", adminAvatar: "LW", members: 15, maxMembers: 15, ages: "0-1", area: "Northside", rules: ["First-time moms preferred", "What's shared here stays here", "No unsolicited advice unless asked", "Nursing/pumping always welcome"], recentActivity: "Sensory play meetup Thursday", color: "#A78BFA", pendingRequests: [
-    { id: 104, name: "Maria Torres", avatar: "MT", bio: "Due in 3 weeks! Looking for mom friends before baby arrives.", ages: "expecting", requestedAt: "2 days ago" },
-    { id: 105, name: "Jen Liu", avatar: "JL", bio: "4-month-old girl. Sleep-deprived but loving it!", ages: "4mo", requestedAt: "12 hours ago" },
-    { id: 106, name: "Sophie Brown", avatar: "SB", bio: "Boy mom, 7 months. Miss adult conversation!", ages: "7mo", requestedAt: "6 hours ago" },
-  ]},
-  { id: 5, name: "Crafty Mamas", emoji: "🎨", desc: "Arts, crafts, and creative projects for kids of all ages. We share ideas and meet up for craft days!", isPrivate: false, admin: "Sarah Mitchell", adminAvatar: "SM", members: 42, maxMembers: 60, ages: "All Ages", area: "Citywide", rules: ["Share supply lists in advance", "Clean up after projects", "All skill levels welcome"], recentActivity: "Painted rocks event this Sunday", color: "#F97316", pendingRequests: [] },
-];
-
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const AGE_FILTERS = ["All Ages", "0-1", "1-3", "3-5", "5-8", "8+"];
-
-const SAMPLE_GROUP_POSTS = [
-  { name: "Sarah M.", avatar: "SM", time: "1h ago", type: "playdate", text: "Splash pad playdate this Friday! Bring towels and sunscreen. I'll have extra snacks and juice boxes. Let's do 10am before it gets too hot 🌊☀️", likes: 8, comments: 4, details: { location: "Sunflower Park Splash Pad", time: "Fri 10:00 AM", spots: "8/15 spots" } },
-  { name: "Emily R.", avatar: "ER", time: "3h ago", type: "meetup", text: "Anyone want to do a nature walk this weekend? I was thinking Maple Trail — it's shady and stroller-friendly. Let's vote on time!", likes: 12, comments: 6, options: [{ text: "Saturday 9:00 AM", votes: 7 }, { text: "Saturday 10:30 AM", votes: 4 }, { text: "Sunday 9:00 AM", votes: 3 }] },
-  { name: "Diana P.", avatar: "DP", time: "5h ago", type: "post", text: "Just found out the community center has free open play on Wednesdays from 2-4pm! It's not on their website yet. Who's in?? 🎉", likes: 15, comments: 9 },
-  { name: "Lisa W.", avatar: "LW", time: "1d ago", type: "playdate", text: "Baby sensory session at my house! I set up a mini ball pit, water beads (supervised!), and some texture boards. Moms get coffee ☕", likes: 11, comments: 7, details: { location: "Lisa's home (address in DM)", time: "Thu 11:00 AM", spots: "4/6 spots" } },
-  { name: "Sarah M.", avatar: "SM", time: "2d ago", type: "poll", text: "Should we do a group potluck picnic next month? Thinking we could each bring a dish and let the kids run wild at the park 🧺", likes: 22, comments: 14 },
-];
-
-const SAMPLE_GROUP_MEETUPS = [
-  { title: "Splash Pad Friday", location: "Sunflower Park", time: "10:00 AM", date: "This Fri", proposedBy: "Sarah M.", going: 8, comments: 4, confirmed: true },
-  { title: "Nature Walk", location: "Maple Trail", time: "TBD — Voting", date: "This Sat", proposedBy: "Emily R.", going: 5, comments: 6, confirmed: false },
-  { title: "Baby Sensory Play", location: "Lisa's home", time: "11:00 AM", date: "This Thu", proposedBy: "Lisa W.", going: 4, comments: 7, confirmed: true },
-  { title: "Group Potluck Picnic", location: "TBD — Voting", time: "TBD", date: "Next month", proposedBy: "Sarah M.", going: 0, comments: 14, confirmed: false },
-];
 
 const QUICK_QS = {
   kids: [
@@ -252,7 +191,7 @@ function MamaSquadsApp() {
   const [showDiscover, setShowDiscover] = useState(false);
   const [groupRequests, setGroupRequests] = useState({});
   const [notifications, setNotifications] = useState([]);
-  const [groups, setGroups] = useState(SAMPLE_GROUPS);
+  const [groups, setGroups] = useState([]);
   const [joinedGroups, setJoinedGroups] = useState([3, 5]);
   const [pendingJoins, setPendingJoins] = useState([]);
   const [onboardStep, setOnboardStep] = useState(0);
@@ -262,7 +201,7 @@ function MamaSquadsApp() {
   const [connections, setConnections] = useState([]);
   const [conversations, setConversations] = useState([]);
   const [acceptedChats, setAcceptedChats] = useState(new Set());
-  const [events, setEvents] = useState(SAMPLE_EVENTS);
+  const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
 
@@ -486,7 +425,7 @@ function MamaSquadsApp() {
           pendingRequests: [],
           fromSupabase: true,
         };});
-        setGroups(prev => [...SAMPLE_GROUPS, ...supaGroups]);
+        setGroups(supaGroups);
       }
     };
     loadGroups();
@@ -635,7 +574,7 @@ function MamaSquadsApp() {
           groupId: e.group_id,
           fromSupabase: true,
         }));
-        setEvents(prev => [...SAMPLE_EVENTS, ...supaEvents]);
+        setEvents(supaEvents);
       }
     };
     loadEvents();
@@ -1179,7 +1118,7 @@ function MamaSquadsApp() {
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { const conv = await createConversation(selectedProfile.id); setSelectedProfile(null); if (conv) { setSelectedChat(conv); } else { setTab("messages"); } } }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
-    if (showPoll) return <PollScreen polls={POLLS} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
+    if (showPoll) return <PollScreen polls={[]} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
@@ -2420,7 +2359,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
   const publicGroupIds = (groups || []).filter(g => !g.isPrivate).map(g => g.id);
   const privateJoinedIds = (groups || []).filter(g => g.isPrivate && (joinedGroups || []).includes(g.id)).map(g => g.id);
 
-  const visibleEvents = (events || SAMPLE_EVENTS).filter(e => {
+  const visibleEvents = (events || []).filter(e => {
     // First: visibility check (can the user see this event?)
     if (e.groupId) {
       const isPublicGroup = publicGroupIds.includes(e.groupId);
@@ -4168,7 +4107,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
-  const filtered = (groups || SAMPLE_GROUPS).filter(g => {
+  const filtered = (groups || []).filter(g => {
     const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase()) || g.area.toLowerCase().includes(search.toLowerCase());
     if (filter === "my") return matchesSearch && joinedGroups.includes(g.id);
     if (filter === "private") return matchesSearch && g.isPrivate;
@@ -4687,46 +4626,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   </div>
                 )}
 
-                {/* Sample feed posts */}
-                {SAMPLE_GROUP_POSTS.map((post, i) => (
-                  <div key={i} style={gs.feedPost}>
-                    <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                      <div style={{ ...styles.avatarSmall, background: group.color, width: 36, height: 36, fontSize: 12 }}>{post.avatar}</div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <strong style={{ fontSize: 13, color: "#2D2D2D" }}>{post.name}</strong>
-                          <span style={{ fontSize: 11, color: "#bbb" }}>{post.time}</span>
-                        </div>
-                        {post.type === "playdate" && <span style={gs.postTypeBadge}>📅 Playdate</span>}
-                        {post.type === "meetup" && <span style={{ ...gs.postTypeBadge, background: "#E3F2FD", color: "#1565C0" }}>📍 Meetup Proposal</span>}
-                        {post.type === "poll" && <span style={{ ...gs.postTypeBadge, background: "#F3E5F5", color: "#7B1FA2" }}>🗳️ Vote</span>}
-                        <p style={{ fontSize: 13, color: "#444", lineHeight: 1.5, marginTop: 4 }}>{post.text}</p>
-                        {post.details && (
-                          <div style={gs.postDetails}>
-                            {post.details.location && <span style={gs.postDetailItem}>{Icons.location} {post.details.location}</span>}
-                            {post.details.time && <span style={gs.postDetailItem}>{Icons.clock} {post.details.time}</span>}
-                            {post.details.spots && <span style={gs.postDetailItem}>{Icons.users} {post.details.spots}</span>}
-                          </div>
-                        )}
-                        {post.type === "meetup" && post.options && (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
-                            {post.options.map((opt, j) => (
-                              <button key={j} style={gs.voteOption}>
-                                <span>{opt.text}</span>
-                                <span style={{ fontSize: 12, color: "#aaa" }}>{opt.votes} votes</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                        <div style={gs.postActions}>
-                          <button style={gs.postActionBtn}>❤️ {post.likes}</button>
-                          <button style={gs.postActionBtn}>💬 {post.comments}</button>
-                          {post.type === "playdate" && <button style={{ ...gs.postActionBtn, color: "#FF6B8A", fontWeight: 600 }}>Join</button>}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                {/* Empty feed state */}
+                <div style={{ textAlign: "center", padding: 24 }}>
+                  <span style={{ fontSize: 32 }}>📝</span>
+                  <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No posts yet. Start the conversation!</p>
+                </div>
               </>
             ) : (
               <div style={{ background: "#F5F5F5", borderRadius: 12, padding: 24, textAlign: "center" }}>
@@ -4853,30 +4757,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     </div>
                   );
                 })}
-                {/* Sample meetups for demo groups */}
-                {!group.fromSupabase && SAMPLE_GROUP_MEETUPS.map((meetup, i) => (
-                  <div key={i} style={{ ...styles.eventCard, animation: `fadeSlideUp 0.4s ease both ${i * 0.05}s` }}>
-                    <div style={{ ...styles.eventAccent, background: group.color }} />
-                    <div style={styles.eventBody}>
-                      <div style={styles.eventTop}>
-                        <span style={{ ...styles.ageBadge, background: meetup.confirmed ? "#E8F5E9" : "#FFF3E0", color: meetup.confirmed ? "#2E7D32" : "#E65100" }}>
-                          {meetup.confirmed ? "✓ Confirmed" : "🗳 Voting"}
-                        </span>
-                        <span style={styles.eventDay}>{meetup.date}</span>
-                      </div>
-                      <h3 style={styles.eventTitle}>{meetup.title}</h3>
-                      <div style={styles.eventMeta}>
-                        <span style={styles.metaItem}>{Icons.location} {meetup.location}</span>
-                        <span style={styles.metaItem}>{Icons.clock} {meetup.time}</span>
-                      </div>
-                      <div style={styles.eventBottom}>
-                        <span style={styles.hostName}>by {meetup.proposedBy}</span>
-                        <span style={styles.attendeeCount}>{meetup.going} going</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {group.fromSupabase && meetups.length === 0 && (
+                {meetups.length === 0 && (
                   <div style={{ textAlign: "center", padding: 24 }}>
                     <span style={{ fontSize: 32 }}>📍</span>
                     <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No meetups proposed yet. Be the first!</p>
@@ -5005,18 +4886,12 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
 const TIME_SLOTS = ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)", "Evening (4-7)"];
 const AVAIL_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-const MEMBERS_AVAILABILITY = [
-  { name: "Sarah M.", avatar: "SM", days: { Mon: ["Morning (8-11)", "Midday (11-1)"], Tue: [], Wed: ["Morning (8-11)"], Thu: ["Morning (8-11)", "Midday (11-1)"], Fri: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Sat: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)", "Evening (4-7)"], Sun: ["Midday (11-1)"] }, note: "Flexible on Fridays! No Tuesdays — gymnastics" },
-  { name: "Emily R.", avatar: "ER", days: { Mon: ["Afternoon (1-4)"], Tue: ["Morning (8-11)", "Midday (11-1)"], Wed: ["Afternoon (1-4)"], Thu: [], Fri: ["Morning (8-11)"], Sat: ["Morning (8-11)", "Midday (11-1)"], Sun: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"] }, note: "WFH Mon/Wed so afternoons only those days" },
-  { name: "Diana P.", avatar: "DP", days: { Mon: [], Tue: [], Wed: ["Evening (4-7)"], Thu: [], Fri: ["Evening (4-7)"], Sat: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)", "Evening (4-7)"], Sun: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"] }, note: "Work weekdays — weekends are best!" },
-  { name: "Lisa W.", avatar: "LW", days: { Mon: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Tue: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Wed: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Thu: ["Morning (8-11)", "Midday (11-1)"], Fri: ["Morning (8-11)", "Midday (11-1)", "Afternoon (1-4)"], Sat: ["Morning (8-11)"], Sun: [] }, note: "Baby naps 2-4 Thu, so mornings better. Sundays are family day" },
-];
 
 function AvailabilitySection({ myAvailability, setMyAvailability, myAvailNote, setMyAvailNote, groupColor, groupId, onSaveAvailability, loadGroupAvailability, loadMyAvailability }) {
   const [editMode, setEditMode] = useState(false);
   const [showMembers, setShowMembers] = useState(true);
   const [selectedOverlapDay, setSelectedOverlapDay] = useState(null);
-  const [membersAvail, setMembersAvail] = useState(groupId ? [] : MEMBERS_AVAILABILITY);
+  const [membersAvail, setMembersAvail] = useState([]);
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
