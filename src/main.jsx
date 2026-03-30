@@ -951,21 +951,13 @@ function MamaSquadsApp() {
       const otherId = otherParticipants[0]?.user_id;
 
       // Determine if this conversation is "accepted" (goes to inbox)
-      // 1. I'm connected to this person (accepted connection)
-      const isConnected = otherId && connections.some(c =>
-        c.status === 'accepted' &&
-        ((c.requester_id === otherId && c.recipient_id === user.id) ||
-         (c.recipient_id === otherId && c.requester_id === user.id))
+      const myConnection = otherId && connections.find(c =>
+        (c.requester_id === otherId || c.recipient_id === otherId) &&
+        (c.requester_id === user.id || c.recipient_id === user.id)
       );
-      // 2. I sent the first message (I initiated = always in my inbox)
-      const { data: firstMsg } = await supabase
-        .from('messages')
-        .select('sender_id')
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: true })
-        .limit(1)
-        .single();
-      const iStarted = firstMsg?.sender_id === user.id;
+      // Accepted if: connection is accepted, OR I sent the connection request (I initiated), OR no messages yet and I have a pending request to them
+      const isConnected = myConnection?.status === 'accepted';
+      const iInitiated = myConnection?.requester_id === user.id;
 
       return {
         id: conv.id,
@@ -976,7 +968,7 @@ function MamaSquadsApp() {
         lastMsg: lastMsg?.content || '',
         lastMsgTime: lastMsg?.created_at,
         isGroup: conv.type === 'group',
-        isAccepted: isConnected || iStarted,
+        isAccepted: isConnected || iInitiated,
         fromSupabase: true,
       };
     }));
