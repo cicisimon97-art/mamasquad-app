@@ -1175,9 +1175,6 @@ function MamaSquadsApp() {
     if (selectedEvent) return (
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
-    if (selectedChat) return (
-      <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} onSendMessage={sendMessage} loadMessages={loadMessages} fadeIn={fadeIn} />
-    );
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { const conv = await createConversation(selectedProfile.id); setSelectedProfile(null); if (conv) { setSelectedChat(conv); } else { setTab("messages"); } } }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
@@ -1259,14 +1256,11 @@ function MamaSquadsApp() {
               userRole={user?.role}
             />
           )}
-          {tab === "messages" && (
-            <MessagesTab conversations={conversations} onChatSelect={(c) => navigate("chat", c)} onRefresh={refreshConversations} />
-          )}
           {tab === "profile" && (
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
           )}
         </div>
-        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadMessages={(notifications || []).filter(n => !n.is_read && n.type === 'new_message').length} unreadNotifications={(notifications || []).filter(n => !n.is_read && n.type !== 'new_message').length} />
+        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
       </div>
     );
   }
@@ -2687,6 +2681,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 // ─── Discover Tab ───
 function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
   const [search, setSearch] = useState("");
+  const [areaFilter, setAreaFilter] = useState("all");
   const [realMoms, setRealMoms] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -2721,11 +2716,17 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
   }, [loaded, user]);
 
   const allMoms = [...realMoms];
-  const filtered = allMoms.filter(m =>
-    m.name.toLowerCase().includes(search.toLowerCase()) ||
-    (m.interests || []).some(i => i.toLowerCase().includes(search.toLowerCase())) ||
-    m.area.toLowerCase().includes(search.toLowerCase())
-  );
+  // Get unique areas for filter
+  const areas = [...new Set(allMoms.map(m => m.area).filter(Boolean))];
+  const myArea = user?.area || '';
+
+  const filtered = allMoms.filter(m => {
+    const matchesSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) ||
+      (m.interests || []).some(i => i.toLowerCase().includes(search.toLowerCase())) ||
+      m.area.toLowerCase().includes(search.toLowerCase());
+    const matchesArea = areaFilter === "all" || (areaFilter === "nearby" && myArea && m.area.toLowerCase().includes(myArea.toLowerCase())) || m.area === areaFilter;
+    return matchesSearch && matchesArea;
+  });
 
   return (
     <div style={styles.tabContent}>
@@ -2733,6 +2734,15 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
       <div style={styles.searchBar}>
         {Icons.search}
         <input style={styles.searchInput} placeholder="Search by name, interest, or area..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Area filter */}
+      <div style={styles.filterRow}>
+        <button style={{ ...styles.dayChip, ...(areaFilter === "all" ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter("all")}>All</button>
+        {myArea && <button style={{ ...styles.dayChip, ...(areaFilter === "nearby" ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter("nearby")}>📍 Near Me</button>}
+        {areas.map(a => (
+          <button key={a} style={{ ...styles.dayChip, ...(areaFilter === a ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter(a)}>{a}</button>
+        ))}
       </div>
 
       {!loaded ? (
@@ -2838,35 +2848,30 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
           </div>
         </div>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          {localStatus === 'connected' ? (
-            <button style={{ ...styles.primaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
-              ✓ Connected
-            </button>
-          ) : localStatus === 'sent' ? (
-            <button style={{ ...styles.secondaryBtn, flex: 1, cursor: "default" }}>
-              Request Sent
-            </button>
-          ) : (
-            <button
-              style={{ ...styles.secondaryBtn, flex: 1, opacity: connectLoading ? 0.6 : 1 }}
-              disabled={connectLoading}
-              onClick={async () => {
-                if (onConnect && profile.id) {
-                  setConnectLoading(true);
-                  await onConnect(profile.id);
-                  setLocalStatus('sent');
-                  setConnectLoading(false);
-                }
-              }}
-            >
-              {connectLoading ? "..." : "Connect"}
-            </button>
-          )}
-          <button style={{ ...styles.primaryBtn, flex: 1 }} onClick={onMessage}>
-            Send Message
+        {localStatus === 'connected' ? (
+          <button style={{ ...styles.primaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
+            ✓ Connected
           </button>
-        </div>
+        ) : localStatus === 'sent' ? (
+          <button style={{ ...styles.secondaryBtn, width: "100%", cursor: "default" }}>
+            Request Sent
+          </button>
+        ) : (
+          <button
+            style={{ ...styles.primaryBtn, width: "100%", opacity: connectLoading ? 0.6 : 1 }}
+            disabled={connectLoading}
+            onClick={async () => {
+              if (onConnect && profile.id) {
+                setConnectLoading(true);
+                await onConnect(profile.id);
+                setLocalStatus('sent');
+                setConnectLoading(false);
+              }
+            }}
+          >
+            {connectLoading ? "..." : "Connect"}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -5417,12 +5422,12 @@ const gs = {
 };
 
 // ─── Bottom Nav ───
-function BottomNav({ tab, setTab, onCreateEvent, unreadMessages, unreadNotifications }) {
+function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
   const tabs = [
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
     { id: "create", icon: Icons.plus, label: "Create" },
-    { id: "messages", icon: Icons.chat, label: "Chat", badge: unreadMessages || 0 },
+    { id: "discover", icon: Icons.search, label: "Discover" },
     { id: "profile", icon: Icons.user, label: "Profile", badge: unreadNotifications || 0 },
   ];
 
