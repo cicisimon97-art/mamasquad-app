@@ -3105,11 +3105,11 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
     <div style={styles.tabContent}>
       <h1 style={styles.pageTitle}>My Profile</h1>
       <div style={styles.myProfileCard}>
-        <div style={{ position: "relative", display: "inline-block" }}>
-          <Avatar url={user?.avatar_url} name={displayName} size={80} />
-          {isVerified && <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13 }} title="Verified">✓</div>}
-          <label style={{ position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: 14, background: "#FF6B8A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
-            <span style={{ color: "white", fontSize: 14 }}>📷</span>
+        <div style={{ position: "relative", width: 88, height: 88, margin: "0 auto" }}>
+          <Avatar url={user?.avatar_url} name={displayName} size={80} style={{ margin: "0 auto" }} />
+          {isVerified && <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13, position: "absolute", top: 0, right: 0 }} title="Verified">✓</div>}
+          <label style={{ position: "absolute", bottom: 0, right: 0, width: 30, height: 30, borderRadius: 15, background: "#FF6B8A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.25)", zIndex: 5 }}>
+            <span style={{ color: "white", fontSize: 15 }}>📷</span>
             <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
               const file = e.target.files?.[0];
               if (file && onUploadPhoto) await onUploadPhoto(file);
