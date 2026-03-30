@@ -1269,7 +1269,7 @@ function MamaSquadsApp() {
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
           )}
         </div>
-        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} />
+        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadMessages={conversations.filter(c => c.lastMsg && !c.isAccepted).length} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
       </div>
     );
   }
@@ -5498,13 +5498,13 @@ const gs = {
 };
 
 // ─── Bottom Nav ───
-function BottomNav({ tab, setTab, onCreateEvent }) {
+function BottomNav({ tab, setTab, onCreateEvent, unreadMessages, unreadNotifications }) {
   const tabs = [
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
     { id: "create", icon: Icons.plus, label: "Create" },
-    { id: "messages", icon: Icons.chat, label: "Chat" },
-    { id: "profile", icon: Icons.user, label: "Profile" },
+    { id: "messages", icon: Icons.chat, label: "Chat", badge: unreadMessages || 0 },
+    { id: "profile", icon: Icons.user, label: "Profile", badge: unreadNotifications || 0 },
   ];
 
   return (
@@ -5516,6 +5516,7 @@ function BottomNav({ tab, setTab, onCreateEvent }) {
             ...styles.navItem,
             ...(t.id === "create" ? styles.navCreate : {}),
             color: tab === t.id ? "#FF6B8A" : "#999",
+            position: "relative",
           }}
           onClick={() => t.id === "create" ? onCreateEvent() : setTab(t.id)}
         >
@@ -5523,7 +5524,12 @@ function BottomNav({ tab, setTab, onCreateEvent }) {
             <div style={styles.createBtn}>{t.icon}</div>
           ) : (
             <>
-              {t.icon}
+              <div style={{ position: "relative", display: "inline-block" }}>
+                {t.icon}
+                {t.badge > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -10, background: "#FF6B8A", color: "white", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 50, minWidth: 16, textAlign: "center" }}>{t.badge > 9 ? '9+' : t.badge}</span>
+                )}
+              </div>
               <span style={styles.navLabel}>{t.label}</span>
             </>
           )}
