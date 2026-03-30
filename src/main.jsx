@@ -75,6 +75,20 @@ function BirthdayPicker({ value, onChange, label, inputStyle }) {
   );
 }
 
+// ─── Avatar Component ───
+function Avatar({ url, name, size, style: extraStyle }) {
+  const s = size || 40;
+  const initials = (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
+  if (url) {
+    return <img src={url} alt={name} style={{ width: s, height: s, borderRadius: s / 2, objectFit: 'cover', ...extraStyle }} />;
+  }
+  return (
+    <div style={{ width: s, height: s, borderRadius: s / 2, background: 'linear-gradient(135deg, #FEE2E8, #FFD5DD)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: s * 0.35, color: '#E8526E', flexShrink: 0, ...extraStyle }}>
+      {initials}
+    </div>
+  );
+}
+
 // ─── Icons ───
 const Icons = {
   home: (
@@ -684,6 +698,30 @@ function MamaSquadsApp() {
     };
   };
 
+  // ─── Upload profile photo ───
+  const uploadProfilePhoto = async (file) => {
+    if (!user || !file) return null;
+    const ext = file.name.split('.').pop();
+    const filePath = `${user.id}/avatar.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(filePath, file, { upsert: true });
+    if (uploadError) return null;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(filePath);
+
+    // Add cache buster to force refresh
+    const urlWithBuster = `${publicUrl}?t=${Date.now()}`;
+
+    // Save URL to user profile
+    await supabase.from('users').update({ avatar_url: urlWithBuster }).eq('id', user.id);
+    setUser(prev => ({ ...prev, avatar_url: urlWithBuster }));
+    return urlWithBuster;
+  };
+
   // ─── Save availability handler ───
   const handleSaveAvailability = async (groupId, availability, note) => {
     if (!user) return;
@@ -1196,7 +1234,7 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "profile" && (
-            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
+            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={uploadProfilePhoto} />
           )}
         </div>
         <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
@@ -2628,7 +2666,7 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
   useEffect(() => {
     if (loaded) return;
     supabase.from('users')
-      .select('id, full_name, area, bio, kids, interests, is_verified, role, mom_age')
+      .select('id, full_name, area, bio, kids, interests, is_verified, role, mom_age, avatar_url')
       .neq('id', user?.id || '')
       .then(({ data }) => {
         if (data) {
@@ -2645,6 +2683,7 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
               area: m.area || '',
               admin: m.role === 'admin' || m.role === 'founder',
               isVerified: m.is_verified,
+              avatar_url: m.avatar_url,
               fromSupabase: true,
             };
           });
@@ -2698,7 +2737,7 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
           {filtered.map((mom, i) => (
             <div key={mom.id} style={{ ...styles.profileCard, animationDelay: `${i * 0.05}s` }} onClick={() => onProfileSelect(mom)}>
               <div style={{ position: "relative", display: "inline-block" }}>
-                <div style={styles.profileAvatar}>{mom.avatar}</div>
+                <Avatar url={mom.avatar_url} name={mom.name} size={56} />
                 {mom.isVerified && <div style={styles.verifiedDot} title="Verified Mom">✓</div>}
               </div>
               {mom.admin && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
@@ -2759,7 +2798,7 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
       <div style={styles.detailBody}>
         <div style={styles.profileDetailTop}>
           <div style={{ position: "relative", display: "inline-block" }}>
-            <div style={styles.profileDetailAvatar}>{profile.avatar}</div>
+            <Avatar url={profile.avatar_url} name={profile.name} size={80} />
             <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13, right: -2, bottom: -2 }} title="Verified Mom">✓</div>
           </div>
           <span style={{ ...styles.verifiedMomTag, marginTop: 10, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>
@@ -2962,7 +3001,7 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessa
 }
 
 // ─── My Profile Tab ───
-function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications }) {
+function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications, onUploadPhoto }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about", "admin-panel"
@@ -3067,8 +3106,15 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       <h1 style={styles.pageTitle}>My Profile</h1>
       <div style={styles.myProfileCard}>
         <div style={{ position: "relative", display: "inline-block" }}>
-          <div style={styles.myAvatar}>{avatar}</div>
+          <Avatar url={user?.avatar_url} name={displayName} size={80} />
           {isVerified && <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13 }} title="Verified">✓</div>}
+          <label style={{ position: "absolute", bottom: -2, right: -2, width: 28, height: 28, borderRadius: 14, background: "#FF6B8A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.2)" }}>
+            <span style={{ color: "white", fontSize: 14 }}>📷</span>
+            <input type="file" accept="image/*" style={{ display: "none" }} onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (file && onUploadPhoto) await onUploadPhoto(file);
+            }} />
+          </label>
         </div>
         {isAppFounder && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
