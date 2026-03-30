@@ -1171,7 +1171,7 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
     if (selectedChat) return (
-      <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
+      <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} onSendMessage={sendMessage} loadMessages={loadMessages} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { const conv = await createConversation(selectedProfile.id); setSelectedProfile(null); if (conv) { setSelectedChat(conv); } else { setTab("messages"); } } }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
@@ -1261,7 +1261,7 @@ function MamaSquadsApp() {
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} />
           )}
         </div>
-        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadMessages={conversations.filter(c => c.lastMsg && !c.isAccepted).length} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
+        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
       </div>
     );
   }
@@ -2869,68 +2869,23 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
 
 // ─── Messages Tab ───
 function MessagesTab({ conversations, onChatSelect, onRefresh }) {
-  const [msgTab, setMsgTab] = useState("inbox");
-
   // Refresh conversations when tab mounts
   useEffect(() => { if (onRefresh) onRefresh(); }, []);
 
-  const realConvos = conversations || [];
-  const inbox = realConvos.filter(c => c.isGroup || c.isAccepted);
-  const requests = realConvos.filter(c => !c.isGroup && !c.isAccepted);
-  const requestCount = requests.length;
-
-  const currentList = msgTab === "inbox" ? inbox : requests;
+  const allConvos = conversations || [];
 
   return (
     <div style={styles.tabContent}>
       <h1 style={styles.pageTitle}>Messages</h1>
 
-      {/* Inbox / Requests tabs */}
-      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #f0f0f0", marginBottom: 12 }}>
-        <button
-          style={{
-            flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif",
-            borderBottom: msgTab === "inbox" ? "2px solid #FF6B8A" : "2px solid transparent",
-            color: msgTab === "inbox" ? "#FF6B8A" : "#999",
-          }}
-          onClick={() => setMsgTab("inbox")}
-        >
-          Inbox
-        </button>
-        <button
-          style={{
-            flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer",
-            fontFamily: "'DM Sans', sans-serif",
-            borderBottom: msgTab === "requests" ? "2px solid #FF6B8A" : "2px solid transparent",
-            color: msgTab === "requests" ? "#FF6B8A" : "#999",
-            position: "relative",
-          }}
-          onClick={() => setMsgTab("requests")}
-        >
-          Requests
-          {requestCount > 0 && (
-            <span style={{ position: "absolute", top: 4, marginLeft: 4, background: "#FF6B8A", color: "white", fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 50, minWidth: 18, textAlign: "center" }}>{requestCount}</span>
-          )}
-        </button>
-      </div>
-
-      {msgTab === "requests" && requests.length > 0 && (
-        <div style={{ background: "#FFF8E1", borderRadius: 10, padding: 12, marginBottom: 12 }}>
-          <p style={{ fontSize: 12, color: "#F57F17", lineHeight: 1.4 }}>📬 These are messages from moms you're not connected with. Accept to move them to your inbox.</p>
-        </div>
-      )}
-
       <div style={styles.chatList}>
-        {currentList.length === 0 ? (
+        {allConvos.length === 0 ? (
           <div style={{ textAlign: "center", padding: 40 }}>
-            <span style={{ fontSize: 40 }}>{msgTab === "inbox" ? "💬" : "📬"}</span>
-            <p style={{ fontSize: 14, color: "#888", marginTop: 12 }}>
-              {msgTab === "inbox" ? "No messages yet. Connect with moms to start chatting!" : "No message requests right now."}
-            </p>
+            <span style={{ fontSize: 40 }}>💬</span>
+            <p style={{ fontSize: 14, color: "#888", marginTop: 12 }}>No messages yet. Connect with moms to start chatting!</p>
           </div>
         ) : (
-          currentList.map((chat, i) => (
+          allConvos.map((chat, i) => (
             <div key={chat.id} style={{ ...styles.chatRow, animationDelay: `${i * 0.04}s` }} onClick={() => onChatSelect(chat)}>
               <div style={{ ...styles.chatAvatar, background: chat.isGroup ? "#E8F5E9" : "#FEE2E8" }}>
                 {chat.isGroup ? Icons.users : chat.avatar}
@@ -2953,8 +2908,7 @@ function MessagesTab({ conversations, onChatSelect, onRefresh }) {
 }
 
 // ─── Chat Detail ───
-function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessage, loadMessages, onAcceptConnection, connections }) {
-  const [accepted, setAccepted] = useState(chat.isGroup || chat.isAccepted);
+function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessage, loadMessages }) {
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
 
@@ -3008,18 +2962,6 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessa
     setNewMessage("");
   };
 
-  const handleAccept = async () => {
-    // Find the pending connection for this chat
-    const conn = (connections || []).find(c =>
-      c.status === 'pending' &&
-      (c.requester_id === chat.otherId || c.recipient_id === chat.otherId)
-    );
-    if (onAcceptConnection) {
-      await onAcceptConnection(conn?.id || null, true, chat.otherId);
-    }
-    setAccepted(true);
-  };
-
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -3027,31 +2969,9 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessa
         <div style={styles.chatHeaderInfo}>
           <strong>{chat.name}</strong>
           {chat.isGroup && <span style={styles.groupLabel}>Group</span>}
-          {!accepted && <span style={{ fontSize: 11, color: "#F57F17" }}>Message Request</span>}
         </div>
         <div style={{ width: 40 }} />
       </div>
-
-      {/* Accept/Decline bar for requests */}
-      {!accepted && (
-        <div style={{ padding: "12px 16px", background: "#FFF8E1", borderBottom: "1px solid #FFE082", display: "flex", flexDirection: "column", gap: 8 }}>
-          <p style={{ fontSize: 12, color: "#F57F17", lineHeight: 1.4 }}>📬 {chat.name} wants to message you. You're not connected yet.</p>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#4CAF50", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onClick={handleAccept}
-            >
-              Accept
-            </button>
-            <button
-              style={{ flex: 1, padding: "10px 0", borderRadius: 10, background: "#FFEBEE", color: "#C62828", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onClick={onBack}
-            >
-              Decline
-            </button>
-          </div>
-        </div>
-      )}
 
       <div style={styles.messagesBody}>
         {messages.length === 0 && (
@@ -3070,22 +2990,16 @@ function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessa
         ))}
       </div>
 
-      {accepted ? (
-        <div style={styles.messageInputRow}>
-          <input
-            style={styles.msgInput}
-            placeholder="Type a message..."
-            value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSend()}
-          />
-          <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>
-        </div>
-      ) : (
-        <div style={{ padding: "14px 16px", background: "#F5F5F5", textAlign: "center", borderTop: "1px solid #f0f0f0" }}>
-          <p style={{ fontSize: 13, color: "#888" }}>Accept this request to reply</p>
-        </div>
-      )}
+      <div style={styles.messageInputRow}>
+        <input
+          style={styles.msgInput}
+          placeholder="Type a message..."
+          value={newMessage}
+          onChange={e => setNewMessage(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+        />
+        <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>
+      </div>
     </div>
   );
 }
