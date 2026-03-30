@@ -1027,8 +1027,8 @@ function MamaSquadsApp() {
       otherId: otherUserId,
       lastMsg: '',
       lastMsgTime: null,
-      messageCount: 0,
       isGroup: false,
+      isAccepted: true, // I created it, so it's in my inbox
       fromSupabase: true,
     };
     setConversations(prev => [newConv, ...prev]);
@@ -1182,7 +1182,7 @@ function MamaSquadsApp() {
       <ChatDetail chat={selectedChat} onBack={() => { setSelectedChat(null); refreshConversations(); }} newMessage={newMessage} setNewMessage={setNewMessage} user={user} onSendMessage={sendMessage} loadMessages={loadMessages} onAcceptConnection={respondToConnection} connections={connections} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { await createConversation(selectedProfile.id); } setSelectedProfile(null); setTab("messages"); }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
+      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { const conv = await createConversation(selectedProfile.id); setSelectedProfile(null); if (conv) { setSelectedChat(conv); } else { setTab("messages"); } } }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
     if (showPoll) return <PollScreen polls={POLLS} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
