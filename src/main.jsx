@@ -888,9 +888,11 @@ function MamaSquadsApp() {
       if (newConn) setConnections(prev => [...prev, newConn]);
     }
 
-    if (accept) {
-      // Refresh conversations so isAccepted recalculates
-      await refreshConversations();
+    if (accept && otherUserId) {
+      // Directly mark the conversation as accepted in local state
+      setConversations(prev => prev.map(c =>
+        c.otherId === otherUserId ? { ...c, isAccepted: true } : c
+      ));
     }
   };
 
@@ -948,11 +950,14 @@ function MamaSquadsApp() {
       const otherAvatar = otherName.split(' ').map(w => w[0]).join('').slice(0, 2);
       const otherId = otherParticipants[0]?.user_id;
 
-      // Check if connected to this person
-      const isConnectedToOther = otherId && connections.some(c =>
-        c.status === 'accepted' && (c.requester_id === otherId || c.recipient_id === otherId)
+      // Determine if this conversation is "accepted" (goes to inbox)
+      // 1. I'm connected to this person (accepted connection)
+      const isConnected = otherId && connections.some(c =>
+        c.status === 'accepted' &&
+        ((c.requester_id === otherId && c.recipient_id === user.id) ||
+         (c.recipient_id === otherId && c.requester_id === user.id))
       );
-      // Check if I started this conversation (I messaged first = I initiated)
+      // 2. I sent the first message (I initiated = always in my inbox)
       const { data: firstMsg } = await supabase
         .from('messages')
         .select('sender_id')
@@ -971,7 +976,7 @@ function MamaSquadsApp() {
         lastMsg: lastMsg?.content || '',
         lastMsgTime: lastMsg?.created_at,
         isGroup: conv.type === 'group',
-        isAccepted: isConnectedToOther || iStarted, // inbox if connected or if I started it
+        isAccepted: isConnected || iStarted,
         fromSupabase: true,
       };
     }));
