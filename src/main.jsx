@@ -3335,7 +3335,17 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 src={photoPreviewUrl}
                 alt="Preview"
                 draggable={false}
-                style={{ position: "absolute", top: "50%", left: "50%", minWidth: "100%", minHeight: "100%", objectFit: "cover", transform: `translate(calc(-50% + ${photoPos.x}px), calc(-50% + ${photoPos.y}px)) scale(${photoZoom})`, pointerEvents: "none" }}
+                style={{ position: "absolute", top: "50%", left: "50%", width: "100%", height: "auto", transform: `translate(calc(-50% + ${photoPos.x}px), calc(-50% + ${photoPos.y}px)) scale(${photoZoom})`, pointerEvents: "none" }}
+                onLoad={(e) => {
+                  const img = e.target;
+                  if (img.naturalWidth < img.naturalHeight) {
+                    img.style.width = "100%";
+                    img.style.height = "auto";
+                  } else {
+                    img.style.width = "auto";
+                    img.style.height = "100%";
+                  }
+                }}
               />
             </div>
 
