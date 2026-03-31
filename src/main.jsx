@@ -195,7 +195,6 @@ function MamaSquadsApp() {
   const [selectedDay, setSelectedDay] = useState("All");
   const [selectedAge, setSelectedAge] = useState("All Ages");
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [selectedChat, setSelectedChat] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [showPoll, setShowPoll] = useState(false);
@@ -210,11 +209,8 @@ function MamaSquadsApp() {
   const [pendingJoins, setPendingJoins] = useState([]);
   const [onboardStep, setOnboardStep] = useState(0);
   const [newComment, setNewComment] = useState("");
-  const [newMessage, setNewMessage] = useState("");
   const [votedPolls, setVotedPolls] = useState({});
   const [connections, setConnections] = useState([]);
-  const [conversations, setConversations] = useState([]);
-  const [acceptedChats, setAcceptedChats] = useState(new Set());
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
@@ -223,7 +219,6 @@ function MamaSquadsApp() {
     setFadeIn(false);
     setTimeout(() => {
       if (dest === "event") setSelectedEvent(data);
-      else if (dest === "chat") setSelectedChat(data);
       else if (dest === "profile") setSelectedProfile(data);
       else if (dest === "tab") setTab(data);
       else setScreen(data || dest);
@@ -867,12 +862,6 @@ function MamaSquadsApp() {
       if (newConn) setConnections(prev => [...prev, newConn]);
     }
 
-    if (accept && otherUserId) {
-      // Directly mark the conversation as accepted in local state
-      setConversations(prev => prev.map(c =>
-        c.otherId === otherUserId ? { ...c, isAccepted: true } : c
-      ));
-    }
   };
 
   // ─── Get connection status with a user ───
@@ -892,163 +881,6 @@ function MamaSquadsApp() {
     return connections
       .filter(c => c.status === 'accepted')
       .map(c => c.requester_id === user?.id ? c.recipient_id : c.requester_id);
-  };
-
-  // ─── Load conversations ───
-  const refreshConversations = useCallback(async () => {
-    if (!user) return;
-    const { data: participations } = await supabase
-      .from('conversation_participants')
-      .select('conversation_id')
-      .eq('user_id', user.id);
-    if (!participations || participations.length === 0) { setConversations([]); return; }
-
-    const convIds = participations.map(p => p.conversation_id);
-    const { data: convos } = await supabase
-      .from('conversations')
-      .select('*')
-      .in('id', convIds);
-    if (!convos) return;
-
-    const enriched = await Promise.all(convos.map(async (conv) => {
-      const { data: parts } = await supabase
-        .from('conversation_participants')
-        .select('user_id, users!user_id(full_name)')
-        .eq('conversation_id', conv.id);
-
-      const { data: lastMsg } = await supabase
-        .from('messages')
-        .select('content, created_at, sender_id')
-        .eq('conversation_id', conv.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      const otherParticipants = (parts || []).filter(p => p.user_id !== user.id);
-      const otherName = otherParticipants[0]?.users?.full_name || 'A mom';
-      const otherAvatar = otherName.split(' ').map(w => w[0]).join('').slice(0, 2);
-      const otherId = otherParticipants[0]?.user_id;
-
-      // Determine if this conversation is "accepted" (goes to inbox)
-      const myConnection = otherId && connections.find(c =>
-        (c.requester_id === otherId || c.recipient_id === otherId) &&
-        (c.requester_id === user.id || c.recipient_id === user.id)
-      );
-      // Accepted if: connection is accepted, OR I sent the connection request (I initiated), OR no messages yet and I have a pending request to them
-      const isConnected = myConnection?.status === 'accepted';
-      const iInitiated = myConnection?.requester_id === user.id;
-
-      return {
-        id: conv.id,
-        type: conv.type,
-        name: conv.type === 'group' ? 'Group Chat' : otherName,
-        avatar: otherAvatar,
-        otherId,
-        lastMsg: lastMsg?.content || '',
-        lastMsgTime: lastMsg?.created_at,
-        isGroup: conv.type === 'group',
-        isAccepted: isConnected || iInitiated,
-        fromSupabase: true,
-      };
-    }));
-
-    setConversations(enriched.sort((a, b) => {
-      const aTime = a.lastMsgTime || '0';
-      const bTime = b.lastMsgTime || '0';
-      return bTime.localeCompare(aTime);
-    }));
-  }, [user]);
-
-  useEffect(() => { refreshConversations(); }, [refreshConversations]);
-
-  // ─── Create a DM conversation ───
-  const createConversation = async (otherUserId) => {
-    if (!user) return null;
-
-    // Check if conversation already exists
-    const existing = conversations.find(c => !c.isGroup && c.otherId === otherUserId);
-    if (existing) return existing;
-
-    const { data: conv, error } = await supabase.from('conversations').insert({
-      type: 'dm',
-    }).select().single();
-    if (error || !conv) return null;
-
-    // Add both participants
-    await supabase.from('conversation_participants').insert([
-      { conversation_id: conv.id, user_id: user.id },
-      { conversation_id: conv.id, user_id: otherUserId },
-    ]);
-
-    // Send connection request if not already connected
-    const connStatus = getConnectionStatus(otherUserId);
-    if (connStatus === 'none') {
-      await sendConnectionRequest(otherUserId);
-    }
-
-    // Get other user's name
-    const { data: otherUser } = await supabase.from('users').select('full_name').eq('id', otherUserId).single();
-    const otherName = otherUser?.full_name || 'A mom';
-
-    const newConv = {
-      id: conv.id,
-      type: 'dm',
-      name: otherName,
-      avatar: otherName.split(' ').map(w => w[0]).join('').slice(0, 2),
-      otherId: otherUserId,
-      lastMsg: '',
-      lastMsgTime: null,
-      isGroup: false,
-      isAccepted: true, // I created it, so it's in my inbox
-      fromSupabase: true,
-    };
-    setConversations(prev => [newConv, ...prev]);
-    return newConv;
-  };
-
-  // ─── Send message ───
-  const sendMessage = async (conversationId, content) => {
-    if (!user || !content.trim()) return null;
-    const { data, error } = await supabase.from('messages').insert({
-      conversation_id: conversationId,
-      sender_id: user.id,
-      content: content.trim(),
-    }).select().single();
-    if (error) return null;
-
-    // Update local conversation with last message
-    setConversations(prev => prev.map(c =>
-      c.id === conversationId ? { ...c, lastMsg: content.trim(), lastMsgTime: data.created_at } : c
-    ));
-
-    // Notify the other person
-    const conv = conversations.find(c => c.id === conversationId);
-    if (conv && conv.otherId) {
-      await supabase.from('notifications').insert({
-        user_id: conv.otherId,
-        type: 'new_message',
-        title: 'New Message',
-        body: `${user.full_name || 'A mom'}: ${content.trim().slice(0, 50)}${content.trim().length > 50 ? '...' : ''}`,
-        is_read: false,
-      });
-    }
-    return data;
-  };
-
-  // ─── Load messages for a conversation ───
-  const loadMessages = async (conversationId) => {
-    const { data } = await supabase
-      .from('messages')
-      .select('*, users!sender_id(full_name)')
-      .eq('conversation_id', conversationId)
-      .order('created_at', { ascending: true });
-    return (data || []).map(m => ({
-      id: m.id,
-      from: m.sender_id === user?.id ? 'me' : 'them',
-      text: m.content,
-      senderName: m.users?.full_name || 'A mom',
-      time: new Date(m.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-    }));
   };
 
   // ─── Propose meetup handler ───
@@ -1150,7 +982,7 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onMessage={async () => { if (selectedProfile?.id) { const conv = await createConversation(selectedProfile.id); setSelectedProfile(null); if (conv) { setSelectedChat(conv); } else { setTab("messages"); } } }} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
+      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
     if (showPoll) return <PollScreen polls={[]} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
@@ -2780,7 +2612,7 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
 }
 
 // ─── Profile Detail ───
-function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus }) {
+function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
   const [connectLoading, setConnectLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(connectionStatus);
   return (
@@ -2845,151 +2677,6 @@ function ProfileDetail({ profile, onBack, onMessage, onConnect, connectionStatus
             {connectLoading ? "..." : "Connect"}
           </button>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ─── Messages Tab ───
-function MessagesTab({ conversations, onChatSelect, onRefresh }) {
-  // Refresh conversations when tab mounts
-  useEffect(() => { if (onRefresh) onRefresh(); }, []);
-
-  const allConvos = conversations || [];
-
-  return (
-    <div style={styles.tabContent}>
-      <h1 style={styles.pageTitle}>Messages</h1>
-
-      <div style={styles.chatList}>
-        {allConvos.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40 }}>
-            <span style={{ fontSize: 40 }}>💬</span>
-            <p style={{ fontSize: 14, color: "#888", marginTop: 12 }}>No messages yet. Connect with moms to start chatting!</p>
-          </div>
-        ) : (
-          allConvos.map((chat, i) => (
-            <div key={chat.id} style={{ ...styles.chatRow, animationDelay: `${i * 0.04}s` }} onClick={() => onChatSelect(chat)}>
-              <div style={{ ...styles.chatAvatar, background: chat.isGroup ? "#E8F5E9" : "#FAF0F2" }}>
-                {chat.isGroup ? Icons.users : chat.avatar}
-              </div>
-              <div style={styles.chatInfo}>
-                <div style={styles.chatTop}>
-                  <strong style={styles.chatName}>{chat.name}</strong>
-                  <span style={styles.chatTime}>{chat.time}</span>
-                </div>
-                <p style={styles.chatPreview}>{chat.lastMsg}</p>
-              </div>
-              {chat.unread > 0 && <span style={styles.unreadBadge}>{chat.unread}</span>}
-            </div>
-          ))
-        )}
-      </div>
-      <style>{keyframes}</style>
-    </div>
-  );
-}
-
-// ─── Chat Detail ───
-function ChatDetail({ chat, onBack, newMessage, setNewMessage, user, onSendMessage, loadMessages }) {
-  const [messages, setMessages] = useState([]);
-  const [sending, setSending] = useState(false);
-
-  // Load messages from Supabase + subscribe to real-time + poll as fallback
-  useEffect(() => {
-    if (!chat.fromSupabase || !loadMessages) return;
-    loadMessages(chat.id).then(msgs => setMessages(msgs));
-
-    // Subscribe to new messages in this conversation (real-time)
-    const channel = supabase
-      .channel(`messages-${chat.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter: `conversation_id=eq.${chat.id}`,
-      }, (payload) => {
-        const msg = payload.new;
-        if (msg.sender_id === user?.id) return;
-        setMessages(prev => {
-          if (prev.some(m => m.id === msg.id)) return prev;
-          return [...prev, {
-            id: msg.id,
-            from: 'them',
-            text: msg.content,
-            senderName: '',
-            time: new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-          }];
-        });
-      })
-      .subscribe();
-
-    // Poll every 3 seconds as fallback in case real-time isn't enabled
-    const poll = setInterval(() => {
-      loadMessages(chat.id).then(msgs => setMessages(msgs));
-    }, 3000);
-
-    return () => { supabase.removeChannel(channel); clearInterval(poll); };
-  }, [chat.id, chat.fromSupabase]);
-
-  const handleSend = async () => {
-    if (!newMessage.trim()) return;
-    if (chat.fromSupabase && onSendMessage) {
-      setSending(true);
-      const result = await onSendMessage(chat.id, newMessage);
-      if (result) {
-        setMessages(prev => [...prev, {
-          id: result.id,
-          from: 'me',
-          text: result.content,
-          senderName: user?.full_name || 'Me',
-          time: new Date(result.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }),
-        }]);
-      }
-      setSending(false);
-    } else {
-      setMessages(prev => [...prev, { from: 'me', text: newMessage, time: 'Now' }]);
-    }
-    setNewMessage("");
-  };
-
-  return (
-    <div style={styles.detailScreen}>
-      <div style={styles.detailHeader}>
-        <button style={styles.backBtn} onClick={onBack}>{Icons.back}</button>
-        <div style={styles.chatHeaderInfo}>
-          <strong>{chat.name}</strong>
-          {chat.isGroup && <span style={styles.groupLabel}>Group</span>}
-        </div>
-        <div style={{ width: 40 }} />
-      </div>
-
-      <div style={styles.messagesBody}>
-        {messages.length === 0 && (
-          <div style={{ textAlign: "center", padding: 40 }}>
-            <span style={{ fontSize: 32 }}>💬</span>
-            <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No messages yet. Say hi!</p>
-          </div>
-        )}
-        {messages.map((msg, i) => (
-          <div key={msg.id || i} style={{ ...styles.messageBubbleRow, justifyContent: msg.from === "me" ? "flex-end" : "flex-start" }}>
-            <div style={{ ...(msg.from === "me" ? styles.myBubble : styles.theirBubble) }}>
-              <p style={styles.bubbleText}>{msg.text}</p>
-              <span style={styles.bubbleTime}>{msg.time}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={styles.messageInputRow}>
-        <input
-          style={styles.msgInput}
-          placeholder="Type a message..."
-          value={newMessage}
-          onChange={e => setNewMessage(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleSend()}
-        />
-        <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>
       </div>
     </div>
   );
