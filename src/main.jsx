@@ -690,6 +690,15 @@ function MamaSquadsApp() {
     };
   };
 
+  // ─── Delete event handler ───
+  const handleDeleteEvent = async (eventId) => {
+    await supabase.from('comments').delete().eq('event_id', eventId);
+    await supabase.from('event_rsvps').delete().eq('event_id', eventId);
+    await supabase.from('events').delete().eq('id', eventId);
+    setEvents(prev => prev.filter(e => e.id !== eventId));
+    setJoinedEvents(prev => prev.filter(id => id !== eventId));
+  };
+
   // ─── Upload profile photo ───
   const uploadProfilePhoto = async (file) => {
     if (!user || !file) return null;
@@ -979,7 +988,7 @@ function MamaSquadsApp() {
   // Main App — only accessible to verified OR beta users
   if (screen === "main" && isVerified) {
     if (selectedEvent) return (
-      <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} fadeIn={fadeIn} />
+      <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
@@ -2348,12 +2357,15 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
 }
 
 // ─── Event Detail ───
-function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, setJoinedEvents, onRsvp, onPostComment, fadeIn }) {
+function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, setJoinedEvents, onRsvp, onPostComment, user, onDelete, fadeIn }) {
   const joined = joinedEvents.includes(event.id);
   const [comments, setComments] = useState(event.comments || []);
   const [rsvpLoading, setRsvpLoading] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [localAttendees, setLocalAttendees] = useState(event.attendees);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const isCreator = user && event.hostId === user.id;
 
   // Load comments from Supabase for real events
   useEffect(() => {
@@ -2450,6 +2462,41 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
         >
           {rsvpLoading ? "..." : joined ? "✓ You're Going!" : "Join This Playdate"}
         </button>
+
+        {/* Delete button for creator */}
+        {isCreator && event.fromSupabase && !showDeleteConfirm && (
+          <button
+            style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "none", border: "1.5px solid #E53935", color: "#E53935", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 8 }}
+            onClick={() => setShowDeleteConfirm(true)}
+          >
+            Delete This Playdate
+          </button>
+        )}
+        {isCreator && showDeleteConfirm && (
+          <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 16, marginTop: 8, textAlign: "center" }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#C62828", marginBottom: 4 }}>Are you sure?</p>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>This will permanently delete this playdate and all RSVPs and comments.</p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "#E53935", color: "white", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: deleting ? 0.6 : 1 }}
+                disabled={deleting}
+                onClick={async () => {
+                  setDeleting(true);
+                  await onDelete(event.id);
+                  onBack();
+                }}
+              >
+                {deleting ? "Deleting..." : "Yes, Delete"}
+              </button>
+              <button
+                style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "white", color: "#666", fontSize: 14, fontWeight: 600, border: "1.5px solid #ddd", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                onClick={() => setShowDeleteConfirm(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Comments */}
         <div style={styles.commentsSection}>
