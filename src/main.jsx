@@ -1983,7 +1983,7 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
         {signupError && step >= totalSteps - 1 && (
           <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginBottom: 8 }}>{signupError}</p>
         )}
-        <button style={{ ...styles.primaryBtn, opacity: submitting ? 0.6 : 1 }} onClick={goNext} disabled={submitting}>
+        <button style={{ ...styles.primaryBtn, background: "#6B2C3B", boxShadow: "0 4px 16px rgba(107,44,59,0.3)", opacity: submitting ? 0.6 : 1 }} onClick={goNext} disabled={submitting}>
           {submitting ? "Creating account..." : step >= totalSteps - 1 ? "Let's Go! 🎉" : "Continue"}
         </button>
         {step > 0 && (
@@ -3127,7 +3127,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
         {isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 6, fontSize: 11, padding: "3px 10px" }}>✓ Verified</span>}
         {isAppFounder && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#7C3AED", background: "#F3E8FF", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>👑 FOUNDER</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>👑 FOUNDER</span>
           </div>
         )}
         {!isAppFounder && isFoundingMember && (
@@ -5759,7 +5759,7 @@ const styles = {
   // Onboarding
   onboardContent: { maxWidth: 400, width: "100%", padding: "40px 4px 32px", display: "flex", flexDirection: "column" },
   progressBar: { height: 4, background: gray100, borderRadius: 2, overflow: "hidden", marginBottom: 16 },
-  progressFill: { height: "100%", background: pink, borderRadius: 2, transition: "width 0.4s ease" },
+  progressFill: { height: "100%", background: "#6B2C3B", borderRadius: 2, transition: "width 0.4s ease" },
   stepLabel: { fontSize: 12, color: gray400, marginBottom: 4 },
   onboardTitle: { fontFamily: display, fontSize: 26, color: gray800, marginBottom: 4 },
   onboardSubtitle: { fontSize: 14, color: gray600, marginBottom: 20 },
@@ -5937,7 +5937,7 @@ const styles = {
   navItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", fontFamily: font, padding: 4, transition: "color 0.2s ease" },
   navLabel: { fontSize: 10, fontWeight: 500 },
   navCreate: { marginTop: -16 },
-  createBtn: { width: 48, height: 48, borderRadius: 24, background: `linear-gradient(135deg, ${pink}, ${pinkDark})`, display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: `0 4px 12px ${pink}44` },
+  createBtn: { width: 48, height: 48, borderRadius: 24, background: "#6B2C3B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", boxShadow: "0 4px 12px rgba(107,44,59,0.3)" },
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(
