@@ -157,6 +157,9 @@ const Icons = {
   sparkle: (
     <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0l2.5 9.5L24 12l-9.5 2.5L12 24l-2.5-9.5L0 12l9.5-2.5z"/></svg>
   ),
+  bell: (
+    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+  ),
 };
 
 // ─── Data ───
@@ -1067,6 +1070,9 @@ function MamaSquadsApp() {
               pendingJoins={pendingJoins}
               userRole={user?.role}
             />
+          )}
+          {tab === "notifications" && (
+            <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} />
           )}
           {tab === "profile" && (
             <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={uploadProfilePhoto} />
@@ -5203,13 +5209,80 @@ const gs = {
 };
 
 // ─── Bottom Nav ───
+// ─── Notifications Tab ───
+function NotificationsTab({ notifications, setNotifications, user }) {
+  return (
+    <div style={styles.tabContent}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h1 style={styles.pageTitle}>Notifications</h1>
+        {(notifications || []).some(n => !n.is_read) && (
+          <button
+            style={{ background: "none", border: "none", fontSize: 13, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", fontWeight: 600 }}
+            onClick={async () => {
+              if (user) {
+                await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id).eq('is_read', false);
+                setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+              }
+            }}
+          >
+            Mark all read
+          </button>
+        )}
+      </div>
+
+      {(!notifications || notifications.length === 0) ? (
+        <div style={{ textAlign: "center", padding: 40 }}>
+          <span style={{ fontSize: 40 }}>🔔</span>
+          <p style={{ fontSize: 16, fontWeight: 600, color: "#2D2D2D", marginTop: 12 }}>You're all caught up!</p>
+          <p style={{ fontSize: 13, color: "#888", marginTop: 6 }}>Notifications for polls, playdates, and group activity will appear here.</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {notifications.map(notif => (
+            <div
+              key={notif.id}
+              style={{
+                background: notif.is_read ? "white" : "#FAF0F2",
+                borderRadius: 12, padding: 14,
+                border: notif.is_read ? "1px solid #f0f0f0" : "1px solid #D4B5BA",
+                cursor: "pointer",
+              }}
+              onClick={async () => {
+                if (!notif.is_read && user) {
+                  await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
+                  setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
+                }
+              }}
+            >
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 22 }}>
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'new_message' ? '💬' : '🔔'}
+                </span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <strong style={{ fontSize: 13, color: "#2D2D2D" }}>{notif.title}</strong>
+                    {!notif.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#6B2C3B", flexShrink: 0 }} />}
+                  </div>
+                  <p style={{ fontSize: 12, color: "#666", marginTop: 4, lineHeight: 1.4 }}>{notif.body}</p>
+                  <p style={{ fontSize: 11, color: "#bbb", marginTop: 6 }}>{new Date(notif.created_at).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
   const tabs = [
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
     { id: "create", icon: Icons.plus, label: "Create" },
     { id: "discover", icon: Icons.search, label: "Discover" },
-    { id: "profile", icon: Icons.user, label: "Profile", badge: unreadNotifications || 0 },
+    { id: "notifications", icon: Icons.bell, label: "Alerts", badge: unreadNotifications || 0 },
+    { id: "profile", icon: Icons.user, label: "Profile" },
   ];
 
   return (
