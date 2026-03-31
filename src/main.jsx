@@ -1057,6 +1057,13 @@ function MamaSquadsApp() {
           {tab === "discover" && (
             <DiscoverTab
               user={user}
+              setUser={setUser}
+              isBetaMember={isBetaMember}
+              joinedEvents={joinedEvents}
+              joinedGroups={joinedGroups}
+              notifications={notifications}
+              setNotifications={setNotifications}
+              onUploadPhoto={uploadProfilePhoto}
               onProfileSelect={(p) => navigate("profile", p)}
               onAdminApply={() => setShowAdminApply(true)}
             />
@@ -1073,9 +1080,6 @@ function MamaSquadsApp() {
           )}
           {tab === "notifications" && (
             <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} />
-          )}
-          {tab === "profile" && (
-            <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={setTab} onShowDiscover={() => setShowDiscover(true)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={uploadProfilePhoto} />
           )}
         </div>
         <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
@@ -2532,9 +2536,10 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 }
 
 // ─── Discover Tab ───
-function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
+function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply }) {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
+  const [showMyProfile, setShowMyProfile] = useState(false);
   const [realMoms, setRealMoms] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -2582,8 +2587,37 @@ function DiscoverTab({ user, onProfileSelect, onAdminApply }) {
     return matchesSearch && matchesArea;
   });
 
+  if (showMyProfile) {
+    return <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={() => {}} onShowDiscover={() => setShowMyProfile(false)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={onUploadPhoto} onBack={() => setShowMyProfile(false)} />;
+  }
+
+  const displayName = user?.full_name || "Mom";
+  const momAge = formatAge(user?.mom_age);
+  const isFounder = user?.role === 'founder';
+  const isFoundingMember = user?.is_founding_member || isBetaMember;
+
   return (
     <div style={styles.tabContent}>
+      {/* My Profile Card */}
+      <div style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0", marginBottom: 16, cursor: "pointer" }} onClick={() => setShowMyProfile(true)}>
+        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
+          <Avatar url={user?.avatar_url} name={displayName} size={56} />
+          <div style={{ flex: 1 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <strong style={{ fontSize: 16, color: "#2D2D2D" }}>{isFounder ? '👑 ' : ''}{displayName}</strong>
+              {momAge && <span style={{ fontSize: 12, color: "#888" }}>, {momAge}</span>}
+            </div>
+            {user?.area && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{Icons.location} {user.area}</p>}
+            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+              {isFounder && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>FOUNDER</span>}
+              {!isFounder && isFoundingMember && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>FOUNDING MEMBER</span>}
+              {user?.is_verified && <span style={{ fontSize: 9, fontWeight: 700, color: "#2E7D32", background: "#E8F5E9", padding: "2px 8px", borderRadius: 50 }}>VERIFIED</span>}
+            </div>
+          </div>
+          <span style={{ color: "#ccc", fontSize: 18 }}>›</span>
+        </div>
+      </div>
+
       <h1 style={styles.pageTitle}>Discover Moms</h1>
       <div style={styles.searchBar}>
         {Icons.search}
@@ -2732,7 +2766,7 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
 }
 
 // ─── My Profile Tab ───
-function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications, onUploadPhoto }) {
+function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications, onUploadPhoto, onBack }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about", "admin-panel"
@@ -2841,7 +2875,10 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 
   return (
     <div style={styles.tabContent}>
-      <h1 style={styles.pageTitle}>My Profile</h1>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
+        {onBack && <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={onBack}>{Icons.back}</button>}
+        <h1 style={{ ...styles.pageTitle, marginBottom: 0 }}>My Profile</h1>
+      </div>
       <div style={styles.myProfileCard}>
         <div style={{ position: "relative", width: 90, height: 90, margin: "0 auto" }}>
           <div style={{ width: 80, height: 80, margin: "5px auto 0" }}>
@@ -5280,9 +5317,8 @@ function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
     { id: "create", icon: Icons.plus, label: "Create" },
-    { id: "discover", icon: Icons.search, label: "Discover" },
+    { id: "discover", icon: Icons.user, label: "Me" },
     { id: "notifications", icon: Icons.bell, label: "Alerts", badge: unreadNotifications || 0 },
-    { id: "profile", icon: Icons.user, label: "Profile" },
   ];
 
   return (
