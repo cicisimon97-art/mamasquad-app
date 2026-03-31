@@ -3304,6 +3304,8 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
           ...(isAppFounder ? [{ label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") }] : []),
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
+          { label: "Terms of Service", icon: "📄", action: () => setMenuView("terms") },
+          { label: "Privacy Policy", icon: "🔐", action: () => setMenuView("privacy-policy") },
           { label: "Sign Out", icon: "👋", action: handleSignOut },
         ].map(item => (
           <div key={item.label} style={styles.menuItem} onClick={item.action}>
@@ -3653,6 +3655,78 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
               adminAppsLoaded={adminAppsLoaded}
               setAdminAppsLoaded={setAdminAppsLoaded}
             />
+          </div>
+        </div>
+      )}
+
+      {/* ── Terms of Service ── */}
+      {menuView === "terms" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Terms of Service</h2>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: 12, color: "#888" }}>Last updated: March 2026</p>
+
+              {[
+                { title: "1. Acceptance of Terms", text: "By creating an account or using MamaSquads, you agree to these Terms of Service. If you do not agree, please do not use the app." },
+                { title: "2. Eligibility", text: "MamaSquads is exclusively for verified mothers and legal guardians. You must be at least 18 years old to create an account. All members must complete identity verification before accessing community features." },
+                { title: "3. Account Registration", text: "You agree to provide accurate, current, and complete information during registration. You are responsible for maintaining the confidentiality of your password and for all activities under your account. Notify us immediately of any unauthorized access." },
+                { title: "4. Identity Verification", text: "All members must complete our identity verification process. This may include government-issued photo ID verification, selfie verification, and parental/guardian status confirmation. Providing false information will result in permanent account termination." },
+                { title: "5. Community Standards", text: "You agree to treat all members with respect and kindness. Harassment, bullying, discrimination, hate speech, and threatening behavior are strictly prohibited and will result in immediate account termination. All interactions must prioritize the safety of children." },
+                { title: "6. Child Safety", text: "The safety of children is our highest priority. You agree to supervise your children at all playdates and events. Sharing photos of other members' children without explicit consent is prohibited. Any suspected child endangerment will be reported to authorities." },
+                { title: "7. Content & Conduct", text: "You are responsible for all content you post. No soliciting, multi-level marketing, or commercial activity is allowed without admin approval. No sharing of explicit, violent, or inappropriate content. Content that violates these terms will be removed." },
+                { title: "8. Privacy of Members", text: "You agree not to share other members' personal information, including full names, addresses, phone numbers, or photos, outside of the MamaSquads community without their explicit consent." },
+                { title: "9. Playdates & Events", text: "MamaSquads facilitates connections between parents but is not responsible for what occurs at playdates or events. Parents are solely responsible for the supervision and safety of their children at all times." },
+                { title: "10. Account Termination", text: "We reserve the right to suspend or terminate accounts that violate these terms, engage in fraudulent activity, or pose a risk to the safety of our community. Users may delete their account at any time." },
+                { title: "11. Limitation of Liability", text: "MamaSquads is provided \"as is\" without warranties of any kind. We are not liable for any damages arising from your use of the app, interactions with other members, or events organized through the platform." },
+                { title: "12. Changes to Terms", text: "We may update these terms at any time. Continued use of MamaSquads after changes constitutes acceptance of the updated terms. Material changes will be communicated via the app." },
+                { title: "13. Contact", text: "For questions about these terms, contact us at mama.squads1@gmail.com." },
+              ].map((section, i) => (
+                <div key={i}>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 4 }}>{section.title}</h4>
+                  <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6 }}>{section.text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Privacy Policy ── */}
+      {menuView === "privacy-policy" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Privacy Policy</h2>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <p style={{ fontSize: 12, color: "#888" }}>Last updated: March 2026</p>
+
+              {[
+                { title: "1. Information We Collect", text: "We collect information you provide during registration: your name, email address, date of birth, area/zip code, bio, children's names and birthdates, interests, and profile photo. We also collect identity verification documents during the verification process." },
+                { title: "2. How We Use Your Information", text: "We use your information to: create and manage your account, verify your identity, match you with nearby moms for playdates, display your profile to other verified members, send notifications about group activity and events, and improve our services." },
+                { title: "3. Information Shared with Other Members", text: "Other verified members can see: your name, area (not exact address), bio, children's ages (not names or birthdates), interests, profile photo, and verification status. Children's names and exact birthdates are never shared publicly." },
+                { title: "4. Identity Verification Data", text: "Government-issued ID and selfie photos submitted for verification are used solely for identity confirmation. This data is processed securely and is not shared with other members or third parties except as required by law." },
+                { title: "5. Data Storage & Security", text: "Your data is stored securely using industry-standard encryption provided by our database partner (Supabase). We use HTTPS for all data transmission. Access to user data is restricted to authorized personnel only." },
+                { title: "6. Children's Privacy", text: "We take children's privacy seriously. Children's names are only visible to their parent/guardian. Only ages are displayed to other members. We do not collect any information directly from children. We comply with COPPA (Children's Online Privacy Protection Act)." },
+                { title: "7. Location Data", text: "We collect your general area or zip code to match you with nearby moms. We do not collect precise GPS location data. Your exact address is never stored or shared." },
+                { title: "8. Cookies & Tracking", text: "We use essential cookies to maintain your login session. We do not use advertising cookies or sell your data to third-party advertisers." },
+                { title: "9. Third-Party Services", text: "We use the following third-party services: Supabase (database and authentication), Vercel (hosting). These services have their own privacy policies and handle data according to industry standards." },
+                { title: "10. Your Rights", text: "You have the right to: access your personal data, correct inaccurate data, delete your account and associated data, export your data, opt out of non-essential communications. To exercise these rights, contact us at mama.squads1@gmail.com." },
+                { title: "11. Data Retention", text: "We retain your account data for as long as your account is active. If you delete your account, we will delete your personal data within 30 days, except where retention is required by law." },
+                { title: "12. Changes to This Policy", text: "We may update this Privacy Policy periodically. We will notify you of material changes via the app. Continued use after changes constitutes acceptance." },
+                { title: "13. Contact Us", text: "For privacy-related questions or concerns, contact us at mama.squads1@gmail.com." },
+              ].map((section, i) => (
+                <div key={i}>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 4 }}>{section.title}</h4>
+                  <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6 }}>{section.text}</p>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
