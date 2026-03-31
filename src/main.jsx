@@ -1733,7 +1733,7 @@ function AboutScreen({ onContinue, fadeIn }) {
   const [show, setShow] = useState(false);
   useEffect(() => { setTimeout(() => setShow(true), 100); }, []);
   return (
-    <div style={{ ...styles.fullScreen, background: "#FFFBFC", overflow: "auto" }}>
+    <div style={{ ...styles.fullScreen, background: "#FFFBFC", overflow: "auto", justifyContent: "flex-start", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
       <div style={{ ...styles.aboutContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s ease" }}>
         <div style={styles.aboutHeader}>
           <span style={{ fontSize: 32 }}>💛</span>
