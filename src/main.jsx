@@ -1248,7 +1248,7 @@ function WelcomeScreen({ onContinue, fadeIn }) {
   return (
     <div style={{ ...styles.fullScreen, background: "#F3E0E3" }}>
       <div style={{ ...styles.welcomeContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(30px)", transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}>
-        <img src="/logo.png" alt="MamaSquads" style={{ width: "95%", maxWidth: 420, objectFit: "contain", marginBottom: 16 }} />
+        <img src="/logo.png" alt="MamaSquads" style={{ width: "100%", maxWidth: 500, objectFit: "contain", marginBottom: 20 }} />
         <p style={{ ...styles.welcomeSubtitle, marginTop: 0, color: "#6B2C3B" }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
         <div style={{ ...styles.welcomeFeatures, opacity: show ? 1 : 0, transition: "opacity 1s ease 0.4s" }}>
           {["Verified moms only", "ID + background checked", "Safe, trusted playdates"].map((f, i) => (
@@ -1442,8 +1442,7 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
       <div style={{ width: "100%", maxWidth: 400, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(20px)", transition: "all 0.6s ease" }}>
 
         <div style={{ textAlign: "center", marginBottom: 24 }}>
-          <img src="/logo.png" alt="MamaSquads" style={{ width: 100, height: 100, objectFit: "contain" }} />
-          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 28, fontWeight: 700, color: "#2D2D2D", marginTop: 8 }}>Join MamaSquads</h2>
+          <img src="/logo.png" alt="MamaSquads" style={{ width: "80%", maxWidth: 320, objectFit: "contain" }} />
           <p style={{ fontSize: 14, color: "#888", marginTop: 6, lineHeight: 1.5 }}>Choose how you'd like to get started</p>
         </div>
 
