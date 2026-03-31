@@ -90,19 +90,42 @@ function Avatar({ url, name, size, style: extraStyle }) {
 }
 
 // ─── Address Autocomplete ───
-function AddressInput({ value, onChange, inputStyle, placeholder }) {
+function AddressInput({ value, onChange, inputStyle, placeholder, userArea }) {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [debounceTimer, setDebounceTimer] = useState(null);
+  const [coords, setCoords] = useState(null);
+
+  // Try to get user's location for better results
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => {}
+      );
+    }
+  }, []);
 
   const search = (query) => {
     if (debounceTimer) clearTimeout(debounceTimer);
     if (query.length < 3) { setSuggestions([]); return; }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=5&addressdetails=1`);
+        // Append user's area to query for local bias
+        const localQuery = userArea ? `${query}, ${userArea}` : query;
+        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localQuery)}&countrycodes=us&limit=5&addressdetails=1`;
+        // If we have coords, use viewbox to bias results nearby (roughly 30 mile radius)
+        if (coords) {
+          const offset = 0.5; // ~30 miles
+          url += `&viewbox=${coords.lon - offset},${coords.lat + offset},${coords.lon + offset},${coords.lat - offset}&bounded=0`;
+        }
+        const res = await fetch(url);
         const data = await res.json();
-        setSuggestions(data.map(d => d.display_name));
+        // Shorten display names — remove country and state code
+        setSuggestions(data.map(d => {
+          const parts = d.display_name.split(', ');
+          return parts.slice(0, Math.min(parts.length - 1, 4)).join(', ');
+        }));
         setShowSuggestions(true);
       } catch { setSuggestions([]); }
     }, 400);
@@ -3895,7 +3918,7 @@ function CreateEventScreen({ onBack, onSubmit }) {
       <div style={styles.detailBody}>
         <div style={styles.onboardFields}>
           <input style={styles.input} placeholder="Playdate title (e.g., Park Day!)" value={title} onChange={e => setTitle(e.target.value)} />
-          <AddressInput inputStyle={styles.input} placeholder="Search for a location..." value={location} onChange={setLocation} />
+          <AddressInput inputStyle={styles.input} placeholder="Search for a location..." value={location} onChange={setLocation} userArea={user?.area} />
           <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <select style={{ ...styles.input, flex: 2 }} value={date.split('/')[0] || ''} onChange={e => { const parts = date.split('/'); setDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
@@ -4694,7 +4717,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" value={pdTitle} onChange={e => setPdTitle(e.target.value)} />
-                      <AddressInput inputStyle={gs.formInput} placeholder="Search for a location..." value={pdLocation} onChange={setPdLocation} />
+                      <AddressInput inputStyle={gs.formInput} placeholder="Search for a location..." value={pdLocation} onChange={setPdLocation} userArea={user?.area || group.area} />
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
