@@ -3016,7 +3016,11 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
   });
   const [editInterests, setEditInterests] = useState(user?.interests || []);
   const [photoToAdjust, setPhotoToAdjust] = useState(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState(null);
   const [photoZoom, setPhotoZoom] = useState(1);
+  const [photoPos, setPhotoPos] = useState({ x: 0, y: 0 });
+  const [photoDragging, setPhotoDragging] = useState(false);
+  const [photoDragStart, setPhotoDragStart] = useState({ x: 0, y: 0 });
   const [photoUploading, setPhotoUploading] = useState(false);
   const [mySchedule, setMySchedule] = useState(user?.general_availability || {});
   const [editingAvail, setEditingAvail] = useState(false);
@@ -3116,7 +3120,12 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
             <span style={{ color: "white", fontSize: 16, lineHeight: 1 }}>+</span>
             <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) setPhotoToAdjust(file);
+              if (file) {
+                setPhotoToAdjust(file);
+                setPhotoPreviewUrl(URL.createObjectURL(file));
+                setPhotoZoom(1);
+                setPhotoPos({ x: 0, y: 0 });
+              }
             }} />
           </label>
         </div>
@@ -3305,24 +3314,38 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       </div>
 
       {/* ── Photo Adjust Modal ── */}
-      {photoToAdjust && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.85)", zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+      {photoToAdjust && photoPreviewUrl && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
           <div style={{ maxWidth: 360, width: "100%", padding: 20 }}>
-            <h3 style={{ color: "white", textAlign: "center", fontSize: 18, fontWeight: 600, marginBottom: 16 }}>Adjust Your Photo</h3>
-            <div style={{ width: 200, height: 200, borderRadius: 100, overflow: "hidden", margin: "0 auto", border: "3px solid white" }}>
+            <h3 style={{ color: "white", textAlign: "center", fontSize: 18, fontWeight: 600, marginBottom: 8 }}>Adjust Your Photo</h3>
+            <p style={{ color: "#888", textAlign: "center", fontSize: 12, marginBottom: 16 }}>Drag to reposition, zoom to resize</p>
+
+            {/* Crop area */}
+            <div
+              style={{ width: 240, height: 240, borderRadius: 120, overflow: "hidden", margin: "0 auto", border: "3px solid white", position: "relative", touchAction: "none", cursor: "grab" }}
+              onMouseDown={e => { setPhotoDragging(true); setPhotoDragStart({ x: e.clientX - photoPos.x, y: e.clientY - photoPos.y }); }}
+              onMouseMove={e => { if (photoDragging) setPhotoPos({ x: e.clientX - photoDragStart.x, y: e.clientY - photoDragStart.y }); }}
+              onMouseUp={() => setPhotoDragging(false)}
+              onMouseLeave={() => setPhotoDragging(false)}
+              onTouchStart={e => { const t = e.touches[0]; setPhotoDragging(true); setPhotoDragStart({ x: t.clientX - photoPos.x, y: t.clientY - photoPos.y }); }}
+              onTouchMove={e => { if (photoDragging) { const t = e.touches[0]; setPhotoPos({ x: t.clientX - photoDragStart.x, y: t.clientY - photoDragStart.y }); } }}
+              onTouchEnd={() => setPhotoDragging(false)}
+            >
               <img
-                src={URL.createObjectURL(photoToAdjust)}
+                src={photoPreviewUrl}
                 alt="Preview"
-                style={{ width: "100%", height: "100%", objectFit: "cover", transform: `scale(${photoZoom})`, transition: "transform 0.1s ease" }}
+                draggable={false}
+                style={{ position: "absolute", top: "50%", left: "50%", minWidth: "100%", minHeight: "100%", objectFit: "cover", transform: `translate(calc(-50% + ${photoPos.x}px), calc(-50% + ${photoPos.y}px)) scale(${photoZoom})`, pointerEvents: "none" }}
               />
             </div>
+
             <div style={{ marginTop: 20 }}>
               <p style={{ color: "#aaa", fontSize: 12, textAlign: "center", marginBottom: 8 }}>Zoom</p>
               <input
                 type="range"
                 min="1"
                 max="3"
-                step="0.1"
+                step="0.05"
                 value={photoZoom}
                 onChange={e => setPhotoZoom(parseFloat(e.target.value))}
                 style={{ width: "100%", accentColor: "#FF6B8A" }}
@@ -3331,7 +3354,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
               <button
                 style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "none", border: "1px solid #666", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                onClick={() => { setPhotoToAdjust(null); setPhotoZoom(1); }}
+                onClick={() => { setPhotoToAdjust(null); setPhotoPreviewUrl(null); setPhotoZoom(1); setPhotoPos({ x: 0, y: 0 }); }}
               >
                 Cancel
               </button>
@@ -3340,10 +3363,43 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 disabled={photoUploading}
                 onClick={async () => {
                   setPhotoUploading(true);
-                  if (onUploadPhoto) await onUploadPhoto(photoToAdjust);
-                  setPhotoUploading(false);
-                  setPhotoToAdjust(null);
-                  setPhotoZoom(1);
+                  // Crop using canvas
+                  const canvas = document.createElement('canvas');
+                  const size = 400;
+                  canvas.width = size;
+                  canvas.height = size;
+                  const ctx = canvas.getContext('2d');
+                  const img = new Image();
+                  img.crossOrigin = 'anonymous';
+                  img.src = photoPreviewUrl;
+                  await new Promise(resolve => { img.onload = resolve; });
+
+                  // Calculate crop
+                  const scale = photoZoom;
+                  const imgAspect = img.width / img.height;
+                  let drawW, drawH;
+                  if (imgAspect > 1) { drawH = size / scale; drawW = drawH * imgAspect; }
+                  else { drawW = size / scale; drawH = drawW / imgAspect; }
+                  const offsetX = (size - drawW * scale) / 2 + photoPos.x * (size / 240) * scale;
+                  const offsetY = (size - drawH * scale) / 2 + photoPos.y * (size / 240) * scale;
+
+                  // Clip to circle
+                  ctx.beginPath();
+                  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                  ctx.clip();
+                  ctx.drawImage(img, offsetX, offsetY, drawW * scale, drawH * scale);
+
+                  canvas.toBlob(async (blob) => {
+                    if (blob && onUploadPhoto) {
+                      const file = new File([blob], 'avatar.png', { type: 'image/png' });
+                      await onUploadPhoto(file);
+                    }
+                    setPhotoUploading(false);
+                    setPhotoToAdjust(null);
+                    setPhotoPreviewUrl(null);
+                    setPhotoZoom(1);
+                    setPhotoPos({ x: 0, y: 0 });
+                  }, 'image/png', 0.9);
                 }}
               >
                 {photoUploading ? "Uploading..." : "Save Photo"}
