@@ -89,6 +89,53 @@ function Avatar({ url, name, size, style: extraStyle }) {
   );
 }
 
+// ─── Address Autocomplete ───
+function AddressInput({ value, onChange, inputStyle, placeholder }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [debounceTimer, setDebounceTimer] = useState(null);
+
+  const search = (query) => {
+    if (debounceTimer) clearTimeout(debounceTimer);
+    if (query.length < 3) { setSuggestions([]); return; }
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=5&addressdetails=1`);
+        const data = await res.json();
+        setSuggestions(data.map(d => d.display_name));
+        setShowSuggestions(true);
+      } catch { setSuggestions([]); }
+    }, 400);
+    setDebounceTimer(timer);
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        style={inputStyle}
+        placeholder={placeholder || "Search for an address..."}
+        value={value}
+        onChange={e => { onChange(e.target.value); search(e.target.value); }}
+        onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
+        onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+      />
+      {showSuggestions && suggestions.length > 0 && (
+        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, background: "white", borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)", border: "1px solid #E8E8E8", zIndex: 50, maxHeight: 200, overflow: "auto", marginTop: 4 }}>
+          {suggestions.map((s, i) => (
+            <div
+              key={i}
+              style={{ padding: "10px 14px", fontSize: 13, color: "#2D2D2D", cursor: "pointer", borderBottom: i < suggestions.length - 1 ? "1px solid #f5f5f5" : "none" }}
+              onMouseDown={() => { onChange(s); setShowSuggestions(false); }}
+            >
+              📍 {s}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Icons ───
 const Icons = {
   home: (
@@ -3796,7 +3843,7 @@ function CreateEventScreen({ onBack, onSubmit }) {
       <div style={styles.detailBody}>
         <div style={styles.onboardFields}>
           <input style={styles.input} placeholder="Playdate title (e.g., Park Day!)" value={title} onChange={e => setTitle(e.target.value)} />
-          <input style={styles.input} placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
+          <AddressInput inputStyle={styles.input} placeholder="Search for a location..." value={location} onChange={setLocation} />
           <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             <select style={{ ...styles.input, flex: 2 }} value={date.split('/')[0] || ''} onChange={e => { const parts = date.split('/'); setDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
@@ -4595,7 +4642,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" value={pdTitle} onChange={e => setPdTitle(e.target.value)} />
-                      <input style={gs.formInput} placeholder="Location" value={pdLocation} onChange={e => setPdLocation(e.target.value)} />
+                      <AddressInput inputStyle={gs.formInput} placeholder="Search for a location..." value={pdLocation} onChange={setPdLocation} />
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
                       <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
