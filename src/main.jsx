@@ -1451,19 +1451,19 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
         <div
           style={{
             ...ags.optionCard,
-            border: mode === "invite" ? "2px solid #4CAF50" : "2px solid #f0f0f0",
-            background: mode === "invite" ? "#F8FFF8" : "white",
+            border: mode === "invite" ? "2px solid #6B2C3B" : "2px solid #f0f0f0",
+            background: mode === "invite" ? "#FAF0F2" : "white",
           }}
           onClick={() => setMode("invite")}
         >
           <div style={ags.optionHeader}>
-            <div style={{ ...ags.optionIcon, background: "#E8F5E9" }}>⭐</div>
+            <div style={{ ...ags.optionIcon, background: "#FAF0F2" }}>⭐</div>
             <div style={{ flex: 1 }}>
               <h3 style={ags.optionTitle}>I Have an Invite Code</h3>
               <p style={ags.optionDesc}>For founding members personally invited by CiCi</p>
             </div>
-            <div style={{ ...ags.radio, borderColor: mode === "invite" ? "#4CAF50" : "#ddd" }}>
-              {mode === "invite" && <div style={{ ...ags.radioDot, background: "#4CAF50" }} />}
+            <div style={{ ...ags.radio, borderColor: mode === "invite" ? "#6B2C3B" : "#ddd" }}>
+              {mode === "invite" && <div style={{ ...ags.radioDot, background: "#6B2C3B" }} />}
             </div>
           </div>
           {mode === "invite" && (
@@ -1476,8 +1476,8 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
                 <input
                   style={{
                     ...styles.input,
-                    borderColor: codeError ? "#E53935" : codeSuccess ? "#4CAF50" : "#E8E8E8",
-                    background: codeSuccess ? "#F1F8E9" : "white",
+                    borderColor: codeError ? "#E53935" : codeSuccess ? "#6B2C3B" : "#E8E8E8",
+                    background: codeSuccess ? "#FAF0F2" : "white",
                     textTransform: "uppercase",
                     letterSpacing: 2,
                     textAlign: "center",
@@ -1495,12 +1495,12 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
                 {codeSuccess && (
                   <div style={{ textAlign: "center", padding: 8 }}>
                     <span style={{ fontSize: 24 }}>🎉</span>
-                    <p style={{ fontSize: 14, fontWeight: 600, color: "#2E7D32", marginTop: 4 }}>Welcome, Founding Mom!</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#6B2C3B", marginTop: 4 }}>Welcome, Founding Mom!</p>
                   </div>
                 )}
                 {!codeSuccess && (
                   <button
-                    style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #4CAF50, #388E3C)", boxShadow: "0 4px 16px rgba(76,175,80,0.3)", marginTop: 4, opacity: checking ? 0.6 : 1 }}
+                    style={{ ...styles.primaryBtn, background: "#6B2C3B", boxShadow: "0 4px 16px rgba(107,44,59,0.3)", marginTop: 4, opacity: checking ? 0.6 : 1 }}
                     onClick={handleCodeSubmit}
                     disabled={checking}
                   >
@@ -1508,8 +1508,8 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
                   </button>
                 )}
               </div>
-              <div style={{ marginTop: 12, padding: 12, background: "#F1F8E9", borderRadius: 10 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#2E7D32", marginBottom: 6 }}>Founding member perks:</p>
+              <div style={{ marginTop: 12, padding: 12, background: "#FAF0F2", borderRadius: 10 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#6B2C3B", marginBottom: 6 }}>Founding member perks:</p>
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {[
                     "Skip the verification fee (free access!)",
@@ -1530,20 +1530,20 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
         <div
           style={{
             ...ags.optionCard,
-            border: mode === "public" ? "2px solid #FF6B8A" : "2px solid #f0f0f0",
-            background: mode === "public" ? "#FFF5F7" : "white",
+            border: mode === "public" ? "2px solid #6B2C3B" : "2px solid #f0f0f0",
+            background: mode === "public" ? "#FAF0F2" : "white",
             marginTop: 12,
           }}
           onClick={() => setMode("public")}
         >
           <div style={ags.optionHeader}>
-            <div style={{ ...ags.optionIcon, background: "#FFF0F3" }}>🛡️</div>
+            <div style={{ ...ags.optionIcon, background: "#FAF0F2" }}>🛡️</div>
             <div style={{ flex: 1 }}>
               <h3 style={ags.optionTitle}>Sign Up as a New Mom</h3>
               <p style={ags.optionDesc}>Full verification to keep our community safe</p>
             </div>
-            <div style={{ ...ags.radio, borderColor: mode === "public" ? "#FF6B8A" : "#ddd" }}>
-              {mode === "public" && <div style={{ ...ags.radioDot, background: "#FF6B8A" }} />}
+            <div style={{ ...ags.radio, borderColor: mode === "public" ? "#6B2C3B" : "#ddd" }}>
+              {mode === "public" && <div style={{ ...ags.radioDot, background: "#6B2C3B" }} />}
             </div>
           </div>
           {mode === "public" && (
@@ -1567,7 +1567,7 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
                 <span style={{ fontSize: 14 }}>💡</span>
                 <p style={{ fontSize: 11, color: "#888", lineHeight: 1.3 }}>One-time $9.99 safety verification fee. Background checks will be available soon as an optional premium upgrade.</p>
               </div>
-              <button style={{ ...styles.primaryBtn, marginTop: 12 }} onClick={onPublicSignup}>
+              <button style={{ ...styles.primaryBtn, marginTop: 12, background: "#6B2C3B", boxShadow: "0 4px 16px rgba(107,44,59,0.3)" }} onClick={onPublicSignup}>
                 Continue to Sign Up
               </button>
             </div>
@@ -3133,7 +3133,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
         )}
         {!isAppFounder && isFoundingMember && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 8 }}>
-            <span style={{ fontSize: 10, fontWeight: 700, color: "#FF8F00", background: "#FFF8E1", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>⭐ FOUNDING MEMBER</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5 }}>⭐ FOUNDING MEMBER</span>
           </div>
         )}
         <h2 style={styles.myName}>{momBdayToday ? '🎂 ' : ''}{isAppFounder ? '👑 ' : ''}{displayName}{momAgeDisplay ? `, ${momAgeDisplay}` : ''}</h2>
