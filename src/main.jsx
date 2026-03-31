@@ -274,6 +274,58 @@ function MamaSquadsApp() {
     }, 150);
   }, []);
 
+  // ─── Auto-cleanup old data on mount ───
+  useEffect(() => {
+    const cleanup = async () => {
+      const now = new Date();
+
+      // Delete events older than 7 days past their date
+      const { data: oldEvents } = await supabase
+        .from('events')
+        .select('id, event_date, created_at');
+      if (oldEvents) {
+        for (const evt of oldEvents) {
+          // Parse event_date (could be "March/15/2026" or similar)
+          let eventDate = null;
+          if (evt.event_date) {
+            const parts = evt.event_date.split('/');
+            if (parts.length === 3) {
+              const monthIdx = MONTHS.indexOf(parts[0]);
+              if (monthIdx >= 0) eventDate = new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
+            }
+          }
+          // Fall back to created_at if date can't be parsed
+          if (!eventDate) eventDate = new Date(evt.created_at);
+
+          const daysSince = (now - eventDate) / (1000 * 60 * 60 * 24);
+          if (daysSince > 7) {
+            await supabase.from('comments').delete().eq('event_id', evt.id);
+            await supabase.from('event_rsvps').delete().eq('event_id', evt.id);
+            await supabase.from('events').delete().eq('id', evt.id);
+          }
+        }
+      }
+
+      // Delete polls (meetup_proposals) older than 14 days
+      const fourteenDaysAgo = new Date(now - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: oldPolls } = await supabase
+        .from('meetup_proposals')
+        .select('id')
+        .lt('created_at', fourteenDaysAgo);
+      if (oldPolls) {
+        for (const poll of oldPolls) {
+          await supabase.from('votes').delete().eq('proposal_id', poll.id);
+          await supabase.from('meetup_proposals').delete().eq('id', poll.id);
+        }
+      }
+
+      // Delete read notifications older than 30 days
+      const thirtyDaysAgo = new Date(now - 30 * 24 * 60 * 60 * 1000).toISOString();
+      await supabase.from('notifications').delete().eq('is_read', true).lt('created_at', thirtyDaysAgo);
+    };
+    cleanup();
+  }, []);
+
   // ─── Session restore on mount ───
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
