@@ -197,7 +197,6 @@ function MamaSquadsApp() {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
   const [showCreateEvent, setShowCreateEvent] = useState(false);
-  const [showPoll, setShowPoll] = useState(false);
   const [showAdminApply, setShowAdminApply] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -209,7 +208,6 @@ function MamaSquadsApp() {
   const [pendingJoins, setPendingJoins] = useState([]);
   const [onboardStep, setOnboardStep] = useState(0);
   const [newComment, setNewComment] = useState("");
-  const [votedPolls, setVotedPolls] = useState({});
   const [connections, setConnections] = useState([]);
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
@@ -994,7 +992,6 @@ function MamaSquadsApp() {
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
     if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
-    if (showPoll) return <PollScreen polls={[]} votedPolls={votedPolls} setVotedPolls={setVotedPolls} onBack={() => setShowPoll(false)} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
@@ -2266,7 +2263,6 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
           <p style={styles.greeting}>Good morning! ☀️</p>
           <h1 style={styles.pageTitle}>This Week's Playdates</h1>
         </div>
-        <button style={styles.pollBtn} onClick={onPoll}>{Icons.vote} Polls</button>
       </div>
 
       {/* Feed filter tabs */}
@@ -3798,207 +3794,168 @@ function CreateEventScreen({ onBack, onSubmit }) {
   );
 }
 
-// ─── Poll Screen ───
-function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
+// ─── Group Polls Tab ───
+function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVote }) {
+  const [polls, setPolls] = useState([]);
+  const [loaded, setLoaded] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
-  const [question, setQuestion] = useState("");
-  const [options, setOptions] = useState(["", "", ""]);
-  const [timeOptions, setTimeOptions] = useState([{ day: "", time: "" }, { day: "", time: "" }]);
-  const [locationOptions, setLocationOptions] = useState(["", ""]);
-  const [createdPolls, setCreatedPolls] = useState([]);
-
-  const addOption = () => setOptions(prev => [...prev, ""]);
-  const updateOption = (i, val) => setOptions(prev => prev.map((o, j) => j === i ? val : o));
-  const removeOption = (i) => setOptions(prev => prev.filter((_, j) => j !== i));
+  const [pollTitle, setPollTitle] = useState("");
+  const [pollDay, setPollDay] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [myVotes, setMyVotes] = useState({});
 
   const TIMES = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"];
-  const POLL_DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
-  const handleCreate = () => {
-    if (!question.trim()) return;
-    const validOptions = options.filter(o => o.trim());
-    const validTimes = timeOptions.filter(t => t.day && t.time).map(t => `${t.day} ${t.time}`);
-    const validLocations = locationOptions.filter(l => l.trim());
+  useEffect(() => {
+    if (loaded || !loadMeetupProposals || !group.fromSupabase) return;
+    loadMeetupProposals(group.id).then(data => {
+      setPolls(data);
+      if (user && data.length > 0) {
+        const votes = {};
+        data.forEach(p => {
+          (p.votes || []).forEach(v => {
+            if (v.user_id === user.id) votes[p.id] = v.option_index;
+          });
+        });
+        setMyVotes(votes);
+      }
+      setLoaded(true);
+    });
+  }, [loaded, group.id]);
 
-    const allOpts = [];
-    if (validOptions.length > 0) allOpts.push(...validOptions.map(o => ({ text: o.trim(), votes: 0, type: "option" })));
-    if (validTimes.length > 0) allOpts.push(...validTimes.map(t => ({ text: t, votes: 0, type: "time" })));
-    if (validLocations.length > 0) allOpts.push(...validLocations.map(l => ({ text: l.trim(), votes: 0, type: "location" })));
-
-    if (allOpts.length < 2) return;
-
-    const newPoll = {
-      id: Date.now(),
-      question: question.trim(),
-      group: "Your Poll",
-      options: allOpts,
-      totalVoters: 0,
-      endsIn: "7 days",
-      hasTimeOptions: validTimes.length > 0,
-      hasLocationOptions: validLocations.length > 0,
-    };
-    setCreatedPolls(prev => [newPoll, ...prev]);
-    setQuestion("");
-    setOptions(["", "", ""]);
-    setTimeOptions([{ day: "", time: "" }, { day: "", time: "" }]);
-    setLocationOptions(["", ""]);
+  const handleCreate = async () => {
+    if (!pollTitle.trim() || !pollDay) return;
+    setCreating(true);
+    if (onProposeMeetup) {
+      const result = await onProposeMeetup(group.id, {
+        title: pollTitle.trim(),
+        description: `What time works best on ${pollDay}?`,
+        timeOptions: TIMES.slice(),
+        locationOptions: [],
+      });
+      if (result.data) setPolls(prev => [{ ...result.data, votes: [] }, ...prev]);
+    }
+    setCreating(false);
+    setPollTitle(""); setPollDay("");
     setShowCreate(false);
   };
 
-  const allPolls = [...createdPolls, ...polls];
-
   return (
-    <div style={styles.detailScreen}>
-      <div style={styles.detailHeader}>
-        <button style={styles.backBtn} onClick={onBack}>{Icons.back}</button>
-        <h2 style={styles.detailTitle}>Group Polls</h2>
-        <div style={{ width: 40 }} />
-      </div>
-      <div style={styles.detailBody}>
-        <button style={{ ...styles.secondaryBtn, width: "100%" }} onClick={() => setShowCreate(!showCreate)}>
-          {showCreate ? "Cancel" : "＋ Create New Poll"}
-        </button>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <button
+        style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+        onClick={() => setShowCreate(!showCreate)}
+      >
+        {showCreate ? "Cancel" : "+ Create a Poll"}
+      </button>
 
-        {showCreate && (
-          <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
-            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 12 }}>New Poll</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <input
-                style={styles.input}
-                placeholder="Ask a question... (e.g., When should we meet?)"
-                value={question}
-                onChange={e => setQuestion(e.target.value)}
-              />
-
-              {/* Custom Options */}
-              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Custom Options (optional)</p>
-              {options.map((opt, i) => (
-                <div key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    style={{ ...styles.input, flex: 1 }}
-                    placeholder={`Option ${i + 1}`}
-                    value={opt}
-                    onChange={e => updateOption(i, e.target.value)}
-                  />
-                  {options.length > 2 && (
-                    <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => removeOption(i)}>✕</button>
-                  )}
-                </div>
+      {showCreate && (
+        <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 12 }}>New Time Poll</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <input
+              style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D" }}
+              placeholder="What's the occasion? (e.g., Park playdate)"
+              value={pollTitle}
+              onChange={e => setPollTitle(e.target.value)}
+            />
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Pick a day</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => (
+                <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: pollDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: pollDay === d ? "#FAF0F2" : "white", color: pollDay === d ? "#6B2C3B" : "#666", fontWeight: pollDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setPollDay(d)}>{d}</button>
               ))}
-              {options.length < 6 && (
-                <button style={{ ...styles.addChildBtn, fontSize: 13 }} onClick={addOption}>+ Add option</button>
-              )}
-
-              {/* Time Options */}
-              <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 4 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 }}>🕐 Time Options (let members vote on when)</p>
-                {timeOptions.map((t, i) => (
-                  <div key={i} style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 8 }}>
-                    <select style={{ ...styles.input, flex: 1 }} value={t.day} onChange={e => setTimeOptions(prev => prev.map((o, j) => j === i ? { ...o, day: e.target.value } : o))}>
-                      <option value="">Day</option>
-                      {POLL_DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <select style={{ ...styles.input, flex: 1 }} value={t.time} onChange={e => setTimeOptions(prev => prev.map((o, j) => j === i ? { ...o, time: e.target.value } : o))}>
-                      <option value="">Time</option>
-                      {TIMES.map(tm => <option key={tm} value={tm}>{tm}</option>)}
-                    </select>
-                    {timeOptions.length > 2 && (
-                      <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setTimeOptions(prev => prev.filter((_, j) => j !== i))}>✕</button>
-                    )}
-                  </div>
-                ))}
-                {timeOptions.length < 5 && (
-                  <button style={{ ...styles.addChildBtn, fontSize: 12 }} onClick={() => setTimeOptions(prev => [...prev, { day: "", time: "" }])}>+ Add time option</button>
-                )}
-              </div>
-
-              {/* Location Options */}
-              <div style={{ borderTop: "1px solid #f0f0f0", paddingTop: 12, marginTop: 4 }}>
-                <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 }}>📍 Location Options (let members vote on where)</p>
-                {locationOptions.map((loc, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
-                    <input
-                      style={{ ...styles.input, flex: 1 }}
-                      placeholder={`Location ${i + 1} (e.g., Sunflower Park)`}
-                      value={loc}
-                      onChange={e => setLocationOptions(prev => prev.map((o, j) => j === i ? e.target.value : o))}
-                    />
-                    {locationOptions.length > 2 && (
-                      <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setLocationOptions(prev => prev.filter((_, j) => j !== i))}>✕</button>
-                    )}
-                  </div>
-                ))}
-                {locationOptions.length < 5 && (
-                  <button style={{ ...styles.addChildBtn, fontSize: 12 }} onClick={() => setLocationOptions(prev => [...prev, ""])}>+ Add location option</button>
-                )}
-              </div>
-
-              <button style={{ ...styles.primaryBtn, marginTop: 8 }} onClick={handleCreate}>
-                Post Poll
-              </button>
             </div>
+            <p style={{ fontSize: 12, color: "#888" }}>Members will vote for the time that works best on {pollDay || "the selected day"}.</p>
+            <button
+              style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: creating || !pollTitle.trim() || !pollDay ? 0.5 : 1 }}
+              onClick={handleCreate}
+              disabled={creating || !pollTitle.trim() || !pollDay}
+            >
+              {creating ? "Creating..." : "Post Poll"}
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {allPolls.map(poll => {
-          const voted = votedPolls[poll.id];
-          const timeOpts = poll.options.filter(o => o.type === "time");
-          const locOpts = poll.options.filter(o => o.type === "location");
-          const regularOpts = poll.options.filter(o => !o.type || o.type === "option");
-          const maxVotes = Math.max(...poll.options.map(o => o.votes));
+      {!loaded && <p style={{ fontSize: 14, color: "#888", textAlign: "center", padding: 20 }}>Loading polls...</p>}
 
-          const renderOption = (opt, i, globalIdx) => {
-            const totalVotes = poll.totalVoters || poll.options.reduce((s, o) => s + o.votes, 0) || 1;
-            const pct = Math.round((opt.votes / totalVotes) * 100);
-            const isWinning = opt.votes === maxVotes && opt.votes > 0;
-            return (
-              <button
-                key={globalIdx}
-                style={{ ...styles.pollOption, ...(voted === globalIdx ? styles.pollOptionVoted : {}) }}
-                onClick={() => setVotedPolls(v => ({ ...v, [poll.id]: globalIdx }))}
-              >
-                <div style={{ ...styles.pollBar, width: `${pct}%`, background: isWinning ? "#6B2C3B22" : "#f0f0f0" }} />
-                <span style={styles.pollOptText}>{opt.text}</span>
-                <span style={styles.pollPct}>{pct}%</span>
-                {voted === globalIdx && <span style={styles.pollCheck}>{Icons.check}</span>}
-              </button>
-            );
-          };
+      {loaded && polls.length === 0 && !showCreate && (
+        <div style={{ textAlign: "center", padding: 24 }}>
+          <span style={{ fontSize: 32 }}>🗳️</span>
+          <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No polls yet. Create one to find the best time to meet!</p>
+        </div>
+      )}
 
-          return (
-            <div key={poll.id} style={styles.pollCard}>
-              <p style={styles.pollGroup}>{poll.group}</p>
-              <h3 style={styles.pollQuestion}>{poll.question}</h3>
+      {polls.map(poll => {
+        const voteCounts = {};
+        (poll.votes || []).forEach(v => { if (v.vote_type === 'time') voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1; });
+        const totalVotes = Object.values(voteCounts).reduce((s, c) => s + c, 0);
+        const myVote = myVotes[poll.id];
+        const topTimes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]).map(([time, votes]) => ({ time, votes }));
 
-              {regularOpts.length > 0 && (
-                <div style={styles.pollOptions}>
-                  {regularOpts.map((opt, i) => renderOption(opt, i, poll.options.indexOf(opt)))}
-                </div>
-              )}
-
-              {timeOpts.length > 0 && (
-                <div style={{ marginTop: regularOpts.length > 0 ? 10 : 0 }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6 }}>🕐 When?</p>
-                  <div style={styles.pollOptions}>
-                    {timeOpts.map((opt, i) => renderOption(opt, i, poll.options.indexOf(opt)))}
-                  </div>
-                </div>
-              )}
-
-              {locOpts.length > 0 && (
-                <div style={{ marginTop: 10 }}>
-                  <p style={{ fontSize: 12, fontWeight: 600, color: "#555", marginBottom: 6 }}>📍 Where?</p>
-                  <div style={styles.pollOptions}>
-                    {locOpts.map((opt, i) => renderOption(opt, i, poll.options.indexOf(opt)))}
-                  </div>
-                </div>
-              )}
-
-              <p style={styles.pollMeta}>{poll.totalVoters || 0} votes · Ends in {poll.endsIn}</p>
+        return (
+          <div key={poll.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50 }}>🗳️ Poll</span>
+              <span style={{ fontSize: 11, color: "#bbb" }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
             </div>
-          );
-        })}
-      </div>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 2 }}>{poll.title}</h3>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>{poll.description}</p>
+
+            {topTimes.length > 0 && (
+              <div style={{ background: "#E8F5E9", borderRadius: 10, padding: 10, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 18 }}>🏆</span>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#2E7D32" }}>Leading: {topTimes[0].time}</p>
+                  <p style={{ fontSize: 11, color: "#888" }}>{topTimes[0].votes} vote{topTimes[0].votes !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+            )}
+
+            {myVote ? (
+              <div style={{ background: "#FAF0F2", borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                <p style={{ fontSize: 13, color: "#6B2C3B" }}>✓ You voted for <strong>{myVote}</strong></p>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>What time works for you?</p>
+                <select
+                  style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D", background: "white" }}
+                  value=""
+                  onChange={async (e) => {
+                    const time = e.target.value;
+                    if (!time || !onVote) return;
+                    await onVote(poll.id, 'time', time);
+                    setMyVotes(prev => ({ ...prev, [poll.id]: time }));
+                    setPolls(prev => prev.map(p => {
+                      if (p.id !== poll.id) return p;
+                      return { ...p, votes: [...(p.votes || []), { user_id: user?.id, vote_type: 'time', option_index: time }] };
+                    }));
+                  }}
+                >
+                  <option value="">Select a time...</option>
+                  {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            )}
+
+            {topTimes.length > 0 && (
+              <div style={{ marginTop: 10 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 6 }}>Results</p>
+                {topTimes.slice(0, 5).map((t, j) => (
+                  <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                    <div style={{ flex: 1, height: 24, borderRadius: 6, background: "#f5f5f5", overflow: "hidden", position: "relative" }}>
+                      <div style={{ height: "100%", background: j === 0 ? "#6B2C3B" : "#D4B5BA", borderRadius: 6, width: `${totalVotes > 0 ? (t.votes / totalVotes) * 100 : 0}%`, transition: "width 0.3s ease" }} />
+                      <span style={{ position: "absolute", left: 8, top: 4, fontSize: 11, fontWeight: 600, color: j === 0 ? "white" : "#666" }}>{t.time}</span>
+                    </div>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "#666", width: 20, textAlign: "right" }}>{t.votes}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -4546,7 +4503,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #f0f0f0", paddingBottom: 0 }}>
           {[
             ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
-            ...(isMember ? [{ id: "meetups", label: "Meetups" }] : []),
+            ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
             ...(isMember ? [{ id: "avail", label: "Availability" }] : []),
             { id: "about", label: "About" },
             { id: "rules", label: "Rules" },
@@ -4718,136 +4675,9 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
-        {/* ── MEETUPS TAB ── */}
-        {activeSection === "meetups" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {isMember ? (
-              <>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <h3 style={styles.sectionTitle}>Upcoming Meetups</h3>
-                  <button style={{ ...styles.secondaryBtn, padding: "8px 14px", fontSize: 12 }} onClick={() => { setActiveSection("feed"); setShowProposeMeetup(true); }}>+ Propose</button>
-                </div>
-                {/* Supabase meetup proposals */}
-                {group.fromSupabase && meetups.map((proposal, i) => {
-                  const timeVotes = {};
-                  const locVotes = {};
-                  (proposal.votes || []).forEach(v => {
-                    if (v.vote_type === 'time') timeVotes[v.option_index] = (timeVotes[v.option_index] || 0) + 1;
-                    if (v.vote_type === 'location') locVotes[v.option_index] = (locVotes[v.option_index] || 0) + 1;
-                  });
-                  const myTimeVote = myVotes[`${proposal.id}_time`];
-                  const myLocVote = myVotes[`${proposal.id}_location`];
-
-                  return (
-                    <div key={proposal.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0", animation: `fadeSlideUp 0.4s ease both ${i * 0.05}s` }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ ...styles.ageBadge, background: proposal.status === 'confirmed' ? "#E8F5E9" : "#FFF3E0", color: proposal.status === 'confirmed' ? "#2E7D32" : "#E65100" }}>
-                          {proposal.status === 'confirmed' ? "✓ Confirmed" : "🗳 Voting"}
-                        </span>
-                        <span style={{ fontSize: 11, color: "#bbb" }}>{new Date(proposal.created_at).toLocaleDateString()}</span>
-                      </div>
-                      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 4 }}>{proposal.title}</h3>
-                      {proposal.description && <p style={{ fontSize: 13, color: "#666", marginBottom: 10 }}>{proposal.description}</p>}
-                      <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>by {proposal.users?.full_name || 'A mom'}</p>
-
-                      {/* Time voting */}
-                      {(proposal.time_options || []).length > 0 && (
-                        <div style={{ marginTop: 10 }}>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>🕐 Vote for time:</p>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            {proposal.time_options.map((opt, j) => {
-                              const votes = timeVotes[opt] || 0;
-                              const isMyVote = myTimeVote === opt;
-                              return (
-                                <button
-                                  key={j}
-                                  style={{
-                                    padding: "8px 12px", borderRadius: 8, fontSize: 13, cursor: "pointer",
-                                    border: isMyVote ? `2px solid ${group.color}` : "1.5px solid #E8E8E8",
-                                    background: isMyVote ? `${group.color}15` : "white",
-                                    color: "#2D2D2D", fontFamily: "'DM Sans', sans-serif",
-                                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                                  }}
-                                  onClick={async () => {
-                                    if (onVote) {
-                                      await onVote(proposal.id, 'time', opt);
-                                      setMyVotes(prev => ({ ...prev, [`${proposal.id}_time`]: opt }));
-                                      // Update local vote counts
-                                      setMeetups(prev => prev.map(p => {
-                                        if (p.id !== proposal.id) return p;
-                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'time'));
-                                        newVotes.push({ user_id: user?.id, vote_type: 'time', option_index: opt });
-                                        return { ...p, votes: newVotes };
-                                      }));
-                                    }
-                                  }}
-                                >
-                                  <span>{opt}</span>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: group.color }}>{votes} {votes === 1 ? 'vote' : 'votes'}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Location voting */}
-                      {(proposal.location_options || []).length > 0 && (
-                        <div style={{ marginTop: 10 }}>
-                          <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>📍 Vote for location:</p>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            {proposal.location_options.map((opt, j) => {
-                              const votes = locVotes[opt] || 0;
-                              const isMyVote = myLocVote === opt;
-                              return (
-                                <button
-                                  key={j}
-                                  style={{
-                                    padding: "8px 12px", borderRadius: 8, fontSize: 13, cursor: "pointer",
-                                    border: isMyVote ? `2px solid ${group.color}` : "1.5px solid #E8E8E8",
-                                    background: isMyVote ? `${group.color}15` : "white",
-                                    color: "#2D2D2D", fontFamily: "'DM Sans', sans-serif",
-                                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                                  }}
-                                  onClick={async () => {
-                                    if (onVote) {
-                                      await onVote(proposal.id, 'location', opt);
-                                      setMyVotes(prev => ({ ...prev, [`${proposal.id}_location`]: opt }));
-                                      setMeetups(prev => prev.map(p => {
-                                        if (p.id !== proposal.id) return p;
-                                        const newVotes = (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'location'));
-                                        newVotes.push({ user_id: user?.id, vote_type: 'location', option_index: opt });
-                                        return { ...p, votes: newVotes };
-                                      }));
-                                    }
-                                  }}
-                                >
-                                  <span>{opt}</span>
-                                  <span style={{ fontSize: 12, fontWeight: 600, color: group.color }}>{votes} {votes === 1 ? 'vote' : 'votes'}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                {meetups.length === 0 && (
-                  <div style={{ textAlign: "center", padding: 24 }}>
-                    <span style={{ fontSize: 32 }}>📍</span>
-                    <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No meetups proposed yet. Be the first!</p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div style={{ background: "#F5F5F5", borderRadius: 12, padding: 24, textAlign: "center" }}>
-                <span style={{ fontSize: 36 }}>🔒</span>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D", marginTop: 10 }}>Members Only</p>
-                <p style={{ fontSize: 13, color: "#888", marginTop: 4 }}>Join this group to see and propose meetups.</p>
-              </div>
-            )}
-          </div>
+        {/* ── POLLS TAB ── */}
+        {activeSection === "polls" && isMember && (
+          <GroupPollsTab group={group} user={user} onProposeMeetup={onProposeMeetup} loadMeetupProposals={loadMeetupProposals} onVote={onVote} />
         )}
 
         {/* ── AVAILABILITY TAB ── */}
