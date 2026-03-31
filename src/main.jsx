@@ -947,7 +947,7 @@ function MamaSquadsApp() {
   if (loading) {
     return (
       <div style={{ ...styles.fullScreen, background: "#FFFBFC", justifyContent: "center", alignItems: "center" }}>
-        <img src="/logo.png" alt="MamaSquads" style={{ width: 80, height: 80, objectFit: "contain" }} />
+        <img src="/logo.png" alt="MamaSquads" style={{ width: "80%", maxWidth: 360, objectFit: "contain" }} />
         <p style={{ marginTop: 16, fontSize: 14, color: "#888" }}>Loading...</p>
       </div>
     );
