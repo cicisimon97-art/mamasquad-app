@@ -83,7 +83,7 @@ function Avatar({ url, name, size, style: extraStyle }) {
     return <img src={url} alt={name} style={{ width: s, height: s, borderRadius: s / 2, objectFit: 'cover', ...extraStyle }} />;
   }
   return (
-    <div style={{ width: s, height: s, borderRadius: s / 2, background: 'linear-gradient(135deg, #FEE2E8, #FFD5DD)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: s * 0.35, color: '#E8526E', flexShrink: 0, ...extraStyle }}>
+    <div style={{ width: s, height: s, borderRadius: s / 2, background: 'linear-gradient(135deg, #FAF0F2, #FAF0F2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: s * 0.35, color: '#4A1E2A', flexShrink: 0, ...extraStyle }}>
       {initials}
     </div>
   );
@@ -432,7 +432,7 @@ function MamaSquadsApp() {
           area: g.area || '',
           rules: g.rules || [],
           recentActivity: 'New group',
-          color: g.color || '#FF6B8A',
+          color: g.color || '#6B2C3B',
           pendingRequests: [],
           fromSupabase: true,
         };});
@@ -480,7 +480,7 @@ function MamaSquadsApp() {
       is_private: groupData.isPrivate,
       rules: groupData.rules,
       emoji: groupData.emoji || '👥',
-      color: groupData.color || '#FF6B8A',
+      color: groupData.color || '#6B2C3B',
       admin_id: user.id,
     }).select().single();
 
@@ -509,7 +509,7 @@ function MamaSquadsApp() {
       area: data.area || '',
       rules: data.rules || [],
       recentActivity: 'Just created',
-      color: data.color || '#FF6B8A',
+      color: data.color || '#6B2C3B',
       pendingRequests: [],
       fromSupabase: true,
     };
@@ -580,7 +580,7 @@ function MamaSquadsApp() {
           attendees: e.event_rsvps?.length || 0,
           maxAttendees: e.max_attendees || 15,
           comments: [],
-          color: '#FF6B8A',
+          color: '#6B2C3B',
           description: e.description,
           groupId: e.group_id,
           fromSupabase: true,
@@ -640,7 +640,7 @@ function MamaSquadsApp() {
       attendees: 1,
       maxAttendees: data.max_attendees,
       comments: [],
-      color: '#FF6B8A',
+      color: '#6B2C3B',
       description: data.description,
       groupId: data.group_id,
       fromSupabase: true,
@@ -1310,7 +1310,7 @@ function VerificationBlockedScreen({ onVerify }) {
         >
           Complete Verification Now
         </button>
-        <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? <a href="mailto:mama.squads1@gmail.com" style={{ color: "#FF6B8A", textDecoration: "none" }}>mama.squads1@gmail.com</a></p>
+        <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? <a href="mailto:mama.squads1@gmail.com" style={{ color: "#6B2C3B", textDecoration: "none" }}>mama.squads1@gmail.com</a></p>
       </div>
       <style>{keyframes}</style>
     </div>
@@ -2107,7 +2107,7 @@ function VerificationScreen({ onComplete, fadeIn }) {
             ) : (
               <div style={vs.uploadPrompt}>
                 <div style={vs.cameraIcon}>
-                  <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#FF6B8A" strokeWidth="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                  <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="#6B2C3B" strokeWidth="1.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
                 </div>
                 <strong style={{ fontSize: 14, color: "#2D2D2D" }}>Tap to Take Photo of ID</strong>
                 <span style={{ fontSize: 12, color: "#ACACAC" }}>or upload from your camera roll</span>
@@ -2159,7 +2159,7 @@ function VerificationScreen({ onComplete, fadeIn }) {
             ) : (
               <div style={vs.selfiePrompt}>
                 <div style={vs.selfieFrame}>
-                  <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="#FF6B8A" strokeWidth="1"><circle cx="12" cy="8" r="4"/><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="1"/></svg>
+                  <svg width="64" height="64" fill="none" viewBox="0 0 24 24" stroke="#6B2C3B" strokeWidth="1"><circle cx="12" cy="8" r="4"/><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" strokeWidth="1"/></svg>
                 </div>
                 <strong style={{ fontSize: 14, color: "#2D2D2D" }}>Tap to Take Selfie</strong>
                 <span style={{ fontSize: 12, color: "#ACACAC" }}>Position your face within the frame</span>
@@ -2351,7 +2351,7 @@ const vs = {
   uploadSuccess: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
   checkCircle: { width: 48, height: 48, borderRadius: 24, background: "#4CAF50", display: "flex", alignItems: "center", justifyContent: "center" },
   uploadPrompt: { display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
-  cameraIcon: { width: 64, height: 64, borderRadius: 32, background: "#FFF0F3", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  cameraIcon: { width: 64, height: 64, borderRadius: 32, background: "#FAF0F2", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 4 },
   requirementsList: { background: "#FAFAFA", borderRadius: 12, padding: 14 },
   reqTitle: { fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 },
   reqRow: { display: "flex", alignItems: "center", gap: 8, padding: "3px 0" },
@@ -2374,7 +2374,7 @@ const vs = {
   verifiedRow: { display: "flex", alignItems: "center", gap: 10, fontSize: 14, color: "#2D2D2D" },
   verifiedCheck: { width: 22, height: 22, borderRadius: 11, background: "#4CAF50", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700 },
   badgePreview: { display: "flex", alignItems: "center", gap: 12, width: "100%", background: "white", borderRadius: 12, padding: 14, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" },
-  miniAvatar: { width: 44, height: 44, borderRadius: 22, background: "linear-gradient(135deg, #FF6B8A, #E8526E)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15, flexShrink: 0 },
+  miniAvatar: { width: 44, height: 44, borderRadius: 22, background: "linear-gradient(135deg, #6B2C3B, #4A1E2A)", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: 700, fontSize: 15, flexShrink: 0 },
   verifiedBadgeSmall: { fontSize: 10, fontWeight: 600, color: "#2E7D32", background: "#E8F5E9", padding: "2px 8px", borderRadius: 50 },
 };
 
@@ -2870,7 +2870,7 @@ function MessagesTab({ conversations, onChatSelect, onRefresh }) {
         ) : (
           allConvos.map((chat, i) => (
             <div key={chat.id} style={{ ...styles.chatRow, animationDelay: `${i * 0.04}s` }} onClick={() => onChatSelect(chat)}>
-              <div style={{ ...styles.chatAvatar, background: chat.isGroup ? "#E8F5E9" : "#FEE2E8" }}>
+              <div style={{ ...styles.chatAvatar, background: chat.isGroup ? "#E8F5E9" : "#FAF0F2" }}>
                 {chat.isGroup ? Icons.users : chat.avatar}
               </div>
               <div style={styles.chatInfo}>
@@ -3111,7 +3111,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           <div style={{ width: 80, height: 80, margin: "5px auto 0" }}>
             <Avatar url={user?.avatar_url} name={displayName} size={80} />
           </div>
-          <label style={{ position: "absolute", bottom: 0, right: 2, width: 32, height: 32, borderRadius: 16, background: "#FF6B8A", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.25)", zIndex: 5, border: "2px solid white" }}>
+          <label style={{ position: "absolute", bottom: 0, right: 2, width: 32, height: 32, borderRadius: 16, background: "#6B2C3B", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.25)", zIndex: 5, border: "2px solid white" }}>
             <span style={{ color: "white", fontSize: 16, lineHeight: 1 }}>+</span>
             <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
               const file = e.target.files?.[0];
@@ -3355,7 +3355,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 step="0.05"
                 value={photoZoom}
                 onChange={e => setPhotoZoom(parseFloat(e.target.value))}
-                style={{ width: "100%", accentColor: "#FF6B8A" }}
+                style={{ width: "100%", accentColor: "#6B2C3B" }}
               />
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -3366,7 +3366,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 Cancel
               </button>
               <button
-                style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "#FF6B8A", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: photoUploading ? 0.6 : 1 }}
+                style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "#6B2C3B", border: "none", color: "white", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: photoUploading ? 0.6 : 1 }}
                 disabled={photoUploading}
                 onClick={async () => {
                   setPhotoUploading(true);
@@ -3437,7 +3437,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                   return (
                     <div key={i} style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div style={{ width: 44, height: 44, borderRadius: 22, background: "#FF6B8A22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
+                        <div style={{ width: 44, height: 44, borderRadius: 22, background: "#6B2C3B22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>
                           {kidBday ? '🎂' : '👶'}
                         </div>
                         <div>
@@ -3546,7 +3546,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                     key={opt.value}
                     style={{
                       display: "flex", alignItems: "flex-start", gap: 12, padding: 14, borderRadius: 12, cursor: "pointer", marginBottom: 8,
-                      border: isSelected ? "2px solid #FF6B8A" : "1.5px solid #f0f0f0",
+                      border: isSelected ? "2px solid #6B2C3B" : "1.5px solid #f0f0f0",
                       background: isSelected ? "#FFF5F7" : "white",
                     }}
                     onClick={async () => {
@@ -3560,11 +3560,11 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                     <div style={{ flex: 1 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{opt.label}</strong>
-                        {isSelected && <span style={{ fontSize: 11, fontWeight: 600, color: "#FF6B8A", background: "#FFF0F3", padding: "2px 8px", borderRadius: 50 }}>Current</span>}
+                        {isSelected && <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>Current</span>}
                       </div>
                       <p style={{ fontSize: 12, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{opt.desc}</p>
                     </div>
-                    <div style={{ width: 20, height: 20, borderRadius: 10, border: isSelected ? "none" : "2px solid #ddd", background: isSelected ? "#FF6B8A" : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 10, border: isSelected ? "none" : "2px solid #ddd", background: isSelected ? "#6B2C3B" : "white", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}>
                       {isSelected && <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
                     </div>
                   </div>
@@ -3621,7 +3621,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                     <div>
                       <h4 style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>{item.title}</h4>
                       {item.link ? (
-                        <a href={item.link} style={{ fontSize: 13, color: "#FF6B8A", marginTop: 4, lineHeight: 1.4, display: "block", textDecoration: "none" }}>{item.desc}</a>
+                        <a href={item.link} style={{ fontSize: 13, color: "#6B2C3B", marginTop: 4, lineHeight: 1.4, display: "block", textDecoration: "none" }}>{item.desc}</a>
                       ) : (
                         <p style={{ fontSize: 13, color: "#888", marginTop: 4, lineHeight: 1.4 }}>{item.desc}</p>
                       )}
@@ -3824,7 +3824,7 @@ function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, set
           { id: "invites", label: `Invite Codes (${inviteCodes.length})` },
           { id: "applications", label: `Applications (${pending.length})` },
         ].map(t => (
-          <button key={t.id} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", borderBottom: activeTab === t.id ? "2px solid #FF6B8A" : "2px solid transparent", color: activeTab === t.id ? "#FF6B8A" : "#999" }} onClick={() => setActiveTab(t.id)}>
+          <button key={t.id} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", borderBottom: activeTab === t.id ? "2px solid #6B2C3B" : "2px solid transparent", color: activeTab === t.id ? "#6B2C3B" : "#999" }} onClick={() => setActiveTab(t.id)}>
             {t.label}
           </button>
         ))}
@@ -3834,7 +3834,7 @@ function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, set
       {activeTab === "invites" && (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           <button
-            style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "linear-gradient(135deg, #FF6B8A, #E8526E)", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: creatingCode ? 0.6 : 1 }}
+            style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "linear-gradient(135deg, #6B2C3B, #4A1E2A)", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: creatingCode ? 0.6 : 1 }}
             onClick={createInviteCode}
             disabled={creatingCode}
           >
@@ -3910,7 +3910,7 @@ function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, set
         pending.map(app => (
           <div key={app.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
             <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-              <div style={{ width: 44, height: 44, borderRadius: 22, background: "#FF6B8A22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#FF6B8A", flexShrink: 0 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 22, background: "#6B2C3B22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: "#6B2C3B", flexShrink: 0 }}>
                 {(app.users?.full_name || '?').split(' ').map(w => w[0]).join('')}
               </div>
               <div style={{ flex: 1 }}>
@@ -4223,7 +4223,7 @@ function PollScreen({ polls, votedPolls, setVotedPolls, onBack }) {
                 style={{ ...styles.pollOption, ...(voted === globalIdx ? styles.pollOptionVoted : {}) }}
                 onClick={() => setVotedPolls(v => ({ ...v, [poll.id]: globalIdx }))}
               >
-                <div style={{ ...styles.pollBar, width: `${pct}%`, background: isWinning ? "#FF6B8A22" : "#f0f0f0" }} />
+                <div style={{ ...styles.pollBar, width: `${pct}%`, background: isWinning ? "#6B2C3B22" : "#f0f0f0" }} />
                 <span style={styles.pollOptText}>{opt.text}</span>
                 <span style={styles.pollPct}>{pct}%</span>
                 {voted === globalIdx && <span style={styles.pollCheck}>{Icons.check}</span>}
@@ -4353,8 +4353,8 @@ function AdminApplyScreen({ onBack, user }) {
           <p style={styles.adminHeroText}>Admins are hand-selected community leaders who organize playdates, moderate groups, and ensure a safe, welcoming space for moms and kids.</p>
         </div>
 
-        <div style={{ background: "#FFF0F3", borderRadius: 12, padding: 14, marginBottom: 4 }}>
-          <p style={{ fontSize: 12, fontWeight: 600, color: "#E8526E", marginBottom: 4 }}>⚠️ Admin positions are vetted</p>
+        <div style={{ background: "#FAF0F2", borderRadius: 12, padding: 14, marginBottom: 4 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#4A1E2A", marginBottom: 4 }}>⚠️ Admin positions are vetted</p>
           <p style={{ fontSize: 12, color: "#666", lineHeight: 1.5 }}>Not everyone can be an admin. All applicants go through a review process including a background check and interview to ensure the safety of our community.</p>
         </div>
 
@@ -4386,7 +4386,7 @@ function AdminApplyScreen({ onBack, user }) {
               <div style={{
                 width: 22, height: 22, borderRadius: 6, flexShrink: 0, marginTop: 1,
                 border: agreed[req.id] ? "none" : "2px solid #E8E8E8",
-                background: agreed[req.id] ? "#FF6B8A" : "white",
+                background: agreed[req.id] ? "#6B2C3B" : "white",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.2s ease",
               }}>
@@ -4528,9 +4528,9 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
       </div>
 
       {/* Discover Moms link */}
-      <div style={{ ...styles.adminApplyBanner, marginTop: 16, border: "1.5px solid #FEE2E8" }}>
+      <div style={{ ...styles.adminApplyBanner, marginTop: 16, border: "1.5px solid #FAF0F2" }}>
         <div style={styles.adminApplyLeft}>
-          <div style={{ ...styles.adminApplyIconWrap, background: "#FFF0F3" }}>
+          <div style={{ ...styles.adminApplyIconWrap, background: "#FAF0F2" }}>
             {Icons.users}
           </div>
           <div>
@@ -4822,8 +4822,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               key={s.id}
               style={{
                 ...gs.sectionTab,
-                borderBottom: activeSection === s.id ? "2px solid #FF6B8A" : "2px solid transparent",
-                color: activeSection === s.id ? "#FF6B8A" : "#999",
+                borderBottom: activeSection === s.id ? "2px solid #6B2C3B" : "2px solid transparent",
+                color: activeSection === s.id ? "#6B2C3B" : "#999",
               }}
               onClick={() => setActiveSection(s.id)}
             >
@@ -4840,7 +4840,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                 {/* Compose box */}
                 <div style={gs.composeBox}>
                   <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ ...styles.avatarSmall, background: "#FF6B8A", width: 34, height: 34, fontSize: 12 }}>JD</div>
+                    <div style={{ ...styles.avatarSmall, background: "#6B2C3B", width: 34, height: 34, fontSize: 12 }}>JD</div>
                     <input
                       style={{ ...styles.input, borderRadius: 50, padding: "10px 16px", fontSize: 13, flex: 1, margin: 0 }}
                       placeholder="Share something with the group..."
@@ -5503,7 +5503,7 @@ function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const COLORS = ["#FF6B8A", "#4ECDC4", "#FFD93D", "#A78BFA", "#F97316", "#10B981", "#EC4899", "#3B82F6"];
+  const COLORS = ["#6B2C3B", "#4ECDC4", "#FFD93D", "#A78BFA", "#F97316", "#10B981", "#EC4899", "#3B82F6"];
   const randomColor = COLORS[Math.floor(Math.random() * COLORS.length)];
 
   const handleSubmit = async () => {
@@ -5630,7 +5630,7 @@ const gs = {
   inlineForm: { background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 14px rgba(0,0,0,0.06)", border: "1.5px solid #E8E8E8" },
   formInput: { width: "100%", padding: "11px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 13, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D", background: "white" },
   feedPost: { background: "white", borderRadius: 16, padding: 14, boxShadow: "0 1px 6px rgba(0,0,0,0.03)", border: "1px solid #f5f5f5" },
-  postTypeBadge: { display: "inline-block", fontSize: 10, fontWeight: 600, color: "#E8526E", background: "#FFF0F3", padding: "2px 8px", borderRadius: 50, marginTop: 4 },
+  postTypeBadge: { display: "inline-block", fontSize: 10, fontWeight: 600, color: "#4A1E2A", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50, marginTop: 4 },
   postDetails: { display: "flex", flexWrap: "wrap", gap: 10, marginTop: 8, padding: "8px 12px", background: "#FAFAFA", borderRadius: 10 },
   postDetailItem: { display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#666" },
   postActions: { display: "flex", gap: 12, marginTop: 10, paddingTop: 8, borderTop: "1px solid #f5f5f5" },
@@ -5656,7 +5656,7 @@ function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
           style={{
             ...styles.navItem,
             ...(t.id === "create" ? styles.navCreate : {}),
-            color: tab === t.id ? "#FF6B8A" : "#999",
+            color: tab === t.id ? "#6B2C3B" : "#999",
             position: "relative",
           }}
           onClick={() => t.id === "create" ? onCreateEvent() : setTab(t.id)}
@@ -5668,7 +5668,7 @@ function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
               <div style={{ position: "relative", display: "inline-block" }}>
                 {t.icon}
                 {t.badge > 0 && (
-                  <span style={{ position: "absolute", top: -6, right: -10, background: "#FF6B8A", color: "white", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 50, minWidth: 16, textAlign: "center" }}>{t.badge > 9 ? '9+' : t.badge}</span>
+                  <span style={{ position: "absolute", top: -6, right: -10, background: "#6B2C3B", color: "white", fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 50, minWidth: 16, textAlign: "center" }}>{t.badge > 9 ? '9+' : t.badge}</span>
                 )}
               </div>
               <span style={styles.navLabel}>{t.label}</span>
@@ -5704,9 +5704,9 @@ const keyframes = `
 // ─── Styles ───
 const font = "'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif";
 const display = "'Playfair Display', Georgia, serif";
-const pink = "#FF6B8A";
-const pinkLight = "#FFF0F3";
-const pinkDark = "#E8526E";
+const pink = "#6B2C3B";
+const pinkLight = "#FAF0F2";
+const pinkDark = "#4A1E2A";
 const gray50 = "#FAFAFA";
 const gray100 = "#F5F5F5";
 const gray200 = "#E8E8E8";
@@ -5864,7 +5864,7 @@ const styles = {
   searchInput: { flex: 1, border: "none", fontSize: 14, fontFamily: font, background: "none", color: gray800 },
   profileGrid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 },
   profileCard: { background: "white", borderRadius: radius, padding: 16, textAlign: "center", boxShadow: "0 2px 10px rgba(0,0,0,0.04)", cursor: "pointer", position: "relative", animation: "fadeSlideUp 0.4s ease both" },
-  profileAvatar: { width: 56, height: 56, borderRadius: 28, background: `linear-gradient(135deg, ${pinkLight}, #FFD5DD)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px", fontWeight: 700, fontSize: 18, color: pinkDark },
+  profileAvatar: { width: 56, height: 56, borderRadius: 28, background: `linear-gradient(135deg, ${pinkLight}, #FAF0F2)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px", fontWeight: 700, fontSize: 18, color: pinkDark },
   adminBadge: { position: "absolute", top: 10, right: 10, display: "flex", alignItems: "center", gap: 3, fontSize: 10, fontWeight: 600, color: "#F59E0B", background: "#FEF3C7", padding: "3px 8px", borderRadius: 50 },
   profileName: { fontSize: 14, fontWeight: 700, color: gray800, marginBottom: 4, fontFamily: font },
   profileArea: { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 12, color: gray400, marginBottom: 4 },
@@ -5878,7 +5878,7 @@ const styles = {
 
   // Profile Detail
   profileDetailTop: { textAlign: "center", padding: "12px 0 8px" },
-  profileDetailAvatar: { width: 80, height: 80, borderRadius: 40, background: `linear-gradient(135deg, ${pinkLight}, #FFD5DD)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontWeight: 700, fontSize: 28, color: pinkDark },
+  profileDetailAvatar: { width: 80, height: 80, borderRadius: 40, background: `linear-gradient(135deg, ${pinkLight}, #FAF0F2)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px", fontWeight: 700, fontSize: 28, color: pinkDark },
   profileDetailName: { fontSize: 22, fontWeight: 700, color: gray800, fontFamily: display },
   profileDetailArea: { display: "flex", alignItems: "center", justifyContent: "center", gap: 4, fontSize: 13, color: gray400, marginTop: 4 },
   bioText: { fontSize: 14, lineHeight: 1.6, color: gray600 },
