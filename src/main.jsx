@@ -1248,7 +1248,7 @@ function WelcomeScreen({ onContinue, fadeIn }) {
   return (
     <div style={{ ...styles.fullScreen, background: "#F3E0E3" }}>
       <div style={{ ...styles.welcomeContent, opacity: show ? 1 : 0, transform: show ? "translateY(0)" : "translateY(30px)", transition: "all 0.8s cubic-bezier(0.16, 1, 0.3, 1)" }}>
-        <img src="/logo.png" alt="MamaSquads" style={{ width: 340, maxWidth: "90%", objectFit: "contain", marginBottom: 8 }} />
+        <img src="/logo.png" alt="MamaSquads" style={{ width: "95%", maxWidth: 420, objectFit: "contain", marginBottom: 16 }} />
         <p style={{ ...styles.welcomeSubtitle, marginTop: 0, color: "#6B2C3B" }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
         <div style={{ ...styles.welcomeFeatures, opacity: show ? 1 : 0, transition: "opacity 1s ease 0.4s" }}>
           {["Verified moms only", "ID + background checked", "Safe, trusted playdates"].map((f, i) => (
