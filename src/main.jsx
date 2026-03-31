@@ -3798,19 +3798,16 @@ function CreateEventScreen({ onBack, onSubmit }) {
           <input style={styles.input} placeholder="Playdate title (e.g., Park Day!)" value={title} onChange={e => setTitle(e.target.value)} />
           <input style={styles.input} placeholder="Location" value={location} onChange={e => setLocation(e.target.value)} />
           <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
-          <div style={{ display: "flex", gap: 6 }}>
-            <select style={{ ...styles.input, flex: 2 }} value={date.split('/')[0] || ''} onChange={e => { const parts = date.split('/'); setDate(`${e.target.value}/${parts[1] || ''}/${parts[2] || ''}`); }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <select style={{ ...styles.input, flex: 2 }} value={date.split('/')[0] || ''} onChange={e => { const parts = date.split('/'); setDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
               <option value="">Month</option>
               {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
             </select>
-            <select style={{ ...styles.input, flex: 1 }} value={date.split('/')[1] || ''} onChange={e => { const parts = date.split('/'); setDate(`${parts[0] || ''}/${e.target.value}/${parts[2] || ''}`); }}>
+            <select style={{ ...styles.input, flex: 1 }} value={date.split('/')[1] || ''} onChange={e => { const parts = date.split('/'); setDate(`${parts[0] || ''}/${e.target.value}/${new Date().getFullYear()}`); }}>
               <option value="">Day</option>
               {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
             </select>
-            <select style={{ ...styles.input, flex: 1.2 }} value={date.split('/')[2] || ''} onChange={e => { const parts = date.split('/'); setDate(`${parts[0] || ''}/${parts[1] || ''}/${e.target.value}`); }}>
-              <option value="">Year</option>
-              {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D", padding: "0 8px" }}>{new Date().getFullYear()}</span>
           </div>
           <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Time</p>
           <select style={styles.input} value={time} onChange={e => setTime(e.target.value)}>
@@ -4600,19 +4597,16 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" value={pdTitle} onChange={e => setPdTitle(e.target.value)} />
                       <input style={gs.formInput} placeholder="Location" value={pdLocation} onChange={e => setPdLocation(e.target.value)} />
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
-                      <div style={{ display: "flex", gap: 6 }}>
-                        <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${parts[2] || ''}`); }}>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
                           <option value="">Month</option>
                           {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
                         </select>
-                        <select style={{ ...gs.formInput, flex: 1 }} value={pdDate.split('/')[1] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${e.target.value}/${parts[2] || ''}`); }}>
+                        <select style={{ ...gs.formInput, flex: 1 }} value={pdDate.split('/')[1] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${e.target.value}/${new Date().getFullYear()}`); }}>
                           <option value="">Day</option>
                           {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
                         </select>
-                        <select style={{ ...gs.formInput, flex: 1.2 }} value={pdDate.split('/')[2] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${parts[1] || ''}/${e.target.value}`); }}>
-                          <option value="">Year</option>
-                          {[2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
-                        </select>
+                        <span style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D", padding: "0 8px" }}>{new Date().getFullYear()}</span>
                       </div>
                       <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Time</p>
                       <select style={gs.formInput} value={pdTime} onChange={e => setPdTime(e.target.value)}>
