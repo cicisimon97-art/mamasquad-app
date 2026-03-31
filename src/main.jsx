@@ -386,10 +386,7 @@ function MamaSquadsApp() {
 
     // Mark invite code as used
     if (inviteCode) {
-      await supabase.from('invite_codes').update({
-        is_used: true,
-        used_by: userId,
-      }).eq('code', inviteCode);
+      await supabase.from('invite_codes').delete().eq('code', inviteCode);
     }
 
     setUser({ id: userId, email, full_name: name, is_verified: isFoundingMember, is_founding_member: isFoundingMember });
@@ -1426,7 +1423,6 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
       .from('invite_codes')
       .select('*')
       .eq('code', trimmed)
-      .eq('is_used', false)
       .single();
 
     setChecking(false);
@@ -3737,6 +3733,46 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
 // ─── Admin Panel Content (Founder Only) ───
 function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, setAdminAppsLoaded }) {
   const [processing, setProcessing] = useState(null);
+  const [inviteCodes, setInviteCodes] = useState([]);
+  const [inviteCodesLoaded, setInviteCodesLoaded] = useState(false);
+  const [newCodeName, setNewCodeName] = useState("");
+  const [creatingCode, setCreatingCode] = useState(false);
+  const [activeTab, setActiveTab] = useState("invites");
+
+  // Load invite codes
+  useEffect(() => {
+    if (inviteCodesLoaded) return;
+    supabase.from('invite_codes')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setInviteCodes(data);
+        setInviteCodesLoaded(true);
+      });
+  }, [inviteCodesLoaded]);
+
+  const generateCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = 'MS-';
+    for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+    return code;
+  };
+
+  const createInviteCode = async () => {
+    setCreatingCode(true);
+    const code = generateCode();
+    const { data, error } = await supabase.from('invite_codes').insert({
+      code,
+      created_by: user?.id,
+    }).select().single();
+    if (data) setInviteCodes(prev => [data, ...prev]);
+    setCreatingCode(false);
+  };
+
+  const deleteInviteCode = async (id) => {
+    await supabase.from('invite_codes').delete().eq('id', id);
+    setInviteCodes(prev => prev.filter(c => c.id !== id));
+  };
 
   // Load admin applications
   useEffect(() => {
@@ -3777,12 +3813,77 @@ function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, set
   const pending = adminApps.filter(a => a.status === 'pending');
   const reviewed = adminApps.filter(a => a.status !== 'pending');
 
-  if (!adminAppsLoaded) {
-    return <p style={{ fontSize: 14, color: "#888", textAlign: "center", padding: 40 }}>Loading applications...</p>;
+  if (!adminAppsLoaded || !inviteCodesLoaded) {
+    return <p style={{ fontSize: 14, color: "#888", textAlign: "center", padding: 40 }}>Loading...</p>;
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* Tabs */}
+      <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #f0f0f0" }}>
+        {[
+          { id: "invites", label: `Invite Codes (${inviteCodes.length})` },
+          { id: "applications", label: `Applications (${pending.length})` },
+        ].map(t => (
+          <button key={t.id} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", borderBottom: activeTab === t.id ? "2px solid #FF6B8A" : "2px solid transparent", color: activeTab === t.id ? "#FF6B8A" : "#999" }} onClick={() => setActiveTab(t.id)}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ── Invite Codes Tab ── */}
+      {activeTab === "invites" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <button
+            style={{ width: "100%", padding: "14px 0", borderRadius: 12, background: "linear-gradient(135deg, #FF6B8A, #E8526E)", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: creatingCode ? 0.6 : 1 }}
+            onClick={createInviteCode}
+            disabled={creatingCode}
+          >
+            {creatingCode ? "Creating..." : "+ Generate Invite Code"}
+          </button>
+
+          {inviteCodes.length === 0 ? (
+            <div style={{ textAlign: "center", padding: 24 }}>
+              <span style={{ fontSize: 32 }}>🎟️</span>
+              <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No invite codes yet. Generate one to invite a mom!</p>
+            </div>
+          ) : (
+            inviteCodes.map(ic => (
+              <div key={ic.id} style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <p style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", letterSpacing: 2, fontFamily: "monospace" }}>{ic.code}</p>
+                  <p style={{ fontSize: 11, color: "#bbb", marginTop: 2 }}>Created {new Date(ic.created_at).toLocaleDateString()}</p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    style={{ padding: "6px 12px", borderRadius: 8, background: "#F0F7FF", border: "none", fontSize: 12, fontWeight: 600, color: "#3B82F6", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                    onClick={() => {
+                      navigator.clipboard?.writeText(ic.code);
+                    }}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    style={{ padding: "6px 12px", borderRadius: 8, background: "#FFEBEE", border: "none", fontSize: 12, fontWeight: 600, color: "#C62828", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                    onClick={() => deleteInviteCode(ic.id)}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+
+          <div style={{ background: "#F5F5F5", borderRadius: 10, padding: 12, marginTop: 4 }}>
+            <p style={{ fontSize: 12, color: "#888", lineHeight: 1.4 }}>💡 Each code can only be used once. After someone signs up with a code, it's automatically deleted. Share codes directly — don't post them publicly.</p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Applications Tab ── */}
+      {activeTab === "applications" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
       {/* Stats */}
       <div style={{ display: "flex", gap: 10 }}>
         <div style={{ flex: 1, background: "#FFF8E1", borderRadius: 12, padding: 14, textAlign: "center" }}>
@@ -3870,6 +3971,9 @@ function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, set
             </div>
           ))}
         </>
+      )}
+
+        </div>
       )}
     </div>
   );
