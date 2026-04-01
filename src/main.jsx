@@ -5269,7 +5269,7 @@ function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
         <div style={styles.onboardFields}>
           <input style={styles.input} placeholder="Group name (e.g., Westside Toddler Moms)" value={name} onChange={e => setName(e.target.value)} />
           <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Describe your group... What's it about? Who should join?" value={description} onChange={e => setDescription(e.target.value)} />
-          <input style={styles.input} placeholder="Area / Neighborhood" value={area} onChange={e => setArea(e.target.value)} />
+          <AddressInput inputStyle={styles.input} placeholder="Area / Neighborhood / Zip" value={area} onChange={setArea} />
           <select style={styles.input} value={ageGroup} onChange={e => setAgeGroup(e.target.value)}>
             <option>All Ages</option>
             <option>0-1 years</option>
