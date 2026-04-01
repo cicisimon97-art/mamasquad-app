@@ -4398,6 +4398,19 @@ function AdminApplyScreen({ onBack, user }) {
       setError(insertError.message);
     } else {
       setSubmitted(true);
+      // Notify the founder
+      const { data: founders } = await supabase.from('users').select('id').eq('role', 'founder');
+      if (founders) {
+        for (const founder of founders) {
+          await supabase.from('notifications').insert({
+            user_id: founder.id,
+            type: 'admin_application',
+            title: 'New Admin Application',
+            body: `${user?.full_name || 'A mom'} has applied to be an admin. Review their application in the Admin Panel.`,
+            is_read: false,
+          });
+        }
+      }
     }
   };
 
