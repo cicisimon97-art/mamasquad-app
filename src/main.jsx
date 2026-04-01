@@ -1116,7 +1116,6 @@ function MamaSquadsApp() {
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
-    if (showCreateEvent) return <CreateEventScreen onBack={() => setShowCreateEvent(false)} onSubmit={handleCreateEvent} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
@@ -1163,6 +1162,9 @@ function MamaSquadsApp() {
     return (
       <div style={styles.app}>
         <div style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
+          {tab === "create" && (
+            <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} fadeIn={fadeIn} />
+          )}
           {tab === "home" && (
             <HomeTab
               events={events}
@@ -1204,7 +1206,7 @@ function MamaSquadsApp() {
             <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} />
           )}
         </div>
-        <BottomNav tab={tab} setTab={setTab} onCreateEvent={() => setShowCreateEvent(true)} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
+        <BottomNav tab={tab} setTab={setTab} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
       </div>
     );
   }
@@ -5428,7 +5430,7 @@ function NotificationsTab({ notifications, setNotifications, user }) {
   );
 }
 
-function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
+function BottomNav({ tab, setTab, unreadNotifications }) {
   const tabs = [
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
@@ -5448,7 +5450,7 @@ function BottomNav({ tab, setTab, onCreateEvent, unreadNotifications }) {
             color: tab === t.id ? "#6B2C3B" : "#999",
             position: "relative",
           }}
-          onClick={() => t.id === "create" ? onCreateEvent() : setTab(t.id)}
+          onClick={() => setTab(t.id)}
         >
           {t.id === "create" ? (
             <div style={styles.createBtn}>{t.icon}</div>
