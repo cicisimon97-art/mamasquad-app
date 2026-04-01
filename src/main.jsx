@@ -4044,7 +4044,7 @@ function CreateEventScreen({ onBack, onSubmit }) {
 }
 
 // ─── Group Polls Tab ───
-function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVote }) {
+function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVote, onCreateEvent }) {
   const [polls, setPolls] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -4172,12 +4172,54 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
             <p style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>{poll.description}</p>
 
             {topTimes.length > 0 && (
-              <div style={{ background: "#E8F5E9", borderRadius: 10, padding: 10, marginBottom: 10, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ fontSize: 18 }}>🏆</span>
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 600, color: "#2E7D32" }}>Leading: {topTimes[0].time}</p>
-                  <p style={{ fontSize: 11, color: "#888" }}>{topTimes[0].votes} vote{topTimes[0].votes !== 1 ? 's' : ''}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
+                {/* Winner */}
+                <div style={{ background: "#E8F5E9", borderRadius: 10, padding: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 18 }}>🏆</span>
+                    <div>
+                      <p style={{ fontSize: 13, fontWeight: 600, color: "#2E7D32" }}>Leading: {topTimes[0].time}</p>
+                      <p style={{ fontSize: 11, color: "#888" }}>{topTimes[0].votes} vote{topTimes[0].votes !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                  {onCreateEvent && (
+                    <button
+                      style={{ padding: "6px 12px", borderRadius: 50, background: "#2E7D32", color: "white", fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                      onClick={async () => {
+                        const dayMatch = poll.description?.match(/on (\w+)\??/);
+                        const day = dayMatch ? dayMatch[1] : "TBD";
+                        await onCreateEvent({ title: poll.title, location: '', date: day, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
+                      }}
+                    >
+                      Create Playdate
+                    </button>
+                  )}
                 </div>
+
+                {/* Runner-up */}
+                {topTimes.length > 1 && (
+                  <div style={{ background: "#FFF8E1", borderRadius: 10, padding: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: 16 }}>🥈</span>
+                      <div>
+                        <p style={{ fontSize: 13, fontWeight: 600, color: "#F57F17" }}>Runner-up: {topTimes[1].time}</p>
+                        <p style={{ fontSize: 11, color: "#888" }}>{topTimes[1].votes} vote{topTimes[1].votes !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    {onCreateEvent && (
+                      <button
+                        style={{ padding: "6px 12px", borderRadius: 50, background: "#F57F17", color: "white", fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                        onClick={async () => {
+                          const dayMatch = poll.description?.match(/on (\w+)\??/);
+                          const day = dayMatch ? dayMatch[1] : "TBD";
+                          await onCreateEvent({ title: `${poll.title} (Alt time)`, location: '', date: day, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
+                        }}
+                      >
+                        Create Playdate
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             )}
 
@@ -4999,7 +5041,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
 
         {/* ── POLLS TAB ── */}
         {activeSection === "polls" && isMember && (
-          <GroupPollsTab group={group} user={user} onProposeMeetup={onProposeMeetup} loadMeetupProposals={loadMeetupProposals} onVote={onVote} />
+          <GroupPollsTab group={group} user={user} onProposeMeetup={onProposeMeetup} loadMeetupProposals={loadMeetupProposals} onVote={onVote} onCreateEvent={onCreateEvent} />
         )}
 
         {/* ── AVAILABILITY TAB ── */}
