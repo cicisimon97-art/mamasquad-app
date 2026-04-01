@@ -2440,6 +2440,27 @@ const verifyKeyframes = `
 `;
 
 // ─── Home Tab ───
+// Helper to get event date as a Date object for comparison
+const parseEventToDate = (dateStr) => {
+  if (!dateStr) return null;
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    const monthIdx = MONTHS.indexOf(parts[0]);
+    if (monthIdx >= 0 && parts[1] && parts[2]) return new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
+  }
+  // Try full day name (Monday, etc.) — assume this week
+  const fullDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  const dayIdx = fullDays.findIndex(d => dateStr.toLowerCase().startsWith(d.toLowerCase()));
+  if (dayIdx >= 0) {
+    const today = new Date();
+    const diff = dayIdx - today.getDay();
+    const date = new Date(today);
+    date.setDate(today.getDate() + (diff >= 0 ? diff : diff + 7));
+    return date;
+  }
+  return null;
+};
+
 function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onGroupSelect, joinedEvents }) {
   const [feedFilter, setFeedFilter] = useState("all");
 
@@ -2470,22 +2491,15 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
   const filtered = visibleEvents.filter(e =>
     (() => {
       if (selectedDay === "All") return true;
-      const d = e.date || '';
-      // Direct match (Mon, Tue, etc.)
-      if (d === selectedDay) return true;
-      // Full day name match (Monday starts with Mon)
-      if (d.toLowerCase().startsWith(selectedDay.toLowerCase())) return true;
-      // Parse Month/Day/Year format to get day of week
-      if (d.includes('/')) {
-        const parts = d.split('/');
-        const monthIdx = MONTHS.indexOf(parts[0]);
-        if (monthIdx >= 0 && parts[1] && parts[2]) {
-          const date = new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
-          const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
-          if (dayName === selectedDay) return true;
-        }
+      const eventDate = parseEventToDate(e.date);
+      if (!eventDate) return true; // show events without parseable dates in All
+      if (selectedDay === "today") {
+        const today = new Date();
+        return eventDate.getFullYear() === today.getFullYear() && eventDate.getMonth() === today.getMonth() && eventDate.getDate() === today.getDate();
       }
-      return false;
+      // Compare with selected date key (YYYY-M-D)
+      const eventKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}-${eventDate.getDate()}`;
+      return eventKey === selectedDay;
     })() &&
     (selectedAge === "All Ages" || e.ages === selectedAge)
   );
@@ -2515,19 +2529,34 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
         ))}
       </div>
 
-      {/* Day filter */}
+      {/* Day filter — shows this week + next week */}
       <div style={styles.filterRow}>
         <button
           style={{ ...styles.dayChip, ...(selectedDay === "All" ? styles.dayChipActive : {}) }}
           onClick={() => setSelectedDay("All")}
         >All</button>
-        {DAYS.map(d => (
-          <button
-            key={d}
-            style={{ ...styles.dayChip, ...(selectedDay === d ? styles.dayChipActive : {}) }}
-            onClick={() => setSelectedDay(d)}
-          >{d}</button>
-        ))}
+        <button
+          style={{ ...styles.dayChip, ...(selectedDay === "today" ? styles.dayChipActive : {}) }}
+          onClick={() => setSelectedDay("today")}
+        >Today</button>
+        {(() => {
+          const today = new Date();
+          const days = [];
+          for (let i = 1; i <= 13; i++) {
+            const d = new Date(today);
+            d.setDate(today.getDate() + i);
+            const label = SHORT_DAYS[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate();
+            const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+            days.push({ label, key, date: d });
+          }
+          return days.map(d => (
+            <button
+              key={d.key}
+              style={{ ...styles.dayChip, ...(selectedDay === d.key ? styles.dayChipActive : {}), whiteSpace: "nowrap" }}
+              onClick={() => setSelectedDay(d.key)}
+            >{d.label}</button>
+          ));
+        })()}
       </div>
 
       {/* Age filter */}
