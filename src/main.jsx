@@ -1223,10 +1223,27 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "notifications" && (
-            <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={(notif) => {
+            <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={async (notif) => {
               if (notif.group_id) {
                 const group = (groups || []).find(g => g.id === notif.group_id);
                 if (group) { setSelectedGroup(group); }
+              } else if (notif.type === 'connection_request' || notif.type === 'admin_application') {
+                // Find the person who sent the request from connections
+                const conn = connections.find(c => c.status === 'pending' && c.requester_id !== user?.id);
+                if (conn) {
+                  const otherId = conn.requester_id;
+                  const { data: profile } = await supabase.from('users').select('id, full_name, area, bio, kids, interests, is_verified, role, avatar_url, quick_answers').eq('id', otherId).single();
+                  if (profile) {
+                    const name = profile.full_name || 'A mom';
+                    const kidAges = (profile.kids || []).map(k => formatAge(k.birthday)).filter(Boolean);
+                    setSelectedProfile({
+                      id: profile.id, name, avatar: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+                      bio: profile.bio || '', ages: kidAges.map(a => a + ' yrs').join(', '),
+                      interests: profile.interests || [], area: profile.area || '',
+                      isVerified: profile.is_verified, avatar_url: profile.avatar_url, quick_answers: profile.quick_answers || {},
+                    });
+                  }
+                }
               }
             }} />
           )}
