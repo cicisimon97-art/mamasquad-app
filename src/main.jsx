@@ -1285,7 +1285,7 @@ function MamaSquadsApp() {
                     const kidAges = (profile.kids || []).map(k => formatAge(k.birthday)).filter(Boolean);
                     setSelectedProfile({
                       id: profile.id, name, avatar: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-                      bio: profile.bio || '', ages: kidAges.map(a => a + ' yrs').join(', '),
+                      bio: profile.bio || '', ages: kidAges.map(a => a.includes('mo') || a === 'Newborn' ? a : a + ' yrs').join(', '),
                       interests: profile.interests || [], area: profile.area || '',
                       isVerified: profile.is_verified, avatar_url: profile.avatar_url, quick_answers: profile.quick_answers || {},
                     });
@@ -2995,7 +2995,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
               name,
               avatar: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
               bio: m.bio || '',
-              ages: kidAges.length > 0 ? kidAges.map(a => a + ' yrs').join(', ') : '',
+              ages: kidAges.length > 0 ? kidAges.map(a => a.includes('mo') || a === 'Newborn' ? a : a + ' yrs').join(', ') : '',
               interests: m.interests || [],
               area: m.area || '',
               admin: m.role === 'admin' || m.role === 'founder',
@@ -4998,7 +4998,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           name: userName,
           avatar: userName.split(' ').map(w => w[0]).join(''),
           bio: r.users?.bio || r.message || '',
-          ages: kids.map(k => { const a = formatAge(k.birthday); const g = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : ""; return `${g} ${a ? a + ' yrs' : k.gender || ''}`.trim(); }).filter(Boolean).join(', ') || '',
+          ages: kids.map(k => { const a = formatAge(k.birthday); const g = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : ""; const ageLabel = a ? (a.includes('mo') || a === 'Newborn' ? a : a + ' yrs') : ''; return `${g} ${ageLabel || k.gender || ''}`.trim(); }).filter(Boolean).join(', ') || '',
           requestedAt: new Date(r.created_at).toLocaleDateString(),
           fromSupabase: true,
         };
