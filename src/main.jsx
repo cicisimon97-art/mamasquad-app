@@ -4904,14 +4904,21 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {activeSection === "rules" && (
           <div>
             <h3 style={styles.sectionTitle}>Group Rules</h3>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {group.rules.map((rule, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                  <div style={{ width: 22, height: 22, borderRadius: 11, background: `${group.color}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, fontWeight: 700, color: group.color }}>{i + 1}</div>
-                  <span style={{ fontSize: 13, color: "#444", lineHeight: 1.4 }}>{rule}</span>
-                </div>
-              ))}
-            </div>
+            {(group.rules || []).length === 0 ? (
+              <div style={{ textAlign: "center", padding: 24 }}>
+                <span style={{ fontSize: 32 }}>📋</span>
+                <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No rules have been set for this group yet.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {(group.rules || []).map((rule, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+                    <div style={{ width: 22, height: 22, borderRadius: 11, background: `${group.color}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, fontSize: 11, fontWeight: 700, color: group.color }}>{i + 1}</div>
+                    <span style={{ fontSize: 13, color: "#444", lineHeight: 1.4 }}>{rule}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -5358,7 +5365,7 @@ const gs = {
   denyBtn: { flex: 1, padding: "10px 0", borderRadius: 10, background: "#FFEBEE", color: "#C62828", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
   viewProfileBtn: { flex: 1, padding: "10px 0", borderRadius: 10, background: "#F5F5F5", color: "#666", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" },
   modalOverlay: { position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "flex-end", justifyContent: "center", zIndex: 200 },
-  modal: { width: "100%", maxWidth: 430, background: "white", borderRadius: "20px 20px 0 0", padding: 24, maxHeight: "85vh", overflow: "auto" },
+  modal: { width: "100%", maxWidth: 430, background: "white", borderRadius: "20px 20px 0 0", padding: 24, paddingBottom: 40, maxHeight: "90vh", overflow: "auto", WebkitOverflowScrolling: "touch" },
   privacyToggle: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "#FAFAFA", borderRadius: 12, border: "1.5px solid #E8E8E8" },
   toggle: { width: 44, height: 24, borderRadius: 12, cursor: "pointer", position: "relative", transition: "background 0.2s ease", flexShrink: 0 },
   toggleDot: { width: 20, height: 20, borderRadius: 10, background: "white", position: "absolute", top: 2, transition: "transform 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.2)" },
