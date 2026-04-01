@@ -4773,22 +4773,10 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {isMember ? (
               <>
-                {/* Compose box */}
-                <div style={gs.composeBox}>
-                  <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 10 }}>
-                    <div style={{ ...styles.avatarSmall, background: "#6B2C3B", width: 34, height: 34, fontSize: 12 }}>JD</div>
-                    <input
-                      style={{ ...styles.input, borderRadius: 50, padding: "10px 16px", fontSize: 13, flex: 1, margin: 0 }}
-                      placeholder="Share something with the group..."
-                      value={newPost}
-                      onChange={e => setNewPost(e.target.value)}
-                    />
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button style={gs.composeAction} onClick={() => setShowPostPlaydate(true)}>📅 Post Playdate</button>
-                    <button style={gs.composeAction} onClick={() => setShowProposeMeetup(true)}>📍 Propose Meetup</button>
-                    <button style={gs.composeAction}>📸 Photo</button>
-                  </div>
+                {/* Action buttons */}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowPostPlaydate(true)}>📅 Post Playdate</button>
+                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowProposeMeetup(true)}>📍 Propose Meetup</button>
                 </div>
 
                 {/* Post Playdate inline form */}
