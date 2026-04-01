@@ -1886,17 +1886,20 @@ function OnboardingScreen({ step, setStep, onComplete, signupError, fadeIn }) {
         </div>
       ),
     },
-    ...(kidsWithGender.length > 0 ? kidsWithGender : [{ gender: "" }]).map((child, ci) => {
-      const kidLabel = child.gender === "Girl" ? "your daughter" : child.gender === "Boy" ? "your son" : "your child";
-      const kidLabelCap = child.gender === "Girl" ? "Your daughter" : child.gender === "Boy" ? "Your son" : "Your child";
+    ...(kidsWithGender.length > 0 ? kidsWithGender : [{ gender: "" }]).map((child, ci, arr) => {
+      // Count how many of the same gender came before this one
+      const sameGenderBefore = arr.slice(0, ci).filter(c => c.gender === child.gender).length;
+      const sameGenderTotal = arr.filter(c => c.gender === child.gender).length;
+      const number = sameGenderTotal > 1 ? ` ${sameGenderBefore + 1}` : "";
+      const kidLabel = child.gender === "Girl" ? `Girl${number}` : child.gender === "Boy" ? `Boy${number}` : "Your child";
       return ({
-      title: `Quick Q's: About ${kidLabelCap}`,
-      subtitle: `Help us match ${kidLabel} with the right playdates`,
+      title: `Quick Q's: About ${kidLabel}`,
+      subtitle: `Help us match ${kidLabel.toLowerCase()} with the right playdates`,
       fields: (
         <div style={styles.onboardFields}>
           {QUICK_QS.kids.map((item, i) => (
             <div key={i} style={styles.promptCard}>
-              <p style={styles.promptQuestion}>{item.q.replace(/\{name\}/g, kidLabelCap).replace(/\{name\}'s/g, kidLabelCap + "'s")}</p>
+              <p style={styles.promptQuestion}>{item.q.replace(/\{name\}/g, kidLabel)}</p>
               <select style={styles.input} value={quickAnswers[`kid_${ci}_${i}`] || ""} onChange={e => setQuickAnswers(a => ({ ...a, [`kid_${ci}_${i}`]: e.target.value }))}>
                 <option value="">Choose one...</option>
                 {item.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
