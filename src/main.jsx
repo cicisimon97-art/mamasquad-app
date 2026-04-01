@@ -5250,7 +5250,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         )}
 
         {/* Section tabs */}
-        <div style={{ display: "flex", gap: 4, borderTop: "2px solid #f0f0f0", borderBottom: "2px solid #f0f0f0", overflowX: "auto", WebkitOverflowScrolling: "touch", background: "#FAF0F2", padding: "4px 14px", marginLeft: -18, marginRight: -18 }}>
+        <div style={{ display: "flex", overflowX: "auto", borderBottom: "1px solid #f0f0f0" }}>
           {[
             ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
             ...(isMember ? [{ id: "members", label: "Members" }] : []),
@@ -5263,9 +5263,10 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             <button
               key={s.id}
               style={{
-                padding: "8px 16px", background: activeSection === s.id ? "#6B2C3B" : "white", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                whiteSpace: "nowrap", flexShrink: 0, borderRadius: 50,
-                color: activeSection === s.id ? "white" : "#666",
+                flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                borderBottom: activeSection === s.id ? "2px solid #6B2C3B" : "2px solid transparent",
+                color: activeSection === s.id ? "#6B2C3B" : "#999",
+                minWidth: 60,
               }}
               onClick={() => setActiveSection(s.id)}
             >
