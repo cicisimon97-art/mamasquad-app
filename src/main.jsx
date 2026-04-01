@@ -4814,6 +4814,13 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(false);
+  const [editGroupName, setEditGroupName] = useState(group.name || "");
+  const [editGroupDesc, setEditGroupDesc] = useState(group.desc || "");
+  const [editGroupRules, setEditGroupRules] = useState((group.rules || []).join("\n"));
+  const [editGroupAge, setEditGroupAge] = useState(group.ages || "All Ages");
+  const [editGroupPrivate, setEditGroupPrivate] = useState(group.isPrivate);
+  const [savingGroup, setSavingGroup] = useState(false);
   const [pdTitle, setPdTitle] = useState("");
   const [pdLocation, setPdLocation] = useState("");
   const [pdDate, setPdDate] = useState("");
@@ -5354,32 +5361,98 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {/* ── ABOUT TAB ── */}
         {activeSection === "about" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <h3 style={styles.sectionTitle}>Age Group</h3>
-              <span style={{ ...styles.interestTagLg }}>{group.ages} years</span>
-            </div>
-            <div>
-              <h3 style={styles.sectionTitle}>Recent Activity</h3>
-              <p style={{ fontSize: 13, color: "#666" }}>{group.recentActivity}</p>
-            </div>
-            {isMember && (
-              <div>
-                <h3 style={styles.sectionTitle}>What Members Can Do</h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {["Post playdates & events for the group", "Propose meetups with time/location voting", "Comment and discuss on all group posts", "RSVP to meetups and playdates", "Share photos and updates"].map((f, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ color: "#4CAF50", fontWeight: 700, fontSize: 12 }}>✓</span>
-                      <span style={{ fontSize: 13, color: "#555" }}>{f}</span>
-                    </div>
-                  ))}
+            {isAdmin && group.fromSupabase && !editingGroup && (
+              <button
+                style={{ ...styles.secondaryBtn, alignSelf: "flex-end", padding: "6px 14px", fontSize: 12 }}
+                onClick={() => setEditingGroup(true)}
+              >
+                ✏️ Edit Group
+              </button>
+            )}
+
+            {editingGroup ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D" }}>Edit Group Info</p>
+                <input style={styles.input} placeholder="Group name" value={editGroupName} onChange={e => setEditGroupName(e.target.value)} />
+                <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Description" value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} />
+                <select style={styles.input} value={editGroupAge} onChange={e => setEditGroupAge(e.target.value)}>
+                  <option>All Ages</option>
+                  <option>0-1 years</option>
+                  <option>1-3 years</option>
+                  <option>3-5 years</option>
+                  <option>5-8 years</option>
+                  <option>8+ years</option>
+                </select>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "#FAFAFA", borderRadius: 12, border: "1.5px solid #E8E8E8" }}>
+                  <div>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>Private Group</p>
+                    <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{editGroupPrivate ? "Members must request to join" : "Anyone can join instantly"}</p>
+                  </div>
+                  <div style={{ width: 44, height: 24, borderRadius: 12, cursor: "pointer", position: "relative", background: editGroupPrivate ? "#6B2C3B" : "#E8E8E8", transition: "background 0.2s ease" }} onClick={() => setEditGroupPrivate(!editGroupPrivate)}>
+                    <div style={{ width: 20, height: 20, borderRadius: 10, background: "white", position: "absolute", top: 2, transition: "transform 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transform: editGroupPrivate ? "translateX(20px)" : "translateX(2px)" }} />
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Rules (one per line)</p>
+                <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Be kind&#10;No spam&#10;Keep kids supervised" value={editGroupRules} onChange={e => setEditGroupRules(e.target.value)} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    style={{ ...styles.primaryBtn, flex: 1, opacity: savingGroup ? 0.6 : 1 }}
+                    disabled={savingGroup}
+                    onClick={async () => {
+                      setSavingGroup(true);
+                      const updates = {
+                        name: editGroupName.trim(),
+                        description: editGroupDesc.trim(),
+                        age_group: editGroupAge,
+                        is_private: editGroupPrivate,
+                        rules: editGroupRules.trim() ? editGroupRules.trim().split('\n').filter(Boolean) : [],
+                      };
+                      await supabase.from('groups').update(updates).eq('id', group.id);
+                      // Update local group object
+                      group.name = updates.name;
+                      group.desc = updates.description;
+                      group.ages = updates.age_group;
+                      group.isPrivate = updates.is_private;
+                      group.rules = updates.rules;
+                      setSavingGroup(false);
+                      setEditingGroup(false);
+                    }}
+                  >
+                    {savingGroup ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button style={{ ...styles.secondaryBtn, flex: 1 }} onClick={() => setEditingGroup(false)}>Cancel</button>
                 </div>
               </div>
-            )}
-            {!isMember && (
-              <div style={{ background: "#F5F5F5", borderRadius: 12, padding: 16, textAlign: "center" }}>
-                <span style={{ fontSize: 28 }}>🔒</span>
-                <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>Member list, events, and discussions are only visible to members. Join to see more!</p>
-              </div>
+            ) : (
+              <>
+                <div>
+                  <h3 style={styles.sectionTitle}>Age Group</h3>
+                  <span style={{ ...styles.interestTagLg }}>{group.ages}</span>
+                </div>
+                <div>
+                  <h3 style={styles.sectionTitle}>Description</h3>
+                  <p style={{ fontSize: 13, color: "#666", lineHeight: 1.5 }}>{group.desc}</p>
+                </div>
+                {isMember && (
+                  <div>
+                    <h3 style={styles.sectionTitle}>What Members Can Do</h3>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {["Post playdates & events for the group", "Propose meetups with time/location voting", "Comment and discuss on all group posts", "RSVP to meetups and playdates", "Share photos and updates"].map((f, i) => (
+                        <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <span style={{ color: "#4CAF50", fontWeight: 700, fontSize: 12 }}>✓</span>
+                          <span style={{ fontSize: 13, color: "#555" }}>{f}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {!isMember && (
+                  <div style={{ background: "#F5F5F5", borderRadius: 12, padding: 16, textAlign: "center" }}>
+                    <span style={{ fontSize: 28 }}>🔒</span>
+                    <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>Member list, events, and discussions are only visible to members. Join to see more!</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}
