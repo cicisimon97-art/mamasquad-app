@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mamasquads-v3';
+const CACHE_NAME = 'mamasquads-v4';
 const urlsToCache = [
   '/',
   '/index.html',

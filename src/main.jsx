@@ -1136,7 +1136,7 @@ function MamaSquadsApp() {
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
-    if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} fadeIn={fadeIn} />;
+    if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} user={user} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
@@ -3961,7 +3961,7 @@ function AdminPanelContent({ user, adminApps, setAdminApps, adminAppsLoaded, set
 }
 
 // ─── Create Event Screen ───
-function CreateEventScreen({ onBack, onSubmit }) {
+function CreateEventScreen({ onBack, onSubmit, user }) {
   const [title, setTitle] = useState("");
   const [location, setLocation] = useState("");
   const [date, setDate] = useState("");
