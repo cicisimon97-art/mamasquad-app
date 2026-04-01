@@ -2605,7 +2605,27 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   const [localAttendees, setLocalAttendees] = useState(event.attendees);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [attendeeList, setAttendeeList] = useState([]);
+  const [showAttendees, setShowAttendees] = useState(false);
   const isCreator = user && event.hostId === user.id;
+
+  // Load attendee list
+  useEffect(() => {
+    if (!event.fromSupabase) return;
+    supabase.from('event_rsvps')
+      .select('user_id, users!user_id(full_name, avatar_url, kids)')
+      .eq('event_id', event.id)
+      .then(({ data }) => {
+        if (data) {
+          setAttendeeList(data.map(r => ({
+            id: r.user_id,
+            name: r.users?.full_name || 'A mom',
+            avatar_url: r.users?.avatar_url,
+            kids: r.users?.kids || [],
+          })));
+        }
+      });
+  }, [event.id, event.fromSupabase, localAttendees]);
 
   // Load comments from Supabase for real events
   useEffect(() => {
@@ -2689,10 +2709,33 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
         </div>
 
         <div style={styles.detailSection}>
-          <div style={styles.attendeeBar}>
-            <div style={{ ...styles.attendeeFill, width: `${(localAttendees / event.maxAttendees) * 100}%`, background: event.color }} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", cursor: "pointer" }} onClick={() => setShowAttendees(!showAttendees)}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>👥 {localAttendees} going</p>
+            <span style={{ fontSize: 12, color: "#6B2C3B", fontWeight: 600 }}>{showAttendees ? "Hide" : "See who's going ›"}</span>
           </div>
-          <p style={styles.attendeeText}>{localAttendees} of {event.maxAttendees} spots filled</p>
+          {showAttendees && attendeeList.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              {attendeeList.map((a, i) => {
+                const kidAges = (a.kids || []).map(k => {
+                  const age = formatAge(k.birthday);
+                  const gender = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : "";
+                  return age ? `${gender} ${age} yrs` : gender;
+                }).filter(Boolean);
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: i < attendeeList.length - 1 ? "1px solid #f5f5f5" : "none" }}>
+                    <Avatar url={a.avatar_url} name={a.name} size={36} />
+                    <div>
+                      <strong style={{ fontSize: 13, color: "#2D2D2D" }}>{a.name}</strong>
+                      {kidAges.length > 0 && <p style={{ fontSize: 11, color: "#888", marginTop: 1 }}>Kids: {kidAges.join(', ')}</p>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          {showAttendees && attendeeList.length === 0 && (
+            <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No one has joined yet. Be the first!</p>
+          )}
         </div>
 
         <button
@@ -4784,7 +4827,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           name: userName,
           avatar: userName.split(' ').map(w => w[0]).join(''),
           bio: r.users?.bio || r.message || '',
-          ages: kids.map(k => { const a = formatAge(k.birthday); return a ? `${a} yrs` : ''; }).filter(Boolean).join(', ') || '',
+          ages: kids.map(k => { const a = formatAge(k.birthday); const g = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : ""; return `${g} ${a ? a + ' yrs' : k.gender || ''}`.trim(); }).filter(Boolean).join(', ') || '',
           requestedAt: new Date(r.created_at).toLocaleDateString(),
           fromSupabase: true,
         };
@@ -4871,6 +4914,19 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             <div style={{ background: "#FFF8E1", borderRadius: 10, padding: 12, marginBottom: 12 }}>
               <p style={{ fontSize: 12, color: "#E65100" }}>{Icons.lock} This is a private group. The admin must approve your request before you can see members, events, or messages.</p>
             </div>
+            {/* Show user's kids info */}
+            {user?.kids && user.kids.length > 0 && (
+              <div style={{ background: "#FAF0F2", borderRadius: 10, padding: 12, marginBottom: 12 }}>
+                <p style={{ fontSize: 12, fontWeight: 600, color: "#6B2C3B", marginBottom: 6 }}>Your kids (visible to admin):</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {user.kids.filter(k => k.gender || k.birthday).map((kid, i) => {
+                    const age = formatAge(kid.birthday);
+                    const icon = kid.gender === "Girl" ? "👧" : kid.gender === "Boy" ? "👦" : "👶";
+                    return <span key={i} style={{ fontSize: 12, color: "#6B2C3B", background: "white", padding: "4px 10px", borderRadius: 50 }}>{icon} {kid.gender || "Child"}{age ? ` — ${age} yrs` : ''}</span>;
+                  })}
+                </div>
+              </div>
+            )}
             <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>Tell the admin why you'd like to join:</p>
             <textarea
               style={{ ...styles.input, minHeight: 80, fontFamily: "inherit", marginBottom: 12 }}
@@ -4878,7 +4934,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               value={requestMessage}
               onChange={e => setRequestMessage(e.target.value)}
             />
-            <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>The admin will see your verified profile, bio, kids' ages, and this message.</p>
+            <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>The admin will see your profile, kids' info, and this message.</p>
             <button style={{ ...styles.primaryBtn, marginTop: 0 }} onClick={handleJoinRequest}>
               Send Join Request
             </button>
