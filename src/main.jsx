@@ -2879,18 +2879,19 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
               </div>
             </div>
           ))}
-          <div style={styles.commentInput}>
-            <input
-              style={styles.msgInput}
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={e => setNewComment(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleCommentSubmit()}
-            />
-            <button style={{ ...styles.sendBtn, opacity: commentLoading ? 0.5 : 1 }} onClick={handleCommentSubmit} disabled={commentLoading}>{Icons.send}</button>
-          </div>
         <PageFooter />
         </div>
+      </div>
+      {/* Fixed comment input at bottom */}
+      <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: "1px solid #f0f0f0", padding: "10px 18px", display: "flex", gap: 8, zIndex: 10 }}>
+        <input
+          style={{ ...styles.msgInput, flex: 1 }}
+          placeholder="Add a comment..."
+          value={newComment}
+          onChange={e => setNewComment(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleCommentSubmit()}
+        />
+        <button style={{ ...styles.sendBtn, opacity: commentLoading ? 0.5 : 1 }} onClick={handleCommentSubmit} disabled={commentLoading}>{Icons.send}</button>
       </div>
     </div>
   );
