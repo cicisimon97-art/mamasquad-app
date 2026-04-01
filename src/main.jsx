@@ -5253,11 +5253,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #f0f0f0", overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 0 }}>
           {[
             ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
-            ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
-            ...(isMember ? [{ id: "avail", label: "Avail." }] : []),
             ...(isMember ? [{ id: "members", label: "Members" }] : []),
+            ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
             { id: "about", label: "About" },
             { id: "rules", label: "Rules" },
+            ...(isMember ? [{ id: "avail", label: "Avail." }] : []),
             ...(isAdmin ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
           ].map(s => (
             <button
