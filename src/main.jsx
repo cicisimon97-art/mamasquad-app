@@ -2757,7 +2757,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
   useEffect(() => {
     if (loaded) return;
     supabase.from('users')
-      .select('id, full_name, area, bio, kids, interests, is_verified, role, mom_age, avatar_url')
+      .select('id, full_name, area, bio, kids, interests, is_verified, role, mom_age, avatar_url, quick_answers')
       .neq('id', user?.id || '')
       .then(({ data }) => {
         if (data) {
@@ -2775,6 +2775,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
               admin: m.role === 'admin' || m.role === 'founder',
               isVerified: m.is_verified,
               avatar_url: m.avatar_url,
+              quick_answers: m.quick_answers || {},
               fromSupabase: true,
             };
           });
@@ -2937,14 +2938,38 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
           <p style={styles.detailText}>{profile.ages}</p>
         </div>
 
-        <div style={styles.detailSection}>
-          <h3 style={styles.sectionTitle}>Interests & Hobbies</h3>
-          <div style={styles.interestRow}>
-            {profile.interests.map(i => (
-              <span key={i} style={styles.interestTagLg}>{i}</span>
-            ))}
+        {(profile.interests || []).length > 0 && (
+          <div style={styles.detailSection}>
+            <h3 style={styles.sectionTitle}>Interests & Hobbies</h3>
+            <div style={styles.interestRow}>
+              {profile.interests.map(i => (
+                <span key={i} style={styles.interestTagLg}>{i}</span>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Quick Q's */}
+        {profile.quick_answers && Object.keys(profile.quick_answers).length > 0 && (() => {
+          const qa = profile.quick_answers;
+          const momQs = QUICK_QS.mom.map((item, i) => ({ q: item.q, a: qa[`mom_${i}`] })).filter(x => x.a);
+          const matchQs = QUICK_QS.matching.map((item, i) => ({ q: item.q, a: qa[`matching_${i}`] })).filter(x => x.a);
+          const allQs = [...momQs, ...matchQs];
+          if (allQs.length === 0) return null;
+          return (
+            <div style={styles.detailSection}>
+              <h3 style={styles.sectionTitle}>Quick Q's</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {allQs.map((item, i) => (
+                  <div key={i} style={{ background: "#FAFAFA", borderRadius: 10, padding: 12 }}>
+                    <p style={{ fontSize: 12, color: "#888", marginBottom: 2 }}>{item.q}</p>
+                    <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>{item.a}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {localStatus === 'connected' ? (
           <button style={{ ...styles.primaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
@@ -3160,6 +3185,28 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           </div>
         </div>
       )}
+
+      {/* ── My Quick Q's ── */}
+      {user?.quick_answers && Object.keys(user.quick_answers).length > 0 && (() => {
+        const qa = user.quick_answers;
+        const momQs = QUICK_QS.mom.map((item, i) => ({ q: item.q, a: qa[`mom_${i}`] })).filter(x => x.a);
+        const matchQs = QUICK_QS.matching.map((item, i) => ({ q: item.q, a: qa[`matching_${i}`] })).filter(x => x.a);
+        const allQs = [...momQs, ...matchQs];
+        if (allQs.length === 0) return null;
+        return (
+          <div style={styles.detailSection}>
+            <h3 style={styles.sectionTitle}>My Quick Q's</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {allQs.map((item, i) => (
+                <div key={i} style={{ background: "#FAFAFA", borderRadius: 10, padding: 12 }}>
+                  <p style={{ fontSize: 12, color: "#888", marginBottom: 2 }}>{item.q}</p>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>{item.a}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ── My Availability ── */}
       <div style={styles.detailSection}>
