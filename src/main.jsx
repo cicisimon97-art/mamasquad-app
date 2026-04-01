@@ -649,6 +649,19 @@ function MamaSquadsApp() {
 
     if (error) return { error: error.message };
     setPendingJoins(prev => [...prev, groupId]);
+
+    // Notify the group admin
+    const group = (groups || []).find(g => g.id === groupId);
+    if (group && group.adminId) {
+      await supabase.from('notifications').insert({
+        user_id: group.adminId,
+        type: 'join_request',
+        title: 'New Join Request',
+        body: `${user.full_name || 'A mom'} wants to join ${group.name}. Review their request in the group.`,
+        group_id: groupId,
+        is_read: false,
+      });
+    }
     return { success: true };
   };
 
@@ -1172,7 +1185,7 @@ function MamaSquadsApp() {
               selectedAge={selectedAge} setSelectedAge={setSelectedAge}
               onEventSelect={(e) => navigate("event", e)}
               onCreateEvent={() => setTab("create")}
-              onPoll={() => setShowPoll(true)}
+              onGroupSelect={(g) => setSelectedGroup(g)}
               joinedEvents={joinedEvents}
             />
           )}
@@ -2366,7 +2379,7 @@ const verifyKeyframes = `
 `;
 
 // ─── Home Tab ───
-function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onPoll, joinedEvents }) {
+function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, selectedAge, setSelectedAge, onEventSelect, onCreateEvent, onGroupSelect, joinedEvents }) {
   const [feedFilter, setFeedFilter] = useState("all");
 
   const publicGroupIds = (groups || []).filter(g => !g.isPrivate).map(g => g.id);
@@ -2489,6 +2502,30 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
           ))
         )}
       </div>
+
+      {/* Public Groups section when Public filter is active */}
+      {feedFilter === "public" && (groups || []).filter(g => !g.isPrivate).length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 10 }}>🌐 Public Groups</h3>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {(groups || []).filter(g => !g.isPrivate).map(g => (
+              <div key={g.id} style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0", boxShadow: "0 2px 8px rgba(0,0,0,0.03)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }} onClick={() => onGroupSelect && onGroupSelect(g)}>
+                <span style={{ fontSize: 28 }}>{g.emoji || '👥'}</span>
+                <div style={{ flex: 1 }}>
+                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{g.name}</strong>
+                  {g.desc && <p style={{ fontSize: 12, color: "#888", marginTop: 2, lineHeight: 1.3 }}>{g.desc.slice(0, 80)}{g.desc.length > 80 ? '...' : ''}</p>}
+                  <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                    {g.area && <span style={{ fontSize: 11, color: "#888" }}>📍 {g.area}</span>}
+                    <span style={{ fontSize: 11, color: "#888" }}>👥 {g.members} members</span>
+                  </div>
+                </div>
+                <span style={{ color: "#ccc" }}>›</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <style>{keyframes}</style>
     </div>
   );
