@@ -538,7 +538,7 @@ function MamaSquadsApp() {
       await supabase.from('invite_codes').delete().eq('code', inviteCode);
     }
 
-    setUser({ id: userId, email, full_name: name, is_verified: isFoundingMember, is_founding_member: isFoundingMember });
+    setUser({ id: userId, email, full_name: name, area, bio, mom_age: momBirthday || null, kids: kids || [], interests: interests || [], quick_answers: quickAnswers || {}, is_verified: isFoundingMember, is_founding_member: isFoundingMember });
 
     if (isFoundingMember) {
       setIsVerified(true);
