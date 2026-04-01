@@ -5250,7 +5250,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         )}
 
         {/* Section tabs */}
-        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #f0f0f0", overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 0 }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "2px solid #f0f0f0", overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 0, background: "white", position: "sticky", top: 0, zIndex: 5, marginLeft: -18, marginRight: -18, paddingLeft: 14, paddingRight: 14 }}>
           {[
             ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
             ...(isMember ? [{ id: "members", label: "Members" }] : []),
