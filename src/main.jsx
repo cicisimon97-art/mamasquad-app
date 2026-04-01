@@ -4898,6 +4898,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [deleteError, setDeleteError] = useState(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
   const [editingGroup, setEditingGroup] = useState(false);
+  const [showRules, setShowRules] = useState(false);
+  const [showMembersList, setShowMembersList] = useState(false);
   const [memberList, setMemberList] = useState([]);
   const [membersLoaded, setMembersLoaded] = useState(false);
   const [editGroupName, setEditGroupName] = useState(group.name || "");
@@ -5129,66 +5131,76 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         <h2 style={styles.detailTitle}>{group.emoji} {group.name}</h2>
         <div style={{ width: 40 }} />
       </div>
-      {/* Section tabs — outside detailBody so always visible */}
-      <div style={{ display: "flex", overflowX: "auto", borderBottom: "1px solid #f0f0f0", flexShrink: 0, background: "white" }}>
-        {[
-          ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
-          ...(isMember ? [{ id: "members", label: "Members" }] : []),
-          ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
-          { id: "about", label: "About" },
-          { id: "rules", label: "Rules" },
-          ...(isMember ? [{ id: "avail", label: "Avail." }] : []),
-          ...(isAdmin ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
-        ].map(s => (
-          <button
-            key={s.id}
-            style={{
-              flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-              borderBottom: activeSection === s.id ? "2px solid #6B2C3B" : "2px solid transparent",
-              color: activeSection === s.id ? "#6B2C3B" : "#999",
-              minWidth: 60,
-            }}
-            onClick={() => setActiveSection(s.id)}
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
       <div style={styles.detailBody}>
-        {/* Group Banner */}
-        <div style={{ ...styles.eventBanner, background: `linear-gradient(135deg, ${group.color}18, ${group.color}35)` }}>
+        {/* Group Banner — tappable to show rules */}
+        <div style={{ ...styles.eventBanner, background: `linear-gradient(135deg, ${group.color}18, ${group.color}35)`, cursor: "pointer" }} onClick={() => setShowRules(!showRules)}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             {group.isPrivate ? (
-              <span style={{ ...gs.privBadge, fontSize: 12, padding: "4px 12px" }}>{Icons.lock} Private Group</span>
+              <span style={{ ...gs.privBadge, fontSize: 12, padding: "4px 12px" }}>{Icons.lock} Private</span>
             ) : (
-              <span style={{ ...gs.pubBadge, fontSize: 12, padding: "4px 12px" }}>{Icons.globe} Public Group</span>
+              <span style={{ ...gs.pubBadge, fontSize: 12, padding: "4px 12px" }}>{Icons.globe} Public</span>
             )}
             <span style={styles.ageBadge}>{group.ages}</span>
           </div>
-          <h2 style={{ ...styles.bannerTitle, color: group.color, fontSize: 20 }}>{group.name}</h2>
-          <p style={{ fontSize: 13, color: "#666", lineHeight: 1.4, marginBottom: 10 }}>{group.desc}</p>
-          <div style={styles.bannerMeta}>
-            <span>{Icons.location} {group.area}</span>
-            <span>{Icons.users} {group.members} members</span>
+          <p style={{ fontSize: 13, color: "#666", lineHeight: 1.4, marginBottom: 8 }}>{group.desc}</p>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={styles.bannerMeta}>
+              {group.area && <span>{Icons.location} {group.area}</span>}
+              <span>{Icons.users} {group.members} members</span>
+            </div>
+            <span style={{ fontSize: 11, color: "#6B2C3B", fontWeight: 600 }}>{showRules ? "Hide rules ▲" : "View rules ▼"}</span>
           </div>
         </div>
 
-        {/* Admin info */}
-        <div style={styles.hostRow}>
-          <div style={{ ...styles.avatarSmall, background: group.color }}>{group.adminAvatar}</div>
-          <div>
-            <p style={styles.hostLabel}>Group Admin</p>
-            <p style={styles.hostNameLg}>{group.admin}</p>
+        {/* Rules dropdown */}
+        {showRules && (
+          <div style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D" }}>Group Rules</h4>
+              {isAdmin && group.fromSupabase && <button style={{ fontSize: 12, color: "#6B2C3B", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }} onClick={() => { setShowRules(false); setEditingGroup(true); setActiveSection("about"); }}>✏️ Edit</button>}
+            </div>
+            {(group.rules || []).length === 0 ? (
+              <p style={{ fontSize: 13, color: "#888" }}>No rules set yet.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {(group.rules || []).map((rule, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: group.color, background: `${group.color}22`, width: 20, height: 20, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span>
+                    <span style={{ fontSize: 13, color: "#444", lineHeight: 1.4 }}>{rule}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p style={{ fontSize: 11, color: "#bbb", marginTop: 8 }}>Admin: {group.admin}</p>
           </div>
-          {isAdmin && <span style={{ ...styles.adminBadge, position: "static", marginLeft: "auto" }}>{Icons.crown} You</span>}
-        </div>
+        )}
 
-        {/* Join / Leave / Pending */}
+        {/* Member count + View Members */}
+        {isMember && (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "#FAF0F2", border: "none", fontSize: 13, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+              onClick={() => { setShowMembersList(!showMembersList); if (!membersLoaded) setMembersLoaded(false); }}
+            >
+              👥 {group.members} Members {showMembersList ? "▲" : "▼"}
+            </button>
+            {!isAdmin && (
+              <button style={{ padding: "10px 14px", borderRadius: 10, background: "#FFF5F5", border: "none", fontSize: 13, fontWeight: 600, color: "#C62828", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={handleLeave}>Leave</button>
+            )}
+            {isAdmin && group.fromSupabase && (
+              <button style={{ padding: "10px 14px", borderRadius: 10, background: "#FAF0F2", border: "none", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setEditingGroup(true)}>✏️ Edit</button>
+            )}
+          </div>
+        )}
+
+        {/* Members list dropdown */}
+        {showMembersList && isMember && (
+          <MembersTab group={group} user={user} isAdmin={isAdmin} onViewProfile={onViewProfile} membersLoaded={membersLoaded} setMembersLoaded={setMembersLoaded} memberList={memberList} setMemberList={setMemberList} />
+        )}
+
+        {/* Join / Pending for non-members */}
         {!isMember && !isPending && (
-          <button
-            style={{ ...styles.primaryBtn, width: "100%" }}
-            onClick={() => group.isPrivate ? setShowJoinModal(true) : handleJoinRequest()}
-          >
+          <button style={{ ...styles.primaryBtn, width: "100%" }} onClick={() => group.isPrivate ? setShowJoinModal(true) : handleJoinRequest()}>
             {group.isPrivate ? "🔒 Request to Join" : "Join Group"}
           </button>
         )}
@@ -5197,86 +5209,65 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             <span style={{ fontSize: 24 }}>⏳</span>
             <div>
               <strong style={{ fontSize: 14, color: "#E65100", display: "block" }}>Request Pending</strong>
-              <span style={{ fontSize: 12, color: "#888" }}>The admin is reviewing your request. You'll be notified once approved.</span>
+              <span style={{ fontSize: 12, color: "#888" }}>The admin is reviewing your request.</span>
             </div>
           </div>
         )}
+
+        {/* Action buttons for members */}
         {isMember && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button style={{ ...styles.primaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
-                ✓ You're a Member
-              </button>
-              {!isAdmin && (
-                <button style={{ ...styles.secondaryBtn, padding: "12px 16px", background: "#FFF5F5", color: "#C62828" }} onClick={handleLeave}>
-                  Leave
-                </button>
-              )}
-            </div>
-            {isAdmin && group.fromSupabase && !showDeleteGroup && (
-              <button
-                style={{ width: "100%", padding: "10px 0", borderRadius: 50, background: "none", border: "1.5px solid #C62828", color: "#C62828", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                onClick={() => setShowDeleteGroup(true)}
-              >
-                Delete Group
-              </button>
-            )}
-            {showDeleteGroup && (
-              <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 16, marginTop: 4 }}>
-                <p style={{ fontSize: 14, fontWeight: 600, color: "#C62828", marginBottom: 4 }}>Are you sure you want to delete this group?</p>
-                <p style={{ fontSize: 13, color: "#888", marginBottom: 12, lineHeight: 1.4 }}>All data will be permanently lost — members, playdates, polls, photos, and all group content. This cannot be undone.</p>
-                <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>Enter your password to confirm:</p>
-                <input
-                  type="password"
-                  style={{ ...styles.input, marginBottom: 8 }}
-                  placeholder="Your account password"
-                  value={deletePassword}
-                  onChange={e => { setDeletePassword(e.target.value); setDeleteError(null); }}
-                />
-                {deleteError && <p style={{ fontSize: 12, color: "#C62828", marginBottom: 8 }}>{deleteError}</p>}
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "#C62828", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: deletingGroup ? 0.6 : 1 }}
-                    disabled={deletingGroup}
-                    onClick={async () => {
-                      if (!deletePassword) { setDeleteError("Enter your password"); return; }
-                      setDeletingGroup(true);
-                      setDeleteError(null);
-                      // Verify password
-                      const { error: authError } = await supabase.auth.signInWithPassword({ email: user?.email, password: deletePassword });
-                      if (authError) { setDeleteError("Incorrect password"); setDeletingGroup(false); return; }
-                      // Delete all group data
-                      await supabase.from('votes').delete().in('proposal_id', (await supabase.from('meetup_proposals').select('id').eq('group_id', group.id)).data?.map(p => p.id) || []);
-                      await supabase.from('meetup_proposals').delete().eq('group_id', group.id);
-                      await supabase.from('join_requests').delete().eq('group_id', group.id);
-                      await supabase.from('notifications').delete().eq('group_id', group.id);
-                      await supabase.from('availability').delete().eq('group_id', group.id);
-                      await supabase.from('comments').delete().in('event_id', (await supabase.from('events').select('id').eq('group_id', group.id)).data?.map(e => e.id) || []);
-                      await supabase.from('event_rsvps').delete().in('event_id', (await supabase.from('events').select('id').eq('group_id', group.id)).data?.map(e => e.id) || []);
-                      await supabase.from('events').delete().eq('group_id', group.id);
-                      await supabase.from('group_members').delete().eq('group_id', group.id);
-                      await supabase.from('groups').delete().eq('id', group.id);
-                      setDeletingGroup(false);
-                      onBack();
-                    }}
-                  >
-                    {deletingGroup ? "Deleting..." : "Yes, Delete Everything"}
-                  </button>
-                  <button
-                    style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "white", color: "#666", fontSize: 13, fontWeight: 600, border: "1.5px solid #ddd", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                    onClick={() => { setShowDeleteGroup(false); setDeletePassword(""); setDeleteError(null); }}
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            )}
+          <div style={{ display: "flex", gap: 8 }}>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowPostPlaydate(true); setTimeout(() => document.getElementById('playdate-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📅 Playdate</button>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
+            <label style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: photoUploading ? 0.5 : 1 }}>
+              {photoUploading ? "..." : "📸 Photo"}
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadGroupPhoto(file); }} />
+            </label>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setActiveSection("polls")}>🗳️ Polls</button>
           </div>
         )}
 
+        {/* Admin: Delete Group + Requests */}
+        {isAdmin && group.fromSupabase && !showDeleteGroup && pending.length > 0 && (
+          <button style={{ width: "100%", padding: "10px 0", borderRadius: 10, background: "#FFF8E1", border: "none", fontSize: 13, fontWeight: 600, color: "#F57F17", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setActiveSection("requests")}>
+            📬 {pending.length} Pending Request{pending.length !== 1 ? 's' : ''} — Review
+          </button>
+        )}
+        {isAdmin && group.fromSupabase && !showDeleteGroup && (
+          <button style={{ width: "100%", padding: "8px 0", borderRadius: 50, background: "none", border: "1px solid #ddd", color: "#C62828", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setShowDeleteGroup(true)}>Delete Group</button>
+        )}
+        {showDeleteGroup && (
+          <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 16 }}>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#C62828", marginBottom: 4 }}>Are you sure?</p>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 12, lineHeight: 1.4 }}>All data will be permanently lost.</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>Enter your password:</p>
+            <input type="password" style={{ ...styles.input, marginBottom: 8 }} placeholder="Password" value={deletePassword} onChange={e => { setDeletePassword(e.target.value); setDeleteError(null); }} />
+            {deleteError && <p style={{ fontSize: 12, color: "#C62828", marginBottom: 8 }}>{deleteError}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "#C62828", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", opacity: deletingGroup ? 0.6 : 1 }} disabled={deletingGroup} onClick={async () => {
+                if (!deletePassword) { setDeleteError("Enter your password"); return; }
+                setDeletingGroup(true); setDeleteError(null);
+                const { error: authError } = await supabase.auth.signInWithPassword({ email: user?.email, password: deletePassword });
+                if (authError) { setDeleteError("Incorrect password"); setDeletingGroup(false); return; }
+                await supabase.from('votes').delete().in('proposal_id', (await supabase.from('meetup_proposals').select('id').eq('group_id', group.id)).data?.map(p => p.id) || []);
+                await supabase.from('meetup_proposals').delete().eq('group_id', group.id);
+                await supabase.from('join_requests').delete().eq('group_id', group.id);
+                await supabase.from('notifications').delete().eq('group_id', group.id);
+                await supabase.from('availability').delete().eq('group_id', group.id);
+                await supabase.from('comments').delete().in('event_id', (await supabase.from('events').select('id').eq('group_id', group.id)).data?.map(e => e.id) || []);
+                await supabase.from('event_rsvps').delete().in('event_id', (await supabase.from('events').select('id').eq('group_id', group.id)).data?.map(e => e.id) || []);
+                await supabase.from('events').delete().eq('group_id', group.id);
+                await supabase.from('group_members').delete().eq('group_id', group.id);
+                await supabase.from('groups').delete().eq('id', group.id);
+                setDeletingGroup(false); onBack();
+              }}>{deletingGroup ? "Deleting..." : "Yes, Delete"}</button>
+              <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "white", color: "#666", fontSize: 13, fontWeight: 600, border: "1.5px solid #ddd", cursor: "pointer" }} onClick={() => { setShowDeleteGroup(false); setDeletePassword(""); setDeleteError(null); }}>Cancel</button>
+            </div>
+          </div>
+        )}
 
-        {/* ── FEED TAB ── */}
-        {activeSection === "feed" && (
+        {/* Edit Group form */}
+        {editingGroup && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {isMember ? (
               <>
