@@ -2490,9 +2490,13 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
 
   const filtered = visibleEvents.filter(e =>
     (() => {
-      if (selectedDay === "All") return true;
       const eventDate = parseEventToDate(e.date);
-      if (!eventDate) return true; // show events without parseable dates in All
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      // Hide past events in all views
+      if (eventDate && eventDate < today) return false;
+      if (selectedDay === "All") return true;
+      if (!eventDate) return true;
       if (selectedDay === "today") {
         const today = new Date();
         return eventDate.getFullYear() === today.getFullYear() && eventDate.getMonth() === today.getMonth() && eventDate.getDate() === today.getDate();
