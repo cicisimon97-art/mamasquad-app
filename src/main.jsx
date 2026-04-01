@@ -4050,6 +4050,7 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
   const [showCreate, setShowCreate] = useState(false);
   const [pollTitle, setPollTitle] = useState("");
   const [pollDay, setPollDay] = useState("");
+  const [pollProposedTime, setPollProposedTime] = useState("");
   const [creating, setCreating] = useState(false);
   const [myVotes, setMyVotes] = useState({});
 
@@ -4076,16 +4077,26 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
     if (!pollTitle.trim() || !pollDay) return;
     setCreating(true);
     if (onProposeMeetup) {
+      const proposedLabel = pollProposedTime ? `Proposed: ${pollProposedTime}` : '';
       const result = await onProposeMeetup(group.id, {
         title: pollTitle.trim(),
-        description: `What time works best on ${pollDay}?`,
+        description: `${proposedLabel ? proposedLabel + ' — ' : ''}What time works best on ${pollDay}?`,
         timeOptions: TIMES.slice(),
         locationOptions: [],
       });
-      if (result.data) setPolls(prev => [{ ...result.data, votes: [] }, ...prev]);
+      if (result.data) {
+        // Auto-vote for proposed time if set
+        if (pollProposedTime && onVote) {
+          await onVote(result.data.id, 'time', pollProposedTime);
+          setMyVotes(prev => ({ ...prev, [result.data.id]: pollProposedTime }));
+          setPolls(prev => [{ ...result.data, votes: [{ user_id: user?.id, vote_type: 'time', option_index: pollProposedTime }] }, ...prev]);
+        } else {
+          setPolls(prev => [{ ...result.data, votes: [] }, ...prev]);
+        }
+      }
     }
     setCreating(false);
-    setPollTitle(""); setPollDay("");
+    setPollTitle(""); setPollDay(""); setPollProposedTime("");
     setShowCreate(false);
   };
 
@@ -4114,7 +4125,16 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                 <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: pollDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: pollDay === d ? "#FAF0F2" : "white", color: pollDay === d ? "#6B2C3B" : "#666", fontWeight: pollDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setPollDay(d)}>{d}</button>
               ))}
             </div>
-            <p style={{ fontSize: 12, color: "#888" }}>Members will vote for the time that works best on {pollDay || "the selected day"}.</p>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Your proposed time</p>
+            <select
+              style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D", background: "white" }}
+              value={pollProposedTime}
+              onChange={e => setPollProposedTime(e.target.value)}
+            >
+              <option value="">Select your preferred time...</option>
+              {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+            <p style={{ fontSize: 12, color: "#888" }}>Members can vote for your time or suggest a different one.</p>
             <button
               style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: creating || !pollTitle.trim() || !pollDay ? 0.5 : 1 }}
               onClick={handleCreate}
@@ -4164,10 +4184,39 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
             {myVote ? (
               <div style={{ background: "#FAF0F2", borderRadius: 10, padding: 10, marginBottom: 8 }}>
                 <p style={{ fontSize: 13, color: "#6B2C3B" }}>✓ You voted for <strong>{myVote}</strong></p>
+                <button
+                  style={{ background: "none", border: "none", fontSize: 12, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, textDecoration: "underline" }}
+                  onClick={() => setMyVotes(prev => { const n = { ...prev }; delete n[poll.id]; return n; })}
+                >
+                  Change my vote
+                </button>
               </div>
             ) : (
               <div>
                 <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>What time works for you?</p>
+                {/* Quick vote for popular times */}
+                {topTimes.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+                    {topTimes.slice(0, 3).map((t, j) => (
+                      <button
+                        key={j}
+                        style={{ padding: "8px 14px", borderRadius: 50, fontSize: 12, cursor: "pointer", border: "1.5px solid #6B2C3B", background: "#FAF0F2", color: "#6B2C3B", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }}
+                        onClick={async () => {
+                          if (!onVote) return;
+                          await onVote(poll.id, 'time', t.time);
+                          setMyVotes(prev => ({ ...prev, [poll.id]: t.time }));
+                          setPolls(prev => prev.map(p => {
+                            if (p.id !== poll.id) return p;
+                            return { ...p, votes: [...(p.votes || []), { user_id: user?.id, vote_type: 'time', option_index: t.time }] };
+                          }));
+                        }}
+                      >
+                        {t.time} ({t.votes})
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <p style={{ fontSize: 11, color: "#888", marginBottom: 4 }}>Or propose a different time:</p>
                 <select
                   style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D", background: "white" }}
                   value=""
@@ -4182,7 +4231,7 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                     }));
                   }}
                 >
-                  <option value="">Select a time...</option>
+                  <option value="">Select any time...</option>
                   {TIMES.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
