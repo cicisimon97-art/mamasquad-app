@@ -3152,18 +3152,22 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
           <span style={{ ...styles.verifiedMomTag, marginTop: 10, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>
           {profile.admin && <span style={{ ...styles.adminBadge, position: "static", marginTop: 6 }}>{Icons.crown} Community Admin</span>}
           <h2 style={styles.profileDetailName}>{profile.name}</h2>
-          <p style={styles.profileDetailArea}>{Icons.location} {profile.area}</p>
+          {profile.area && <p style={styles.profileDetailArea}>{Icons.location} {profile.area}</p>}
         </div>
 
-        <div style={styles.detailSection}>
-          <h3 style={styles.sectionTitle}>About</h3>
-          <p style={styles.bioText}>{profile.bio}</p>
-        </div>
+        {profile.bio && (
+          <div style={styles.detailSection}>
+            <h3 style={styles.sectionTitle}>About</h3>
+            <p style={styles.bioText}>{profile.bio}</p>
+          </div>
+        )}
 
-        <div style={styles.detailSection}>
-          <h3 style={styles.sectionTitle}>Kids Ages</h3>
-          <p style={styles.detailText}>{profile.ages}</p>
-        </div>
+        {profile.ages && (
+          <div style={styles.detailSection}>
+            <h3 style={styles.sectionTitle}>Kids Ages</h3>
+            <p style={styles.detailText}>{profile.ages}</p>
+          </div>
+        )}
 
         {(profile.interests || []).length > 0 && (
           <div style={styles.detailSection}>
