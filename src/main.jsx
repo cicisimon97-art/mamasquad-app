@@ -4881,6 +4881,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
   const [activeSection, setActiveSection] = useState(isMember ? "feed" : "about");
+
+  // Switch to feed tab when membership updates
+  useEffect(() => {
+    if (isMember && activeSection === "about") setActiveSection("feed");
+  }, [isMember]);
   const [requestMessage, setRequestMessage] = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinSent, setJoinSent] = useState(false);
