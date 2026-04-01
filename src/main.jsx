@@ -2444,7 +2444,25 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
   });
 
   const filtered = visibleEvents.filter(e =>
-    (selectedDay === "All" || e.date === selectedDay) &&
+    (() => {
+      if (selectedDay === "All") return true;
+      const d = e.date || '';
+      // Direct match (Mon, Tue, etc.)
+      if (d === selectedDay) return true;
+      // Full day name match (Monday starts with Mon)
+      if (d.toLowerCase().startsWith(selectedDay.toLowerCase())) return true;
+      // Parse Month/Day/Year format to get day of week
+      if (d.includes('/')) {
+        const parts = d.split('/');
+        const monthIdx = MONTHS.indexOf(parts[0]);
+        if (monthIdx >= 0 && parts[1] && parts[2]) {
+          const date = new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
+          const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.getDay()];
+          if (dayName === selectedDay) return true;
+        }
+      }
+      return false;
+    })() &&
     (selectedAge === "All Ages" || e.ages === selectedAge)
   );
 
@@ -2606,6 +2624,8 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [attendeeList, setAttendeeList] = useState([]);
+  const [showKidSelect, setShowKidSelect] = useState(false);
+  const [selectedKids, setSelectedKids] = useState({});
   const [showAttendees, setShowAttendees] = useState(false);
   const isCreator = user && event.hostId === user.id;
 
@@ -2613,16 +2633,24 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   useEffect(() => {
     if (!event.fromSupabase) return;
     supabase.from('event_rsvps')
-      .select('user_id, users!user_id(full_name, avatar_url, kids)')
+      .select('user_id, status, users!user_id(full_name, avatar_url, kids)')
       .eq('event_id', event.id)
       .then(({ data }) => {
         if (data) {
-          setAttendeeList(data.map(r => ({
-            id: r.user_id,
-            name: r.users?.full_name || 'A mom',
-            avatar_url: r.users?.avatar_url,
-            kids: r.users?.kids || [],
-          })));
+          setAttendeeList(data.map(r => {
+            let attendingKids = r.users?.kids || [];
+            // If status contains selected kids JSON, use that instead
+            try {
+              const parsed = JSON.parse(r.status);
+              if (Array.isArray(parsed) && parsed.length > 0) attendingKids = parsed;
+            } catch {}
+            return {
+              id: r.user_id,
+              name: r.users?.full_name || 'A mom',
+              avatar_url: r.users?.avatar_url,
+              kids: attendingKids,
+            };
+          }));
         }
       });
   }, [event.id, event.fromSupabase, localAttendees]);
@@ -2738,13 +2766,68 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
           )}
         </div>
 
-        <button
-          style={{ ...styles.primaryBtn, background: joined ? "#E8F5E9" : undefined, color: joined ? "#2E7D32" : undefined, width: "100%", opacity: rsvpLoading ? 0.6 : 1 }}
-          onClick={handleRsvpClick}
-          disabled={rsvpLoading}
-        >
-          {rsvpLoading ? "..." : joined ? "✓ You're Going!" : "Join This Playdate"}
-        </button>
+        {joined ? (
+          <button
+            style={{ ...styles.primaryBtn, background: "#E8F5E9", color: "#2E7D32", width: "100%", boxShadow: "none" }}
+            onClick={handleRsvpClick}
+          >
+            ✓ You're Going! (tap to leave)
+          </button>
+        ) : !showKidSelect ? (
+          <button
+            style={{ ...styles.primaryBtn, width: "100%" }}
+            onClick={() => {
+              if (user?.kids && user.kids.filter(k => k.gender || k.birthday).length > 0) {
+                setShowKidSelect(true);
+                // Pre-select all kids
+                const sel = {};
+                user.kids.forEach((_, i) => { sel[i] = true; });
+                setSelectedKids(sel);
+              } else {
+                handleRsvpClick();
+              }
+            }}
+          >
+            Join This Playdate
+          </button>
+        ) : (
+          <div style={{ background: "#FAF0F2", borderRadius: 12, padding: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 }}>Which kids are coming?</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+              {(user?.kids || []).filter(k => k.gender || k.birthday).map((kid, i) => {
+                const age = formatAge(kid.birthday);
+                const icon = kid.gender === "Girl" ? "👧" : kid.gender === "Boy" ? "👦" : "👶";
+                return (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "white", borderRadius: 8, cursor: "pointer", border: selectedKids[i] ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8" }} onClick={() => setSelectedKids(prev => ({ ...prev, [i]: !prev[i] }))}>
+                    <div style={{ width: 20, height: 20, borderRadius: 4, border: selectedKids[i] ? "none" : "2px solid #ddd", background: selectedKids[i] ? "#6B2C3B" : "white", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {selectedKids[i] && <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>}
+                    </div>
+                    <span style={{ fontSize: 13, color: "#2D2D2D" }}>{icon} {kid.gender || "Child"}{age ? ` — ${age} yrs` : ''}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                style={{ ...styles.primaryBtn, flex: 1, opacity: rsvpLoading ? 0.6 : 1 }}
+                disabled={rsvpLoading}
+                onClick={async () => {
+                  // Store selected kids in RSVP status field
+                  const kidsAttending = (user?.kids || []).filter((_, i) => selectedKids[i]);
+                  await handleRsvpClick();
+                  // Update the RSVP with kids info
+                  if (event.fromSupabase && user) {
+                    await supabase.from('event_rsvps').update({ status: JSON.stringify(kidsAttending) }).eq('event_id', event.id).eq('user_id', user.id);
+                  }
+                  setShowKidSelect(false);
+                }}
+              >
+                {rsvpLoading ? "..." : "Confirm"}
+              </button>
+              <button style={{ ...styles.secondaryBtn, flex: 1 }} onClick={() => setShowKidSelect(false)}>Cancel</button>
+            </div>
+          </div>
+        )}
 
         {/* Delete button for creator */}
         {isCreator && event.fromSupabase && !showDeleteConfirm && (
