@@ -5272,8 +5272,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               <>
                 {/* Action buttons */}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowPostPlaydate(true)}>📅 Playdate</button>
-                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowProposeMeetup(true)}>📍 Meetup</button>
+                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowPostPlaydate(true); setTimeout(() => document.getElementById('playdate-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📅 Playdate</button>
+                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
                   <label style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: photoUploading ? 0.5 : 1 }}>
                     {photoUploading ? "..." : "📸 Photo"}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
@@ -5297,7 +5297,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
 
                 {/* Post Playdate inline form */}
                 {showPostPlaydate && (
-                  <div style={gs.inlineForm}>
+                  <div id="playdate-form" style={gs.inlineForm}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <strong style={{ fontSize: 14, color: "#2D2D2D" }}>📅 Post a Playdate</strong>
                       <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowPostPlaydate(false)}>✕</button>
@@ -5355,7 +5355,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
 
                 {/* Propose Meetup inline form */}
                 {showProposeMeetup && (
-                  <div style={gs.inlineForm}>
+                  <div id="meetup-form" style={gs.inlineForm}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <strong style={{ fontSize: 14, color: "#2D2D2D" }}>📍 Propose a Meetup</strong>
                       <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowProposeMeetup(false)}>✕</button>
