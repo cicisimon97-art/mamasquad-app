@@ -5445,6 +5445,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             )}
           </div>
         )}
+        <PageFooter />
       </div>
     </div>
   );
