@@ -717,6 +717,17 @@ function MamaSquadsApp() {
     setGroups(prev => prev.map(g =>
       g.id === groupId ? { ...g, members: (g.members || 0) + 1 } : g
     ));
+
+    // Notify the user they've been accepted
+    const group = (groups || []).find(g => g.id === groupId);
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      type: 'group_accepted',
+      title: 'Welcome to the group!',
+      body: `You've been accepted into ${group?.name || 'a group'}. Check it out!`,
+      group_id: groupId,
+      is_read: false,
+    });
   };
 
   // ─── Deny join request handler ───
@@ -815,6 +826,12 @@ function MamaSquadsApp() {
     };
     setEvents(prev => [newEvent, ...prev]);
     setJoinedEvents(prev => [...prev, data.id]);
+
+    // Notify group members about the new event
+    if (data.group_id) {
+      const groupName = (groups || []).find(g => g.id === data.group_id)?.name || 'your group';
+      await notifyGroupMembers(data.group_id, 'new_event', 'New Playdate', `${user.full_name || 'A mom'} posted a new playdate in ${groupName}: "${data.title}"`);
+    }
 
     return { data: newEvent };
   };
@@ -6133,7 +6150,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 22 }}>
-                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'new_message' ? '💬' : '🔔'}
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : '🔔'}
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
