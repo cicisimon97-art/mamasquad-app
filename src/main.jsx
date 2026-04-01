@@ -5129,6 +5129,31 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         <h2 style={styles.detailTitle}>{group.emoji} {group.name}</h2>
         <div style={{ width: 40 }} />
       </div>
+      {/* Section tabs — outside detailBody so always visible */}
+      <div style={{ display: "flex", overflowX: "auto", borderBottom: "1px solid #f0f0f0", flexShrink: 0, background: "white" }}>
+        {[
+          ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
+          ...(isMember ? [{ id: "members", label: "Members" }] : []),
+          ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
+          { id: "about", label: "About" },
+          { id: "rules", label: "Rules" },
+          ...(isMember ? [{ id: "avail", label: "Avail." }] : []),
+          ...(isAdmin ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
+        ].map(s => (
+          <button
+            key={s.id}
+            style={{
+              flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+              borderBottom: activeSection === s.id ? "2px solid #6B2C3B" : "2px solid transparent",
+              color: activeSection === s.id ? "#6B2C3B" : "#999",
+              minWidth: 60,
+            }}
+            onClick={() => setActiveSection(s.id)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
       <div style={styles.detailBody}>
         {/* Group Banner */}
         <div style={{ ...styles.eventBanner, background: `linear-gradient(135deg, ${group.color}18, ${group.color}35)` }}>
@@ -5249,31 +5274,6 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
-        {/* Section tabs */}
-        <div style={{ display: "flex", overflowX: "auto", borderBottom: "1px solid #f0f0f0" }}>
-          {[
-            ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
-            ...(isMember ? [{ id: "members", label: "Members" }] : []),
-            ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
-            { id: "about", label: "About" },
-            { id: "rules", label: "Rules" },
-            ...(isMember ? [{ id: "avail", label: "Avail." }] : []),
-            ...(isAdmin ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
-          ].map(s => (
-            <button
-              key={s.id}
-              style={{
-                flex: 1, padding: "10px 0", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
-                borderBottom: activeSection === s.id ? "2px solid #6B2C3B" : "2px solid transparent",
-                color: activeSection === s.id ? "#6B2C3B" : "#999",
-                minWidth: 60,
-              }}
-              onClick={() => setActiveSection(s.id)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
 
         {/* ── FEED TAB ── */}
         {activeSection === "feed" && (
