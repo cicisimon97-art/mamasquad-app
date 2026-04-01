@@ -284,7 +284,7 @@ function MamaSquadsApp() {
   const [groupRequests, setGroupRequests] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [groups, setGroups] = useState([]);
-  const [joinedGroups, setJoinedGroups] = useState([3, 5]);
+  const [joinedGroups, setJoinedGroups] = useState([]);
   const [pendingJoins, setPendingJoins] = useState([]);
   const [onboardStep, setOnboardStep] = useState(0);
   const [newComment, setNewComment] = useState("");
@@ -1206,6 +1206,7 @@ function MamaSquadsApp() {
               joinedGroups={joinedGroups}
               notifications={notifications}
               setNotifications={setNotifications}
+              connections={connections}
               onUploadPhoto={uploadProfilePhoto}
               onProfileSelect={(p) => navigate("profile", p)}
               onAdminApply={() => setShowAdminApply(true)}
@@ -2655,7 +2656,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 
         <div style={styles.detailSection}>
           <div style={styles.hostRow}>
-            <div style={{ ...styles.avatarSmall, background: event.color }}>{event.host.split(" ").map(n => n[0]).join("")}</div>
+            <div style={{ ...styles.avatarSmall, background: event.color }}>{(event.host || "?").split(" ").map(n => n[0]).join("")}</div>
             <div>
               <p style={styles.hostLabel}>Hosted by</p>
               <p style={styles.hostNameLg}>{event.host}</p>
@@ -2718,7 +2719,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
           <h3 style={styles.sectionTitle}>Comments ({comments.length})</h3>
           {comments.map((c, i) => (
             <div key={c.id || i} style={styles.commentCard}>
-              <div style={styles.commentAvatar}>{c.user.split(" ").map(n => n[0]).join("")}</div>
+              <div style={styles.commentAvatar}>{(c.user || "?").split(" ").map(n => n[0]).join("")}</div>
               <div style={styles.commentBody}>
                 <div style={styles.commentTop}>
                   <strong style={styles.commentUser}>{c.user}</strong>
@@ -2745,7 +2746,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 }
 
 // ─── Discover Tab ───
-function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply }) {
+function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply }) {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
   const [showMyProfile, setShowMyProfile] = useState(false);
@@ -2797,7 +2798,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
   });
 
   if (showMyProfile) {
-    return <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} onSwitchTab={() => {}} onShowDiscover={() => setShowMyProfile(false)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={onUploadPhoto} onBack={() => setShowMyProfile(false)} />;
+    return <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} connections={connections || []} onSwitchTab={() => {}} onShowDiscover={() => setShowMyProfile(false)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={onUploadPhoto} onBack={() => setShowMyProfile(false)} />;
   }
 
   const displayName = user?.full_name || "Mom";
@@ -2975,7 +2976,7 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
 }
 
 // ─── My Profile Tab ───
-function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, onSwitchTab, onShowDiscover, notifications, setNotifications, onUploadPhoto, onBack }) {
+function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups, connections, onSwitchTab, onShowDiscover, notifications, setNotifications, onUploadPhoto, onBack }) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [menuView, setMenuView] = useState(null); // null, "children", "notifications", "privacy", "about", "admin-panel"
@@ -3125,7 +3126,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
         {(user?.area) && <p style={styles.myArea}>{Icons.location} {user.area}</p>}
         <div style={styles.statRow}>
           <div style={styles.stat}><strong>{joinedEvents?.length || 0}</strong><span>Playdates</span></div>
-          <div style={styles.stat}><strong>0</strong><span>Connections</span></div>
+          <div style={styles.stat}><strong>{(connections || []).filter(c => c.status === 'accepted').length}</strong><span>Connections</span></div>
           <div style={styles.stat}><strong>{joinedGroups?.length || 0}</strong><span>Groups</span></div>
         </div>
       </div>
@@ -4589,7 +4590,6 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [requestMessage, setRequestMessage] = useState("");
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinSent, setJoinSent] = useState(false);
-  const [newPost, setNewPost] = useState("");
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
   const [groupPhotos, setGroupPhotos] = useState([]);
