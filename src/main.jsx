@@ -2503,6 +2503,33 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
         )}
       </div>
 
+      {/* My Groups section when My Groups filter is active */}
+      {feedFilter === "my-groups" && (() => {
+        const myGroups = (groups || []).filter(g => (joinedGroups || []).includes(g.id));
+        return myGroups.length > 0 ? (
+          <div style={{ marginTop: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 10 }}>My Groups</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {myGroups.map(g => (
+                <div key={g.id} style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0", boxShadow: "0 2px 8px rgba(0,0,0,0.03)", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }} onClick={() => onGroupSelect && onGroupSelect(g)}>
+                  <span style={{ fontSize: 28 }}>{g.emoji || '👥'}</span>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{g.name}</strong>
+                    {g.desc && <p style={{ fontSize: 12, color: "#888", marginTop: 2, lineHeight: 1.3 }}>{g.desc.slice(0, 80)}{g.desc.length > 80 ? '...' : ''}</p>}
+                    <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                      {g.area && <span style={{ fontSize: 11, color: "#888" }}>📍 {g.area}</span>}
+                      <span style={{ fontSize: 11, color: "#888" }}>👥 {g.members} members</span>
+                      {g.isPrivate && <span style={{ fontSize: 11, color: "#888" }}>🔒 Private</span>}
+                    </div>
+                  </div>
+                  <span style={{ color: "#ccc" }}>›</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null;
+      })()}
+
       {/* Public Groups section when Public filter is active */}
       {feedFilter === "public" && (groups || []).filter(g => !g.isPrivate).length > 0 && (
         <div style={{ marginTop: 16 }}>
