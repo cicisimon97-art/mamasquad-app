@@ -4496,6 +4496,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [newPost, setNewPost] = useState("");
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
+  const [groupPhotos, setGroupPhotos] = useState([]);
+  const [photoUploading, setPhotoUploading] = useState(false);
   const [pdTitle, setPdTitle] = useState("");
   const [pdLocation, setPdLocation] = useState("");
   const [pdDate, setPdDate] = useState("");
@@ -4515,6 +4517,34 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
     Mon: [], Tue: [], Wed: [], Thu: [], Fri: [], Sat: [], Sun: [],
   });
   const [myAvailNote, setMyAvailNote] = useState("");
+
+  // Load group photos
+  useEffect(() => {
+    if (!group.fromSupabase) return;
+    supabase.storage.from('avatars').list(`groups/${group.id}`, { limit: 50, sortBy: { column: 'created_at', order: 'desc' } })
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          const urls = data.map(f => {
+            const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(`groups/${group.id}/${f.name}`);
+            return { name: f.name, url: publicUrl, created: f.created_at };
+          });
+          setGroupPhotos(urls);
+        }
+      });
+  }, [group.id, group.fromSupabase]);
+
+  const uploadGroupPhoto = async (file) => {
+    if (!user || !file) return;
+    setPhotoUploading(true);
+    const ext = file.name.split('.').pop();
+    const fileName = `${Date.now()}.${ext}`;
+    const filePath = `groups/${group.id}/${fileName}`;
+
+    await supabase.storage.from('avatars').upload(filePath, file);
+    const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    setGroupPhotos(prev => [{ name: fileName, url: publicUrl, created: new Date().toISOString() }, ...prev]);
+    setPhotoUploading(false);
+  };
 
   // Load pending requests from Supabase for admin
   useEffect(() => {
@@ -4775,9 +4805,28 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               <>
                 {/* Action buttons */}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowPostPlaydate(true)}>📅 Post Playdate</button>
-                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowProposeMeetup(true)}>📍 Propose Meetup</button>
+                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowPostPlaydate(true)}>📅 Playdate</button>
+                  <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setShowProposeMeetup(true)}>📍 Meetup</button>
+                  <label style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: photoUploading ? 0.5 : 1 }}>
+                    {photoUploading ? "..." : "📸 Photo"}
+                    <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadGroupPhoto(file);
+                    }} />
+                  </label>
                 </div>
+
+                {/* Group Photos */}
+                {groupPhotos.length > 0 && (
+                  <div>
+                    <h4 style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 8 }}>📸 Photos ({groupPhotos.length})</h4>
+                    <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
+                      {groupPhotos.map((photo, i) => (
+                        <img key={i} src={photo.url} alt="" style={{ width: 120, height: 120, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Post Playdate inline form */}
                 {showPostPlaydate && (
