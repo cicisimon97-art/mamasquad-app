@@ -5435,8 +5435,8 @@ function BottomNav({ tab, setTab, unreadNotifications }) {
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
     { id: "create", icon: Icons.plus, label: "Create" },
-    { id: "discover", icon: Icons.user, label: "Me" },
     { id: "notifications", icon: Icons.bell, label: "Alerts", badge: unreadNotifications || 0 },
+    { id: "discover", icon: Icons.user, label: "Me" },
   ];
 
   return (
