@@ -5245,11 +5245,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         )}
 
         {/* Section tabs */}
-        <div style={{ display: "flex", gap: 0, borderBottom: "1px solid #f0f0f0", paddingBottom: 0 }}>
+        <div style={{ display: "flex", gap: 4, borderBottom: "1px solid #f0f0f0", overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 0 }}>
           {[
             ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
             ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
-            ...(isMember ? [{ id: "avail", label: "Availability" }] : []),
+            ...(isMember ? [{ id: "avail", label: "Avail." }] : []),
             ...(isMember ? [{ id: "members", label: "Members" }] : []),
             { id: "about", label: "About" },
             { id: "rules", label: "Rules" },
@@ -5258,7 +5258,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             <button
               key={s.id}
               style={{
-                ...gs.sectionTab,
+                padding: "10px 14px", background: "none", border: "none", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif",
+                whiteSpace: "nowrap", flexShrink: 0,
                 borderBottom: activeSection === s.id ? "2px solid #6B2C3B" : "2px solid transparent",
                 color: activeSection === s.id ? "#6B2C3B" : "#999",
               }}
