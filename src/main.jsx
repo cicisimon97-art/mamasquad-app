@@ -4628,7 +4628,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
                   <p style={{ fontSize: 12, color: "#888", marginBottom: 6, lineHeight: 1.3 }}>{group.desc}</p>
                   <div style={styles.eventMeta}>
                     <span style={styles.metaItem}>{Icons.location} {group.area}</span>
-                    <span style={styles.metaItem}>{Icons.users} {group.members}/{group.maxMembers}</span>
+                    <span style={styles.metaItem}>{Icons.users} {group.members} members</span>
                   </div>
                   <div style={styles.eventBottom}>
                     <span style={styles.hostName}>Admin: {group.admin}</span>
@@ -4900,7 +4900,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           <p style={{ fontSize: 13, color: "#666", lineHeight: 1.4, marginBottom: 10 }}>{group.desc}</p>
           <div style={styles.bannerMeta}>
             <span>{Icons.location} {group.area}</span>
-            <span>{Icons.users} {group.members} of {group.maxMembers} members</span>
+            <span>{Icons.users} {group.members} members</span>
           </div>
         </div>
 
@@ -4912,14 +4912,6 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             <p style={styles.hostNameLg}>{group.admin}</p>
           </div>
           {isAdmin && <span style={{ ...styles.adminBadge, position: "static", marginLeft: "auto" }}>{Icons.crown} You</span>}
-        </div>
-
-        {/* Capacity bar */}
-        <div>
-          <div style={styles.attendeeBar}>
-            <div style={{ ...styles.attendeeFill, width: `${(group.members / group.maxMembers) * 100}%`, background: group.color }} />
-          </div>
-          <p style={styles.attendeeText}>{group.members} of {group.maxMembers} spots filled</p>
         </div>
 
         {/* Join / Leave / Pending */}
@@ -5639,7 +5631,6 @@ function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
             <option>5-8 years</option>
             <option>8+ years</option>
           </select>
-          <input style={styles.input} placeholder="Max members (e.g., 30)" type="number" value={maxMembers} onChange={e => setMaxMembers(e.target.value)} />
 
           {/* Privacy toggle */}
           <div style={gs.privacyToggle}>
