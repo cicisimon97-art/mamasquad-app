@@ -269,7 +269,6 @@ function MamaSquadsApp() {
   const [selectedAge, setSelectedAge] = useState("All Ages");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedProfile, setSelectedProfile] = useState(null);
-  const [showCreateEvent, setShowCreateEvent] = useState(false);
   const [showAdminApply, setShowAdminApply] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
@@ -1116,6 +1115,7 @@ function MamaSquadsApp() {
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
     );
+    if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
     if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
@@ -1162,9 +1162,6 @@ function MamaSquadsApp() {
     return (
       <div style={styles.app}>
         <div style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
-          {tab === "create" && (
-            <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} fadeIn={fadeIn} />
-          )}
           {tab === "home" && (
             <HomeTab
               events={events}
@@ -1173,7 +1170,7 @@ function MamaSquadsApp() {
               selectedDay={selectedDay} setSelectedDay={setSelectedDay}
               selectedAge={selectedAge} setSelectedAge={setSelectedAge}
               onEventSelect={(e) => navigate("event", e)}
-              onCreateEvent={() => setShowCreateEvent(true)}
+              onCreateEvent={() => setTab("create")}
               onPoll={() => setShowPoll(true)}
               joinedEvents={joinedEvents}
             />
