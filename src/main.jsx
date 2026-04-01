@@ -4815,6 +4815,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [deleteError, setDeleteError] = useState(null);
   const [deletingGroup, setDeletingGroup] = useState(false);
   const [editingGroup, setEditingGroup] = useState(false);
+  const [memberList, setMemberList] = useState([]);
+  const [membersLoaded, setMembersLoaded] = useState(false);
   const [editGroupName, setEditGroupName] = useState(group.name || "");
   const [editGroupDesc, setEditGroupDesc] = useState(group.desc || "");
   const [editGroupRules, setEditGroupRules] = useState((group.rules || []).join("\n"));
@@ -5170,6 +5172,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             ...(isMember ? [{ id: "feed", label: "Feed" }] : []),
             ...(isMember ? [{ id: "polls", label: "Polls" }] : []),
             ...(isMember ? [{ id: "avail", label: "Availability" }] : []),
+            ...(isMember ? [{ id: "members", label: "Members" }] : []),
             { id: "about", label: "About" },
             { id: "rules", label: "Rules" },
             ...(isAdmin ? [{ id: "requests", label: `Requests (${pending.length})` }] : []),
@@ -5358,6 +5361,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           />
         )}
 
+        {/* ── MEMBERS TAB ── */}
+        {activeSection === "members" && isMember && (
+          <MembersTab group={group} user={user} isAdmin={isAdmin} onViewProfile={onViewProfile} membersLoaded={membersLoaded} setMembersLoaded={setMembersLoaded} memberList={memberList} setMemberList={setMemberList} />
+        )}
+
         {/* ── ABOUT TAB ── */}
         {activeSection === "about" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -5521,6 +5529,87 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         )}
         <PageFooter />
       </div>
+    </div>
+  );
+}
+
+// ─── Members Tab ───
+function MembersTab({ group, user, isAdmin, onViewProfile, membersLoaded, setMembersLoaded, memberList, setMemberList }) {
+  const [removing, setRemoving] = useState(null);
+
+  useEffect(() => {
+    if (membersLoaded || !group.fromSupabase) return;
+    supabase.from('group_members')
+      .select('user_id, role, users!user_id(full_name, avatar_url, kids, area)')
+      .eq('group_id', group.id)
+      .then(({ data }) => {
+        if (data) {
+          setMemberList(data.map(m => ({
+            userId: m.user_id,
+            name: m.users?.full_name || 'A mom',
+            avatar_url: m.users?.avatar_url,
+            area: m.users?.area || '',
+            kids: m.users?.kids || [],
+            role: m.role,
+          })));
+        }
+        setMembersLoaded(true);
+      });
+  }, [membersLoaded, group.id]);
+
+  const handleRemove = async (userId) => {
+    setRemoving(userId);
+    await supabase.from('group_members').delete().eq('group_id', group.id).eq('user_id', userId);
+    setMemberList(prev => prev.filter(m => m.userId !== userId));
+    setRemoving(null);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D" }}>{memberList.length} Members</h3>
+      {!membersLoaded ? (
+        <p style={{ fontSize: 14, color: "#888", textAlign: "center", padding: 20 }}>Loading...</p>
+      ) : memberList.length === 0 ? (
+        <p style={{ fontSize: 13, color: "#888", textAlign: "center", padding: 20 }}>No members yet.</p>
+      ) : (
+        memberList.map((m, i) => {
+          const kidAges = (m.kids || []).filter(k => k.gender || k.birthday).map(k => {
+            const age = formatAge(k.birthday);
+            const icon = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : "";
+            return `${icon} ${age ? age + ' yrs' : ''}`.trim();
+          }).filter(Boolean);
+
+          return (
+            <div key={i} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", display: "flex", alignItems: "center", gap: 12 }}>
+              <Avatar url={m.avatar_url} name={m.name} size={44} />
+              <div style={{ flex: 1 }} onClick={() => {
+                if (onViewProfile && m.userId !== user?.id) {
+                  onViewProfile({ userId: m.userId, name: m.name, avatar: m.name.split(' ').map(w => w[0]).join(''), bio: '', ages: kidAges.join(', '), area: m.area, interests: [] });
+                }
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{m.name}</strong>
+                  {m.role === 'admin' && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 6px", borderRadius: 50 }}>Admin</span>}
+                  {m.userId === user?.id && <span style={{ fontSize: 9, fontWeight: 700, color: "#2E7D32", background: "#E8F5E9", padding: "2px 6px", borderRadius: 50 }}>You</span>}
+                </div>
+                {kidAges.length > 0 && <p style={{ fontSize: 11, color: "#888", marginTop: 2 }}>{kidAges.join(', ')}</p>}
+                {m.area && <p style={{ fontSize: 11, color: "#bbb", marginTop: 1 }}>📍 {m.area}</p>}
+              </div>
+              {isAdmin && m.role !== 'admin' && m.userId !== user?.id && (
+                <button
+                  style={{ padding: "6px 10px", borderRadius: 8, background: "#FFEBEE", border: "none", fontSize: 11, fontWeight: 600, color: "#C62828", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: removing === m.userId ? 0.5 : 1 }}
+                  disabled={removing === m.userId}
+                  onClick={() => {
+                    if (window.confirm(`Remove ${m.name} from this group?`)) handleRemove(m.userId);
+                  }}
+                >
+                  {removing === m.userId ? "..." : "Remove"}
+                </button>
+              )}
+            </div>
+          );
+        })
+      )}
     </div>
   );
 }
