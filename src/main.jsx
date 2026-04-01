@@ -2584,6 +2584,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
         </div>
       )}
 
+      <PageFooter />
       <style>{keyframes}</style>
     </div>
   );
@@ -2756,6 +2757,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
             />
             <button style={{ ...styles.sendBtn, opacity: commentLoading ? 0.5 : 1 }} onClick={handleCommentSubmit} disabled={commentLoading}>{Icons.send}</button>
           </div>
+        <PageFooter />
         </div>
       </div>
     </div>
@@ -2917,6 +2919,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
           </div>
         </div>
       </div>
+      <PageFooter />
       <style>{keyframes}</style>
     </div>
   );
@@ -3361,6 +3364,8 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           </div>
         ))}
       </div>
+
+      <PageFooter />
 
       {/* ── Photo Adjust Modal ── */}
       {photoToAdjust && photoPreviewUrl && (
@@ -4653,6 +4658,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
           </div>
         </div>
       </div>
+      <PageFooter />
       <style>{keyframes}</style>
     </div>
   );
@@ -5779,6 +5785,16 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
           ))}
         </div>
       )}
+      <PageFooter />
+    </div>
+  );
+}
+
+// ─── Page Footer ───
+function PageFooter() {
+  return (
+    <div style={{ textAlign: "center", padding: "24px 0 16px", marginTop: 16 }}>
+      <p style={{ fontSize: 10, color: "#ccc", letterSpacing: 0.5 }}>© {new Date().getFullYear()} MamaSquads. All rights reserved.</p>
     </div>
   );
 }
@@ -5862,8 +5878,8 @@ const radius = 16;
 const styles = {
   app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" },
   fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", position: "relative" },
-  mainContent: { flex: 1, overflow: "auto", paddingBottom: 80 },
-  tabContent: { padding: "24px 18px", paddingTop: 28 },
+  mainContent: { flex: 1, overflow: "auto", paddingBottom: 100, WebkitOverflowScrolling: "touch" },
+  tabContent: { padding: "24px 18px", paddingTop: 28, paddingBottom: 40 },
 
   // Welcome
   welcomeContent: { textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
@@ -5951,7 +5967,7 @@ const styles = {
   detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 19, fontWeight: 700, color: gray800 },
-  detailBody: { flex: 1, overflow: "auto", padding: 18, display: "flex", flexDirection: "column", gap: 16 },
+  detailBody: { flex: 1, overflow: "auto", padding: 18, paddingBottom: 40, display: "flex", flexDirection: "column", gap: 16, WebkitOverflowScrolling: "touch" },
   detailSection: { marginBottom: 4 },
   sectionTitle: { fontSize: 14, fontWeight: 700, color: gray800, marginBottom: 10, fontFamily: font },
 
