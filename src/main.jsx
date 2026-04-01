@@ -4594,6 +4594,10 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
   const [groupPhotos, setGroupPhotos] = useState([]);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [showDeleteGroup, setShowDeleteGroup] = useState(false);
+  const [deletePassword, setDeletePassword] = useState("");
+  const [deleteError, setDeleteError] = useState(null);
+  const [deletingGroup, setDeletingGroup] = useState(false);
   const [pdTitle, setPdTitle] = useState("");
   const [pdLocation, setPdLocation] = useState("");
   const [pdDate, setPdDate] = useState("");
@@ -4860,13 +4864,75 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
         {isMember && (
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={{ ...styles.primaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
-              ✓ You're a Member
-            </button>
-            <button style={{ ...styles.secondaryBtn, padding: "12px 16px", background: "#FFF5F5", color: "#C62828" }} onClick={handleLeave}>
-              Leave
-            </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ ...styles.primaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
+                ✓ You're a Member
+              </button>
+              {!isAdmin && (
+                <button style={{ ...styles.secondaryBtn, padding: "12px 16px", background: "#FFF5F5", color: "#C62828" }} onClick={handleLeave}>
+                  Leave
+                </button>
+              )}
+            </div>
+            {isAdmin && group.fromSupabase && !showDeleteGroup && (
+              <button
+                style={{ width: "100%", padding: "10px 0", borderRadius: 50, background: "none", border: "1.5px solid #C62828", color: "#C62828", fontSize: 13, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                onClick={() => setShowDeleteGroup(true)}
+              >
+                Delete Group
+              </button>
+            )}
+            {showDeleteGroup && (
+              <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 16, marginTop: 4 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#C62828", marginBottom: 4 }}>Are you sure you want to delete this group?</p>
+                <p style={{ fontSize: 13, color: "#888", marginBottom: 12, lineHeight: 1.4 }}>All data will be permanently lost — members, playdates, polls, photos, and all group content. This cannot be undone.</p>
+                <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>Enter your password to confirm:</p>
+                <input
+                  type="password"
+                  style={{ ...styles.input, marginBottom: 8 }}
+                  placeholder="Your account password"
+                  value={deletePassword}
+                  onChange={e => { setDeletePassword(e.target.value); setDeleteError(null); }}
+                />
+                {deleteError && <p style={{ fontSize: 12, color: "#C62828", marginBottom: 8 }}>{deleteError}</p>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "#C62828", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: deletingGroup ? 0.6 : 1 }}
+                    disabled={deletingGroup}
+                    onClick={async () => {
+                      if (!deletePassword) { setDeleteError("Enter your password"); return; }
+                      setDeletingGroup(true);
+                      setDeleteError(null);
+                      // Verify password
+                      const { error: authError } = await supabase.auth.signInWithPassword({ email: user?.email, password: deletePassword });
+                      if (authError) { setDeleteError("Incorrect password"); setDeletingGroup(false); return; }
+                      // Delete all group data
+                      await supabase.from('votes').delete().in('proposal_id', (await supabase.from('meetup_proposals').select('id').eq('group_id', group.id)).data?.map(p => p.id) || []);
+                      await supabase.from('meetup_proposals').delete().eq('group_id', group.id);
+                      await supabase.from('join_requests').delete().eq('group_id', group.id);
+                      await supabase.from('notifications').delete().eq('group_id', group.id);
+                      await supabase.from('availability').delete().eq('group_id', group.id);
+                      await supabase.from('comments').delete().in('event_id', (await supabase.from('events').select('id').eq('group_id', group.id)).data?.map(e => e.id) || []);
+                      await supabase.from('event_rsvps').delete().in('event_id', (await supabase.from('events').select('id').eq('group_id', group.id)).data?.map(e => e.id) || []);
+                      await supabase.from('events').delete().eq('group_id', group.id);
+                      await supabase.from('group_members').delete().eq('group_id', group.id);
+                      await supabase.from('groups').delete().eq('id', group.id);
+                      setDeletingGroup(false);
+                      onBack();
+                    }}
+                  >
+                    {deletingGroup ? "Deleting..." : "Yes, Delete Everything"}
+                  </button>
+                  <button
+                    style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "white", color: "#666", fontSize: 13, fontWeight: 600, border: "1.5px solid #ddd", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                    onClick={() => { setShowDeleteGroup(false); setDeletePassword(""); setDeleteError(null); }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
