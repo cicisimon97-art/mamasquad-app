@@ -1222,7 +1222,12 @@ function MamaSquadsApp() {
             />
           )}
           {tab === "notifications" && (
-            <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} />
+            <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={(notif) => {
+              if (notif.group_id) {
+                const group = (groups || []).find(g => g.id === notif.group_id);
+                if (group) { setSelectedGroup(group); }
+              }
+            }} />
           )}
         </div>
         <BottomNav tab={tab} setTab={setTab} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
@@ -5575,7 +5580,7 @@ const gs = {
 
 // ─── Bottom Nav ───
 // ─── Notifications Tab ───
-function NotificationsTab({ notifications, setNotifications, user }) {
+function NotificationsTab({ notifications, setNotifications, user, groups, onNavigate }) {
   return (
     <div style={styles.tabContent}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -5617,6 +5622,7 @@ function NotificationsTab({ notifications, setNotifications, user }) {
                   await supabase.from('notifications').update({ is_read: true }).eq('id', notif.id);
                   setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n));
                 }
+                if (onNavigate) onNavigate(notif);
               }}
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -5629,7 +5635,10 @@ function NotificationsTab({ notifications, setNotifications, user }) {
                     {!notif.is_read && <div style={{ width: 8, height: 8, borderRadius: 4, background: "#6B2C3B", flexShrink: 0 }} />}
                   </div>
                   <p style={{ fontSize: 12, color: "#666", marginTop: 4, lineHeight: 1.4 }}>{notif.body}</p>
-                  <p style={{ fontSize: 11, color: "#bbb", marginTop: 6 }}>{new Date(notif.created_at).toLocaleDateString()}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6 }}>
+                    <p style={{ fontSize: 11, color: "#bbb" }}>{new Date(notif.created_at).toLocaleDateString()}</p>
+                    {notif.group_id && <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B" }}>View ›</span>}
+                  </div>
                 </div>
               </div>
             </div>
