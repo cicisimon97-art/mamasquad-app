@@ -565,6 +565,8 @@ function MamaSquadsApp() {
       }
     };
     loadGroups();
+    const poll = setInterval(loadGroups, 15000);
+    return () => clearInterval(poll);
   }, []);
 
   // ─── Load joined groups & pending joins from Supabase ───
@@ -577,7 +579,7 @@ function MamaSquadsApp() {
         .select('group_id')
         .eq('user_id', user.id);
       if (memberships) {
-        setJoinedGroups(prev => [...new Set([...prev, ...memberships.map(m => m.group_id)])]);
+        setJoinedGroups(memberships.map(m => m.group_id));
       }
       // Pending join requests by this user
       const { data: pendingReqs } = await supabase
@@ -586,10 +588,12 @@ function MamaSquadsApp() {
         .eq('user_id', user.id)
         .eq('status', 'pending');
       if (pendingReqs) {
-        setPendingJoins(prev => [...new Set([...prev, ...pendingReqs.map(r => r.group_id)])]);
+        setPendingJoins(pendingReqs.map(r => r.group_id));
       }
     };
     loadMemberships();
+    const poll = setInterval(loadMemberships, 15000);
+    return () => clearInterval(poll);
   }, [user]);
 
   // ─── Create group handler ───
@@ -727,6 +731,8 @@ function MamaSquadsApp() {
       }
     };
     loadEvents();
+    const poll = setInterval(loadEvents, 15000);
+    return () => clearInterval(poll);
   }, []);
 
   // ──�� Load RSVPs for current user ───
