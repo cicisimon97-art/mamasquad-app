@@ -111,20 +111,28 @@ function AddressInput({ value, onChange, inputStyle, placeholder, userArea }) {
     if (query.length < 3) { setSuggestions([]); return; }
     const timer = setTimeout(async () => {
       try {
-        // Append user's area to query for local bias
-        const localQuery = userArea ? `${query}, ${userArea}` : query;
-        let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localQuery)}&countrycodes=us&limit=5&addressdetails=1`;
-        // If we have coords, use viewbox to bias results nearby (roughly 30 mile radius)
+        // If we have coords, search within a tight area first
+        let url;
         if (coords) {
-          const offset = 0.5; // ~30 miles
-          url += `&viewbox=${coords.lon - offset},${coords.lat + offset},${coords.lon + offset},${coords.lat - offset}&bounded=0`;
+          const offset = 0.3; // ~20 miles
+          url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=5&addressdetails=1&viewbox=${coords.lon - offset},${coords.lat + offset},${coords.lon + offset},${coords.lat - offset}&bounded=1`;
+        } else {
+          // Fall back to appending area
+          const localQuery = userArea ? `${query}, ${userArea}` : query;
+          url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localQuery)}&countrycodes=us&limit=5&addressdetails=1`;
         }
-        const res = await fetch(url);
-        const data = await res.json();
-        // Shorten display names — remove country and state code
+        let res = await fetch(url);
+        let data = await res.json();
+        // If bounded search returned nothing, try unbounded with area
+        if (data.length === 0 && coords) {
+          const fallbackQuery = userArea ? `${query}, ${userArea}` : query;
+          res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=us&limit=5&addressdetails=1`);
+          data = await res.json();
+        }
+        // Shorten display names — keep just the useful parts
         setSuggestions(data.map(d => {
           const parts = d.display_name.split(', ');
-          return parts.slice(0, Math.min(parts.length - 1, 4)).join(', ');
+          return parts.slice(0, Math.min(parts.length - 1, 3)).join(', ');
         }));
         setShowSuggestions(true);
       } catch { setSuggestions([]); }
