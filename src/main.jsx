@@ -4505,11 +4505,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [pdSubmitting, setPdSubmitting] = useState(false);
   const [mtTitle, setMtTitle] = useState("");
   const [mtDesc, setMtDesc] = useState("");
-  const [mtTime1, setMtTime1] = useState("");
-  const [mtTime2, setMtTime2] = useState("");
-  const [mtTime3, setMtTime3] = useState("");
-  const [mtLoc1, setMtLoc1] = useState("");
-  const [mtLoc2, setMtLoc2] = useState("");
+  const [mtDay, setMtDay] = useState("");
   const [mtSubmitting, setMtSubmitting] = useState(false);
   const [meetups, setMeetups] = useState([]);
   const [meetupsLoaded, setMeetupsLoaded] = useState(false);
@@ -4860,46 +4856,40 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       <strong style={{ fontSize: 14, color: "#2D2D2D" }}>📍 Propose a Meetup</strong>
                       <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowProposeMeetup(false)}>✕</button>
                     </div>
-                    <p style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Suggest a meetup and let the group vote on time & place!</p>
+                    <p style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Pick a day and let the group vote on the best time!</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                      <input style={gs.formInput} placeholder="What's the meetup idea?" value={mtTitle} onChange={e => setMtTitle(e.target.value)} />
+                      <input style={gs.formInput} placeholder="What's the meetup? (e.g., Park playdate)" value={mtTitle} onChange={e => setMtTitle(e.target.value)} />
                       <textarea style={{ ...gs.formInput, minHeight: 50, resize: "vertical" }} placeholder="Any details or context..." value={mtDesc} onChange={e => setMtDesc(e.target.value)} />
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Suggest times (members will vote):</p>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Option 1 (e.g., Sat 10am)" value={mtTime1} onChange={e => setMtTime1(e.target.value)} />
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Option 2" value={mtTime2} onChange={e => setMtTime2(e.target.value)} />
-                      </div>
-                      <input style={gs.formInput} placeholder="Option 3 (optional)" value={mtTime3} onChange={e => setMtTime3(e.target.value)} />
-                      <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Suggest locations (members will vote):</p>
-                      <div style={{ display: "flex", gap: 8 }}>
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Location 1" value={mtLoc1} onChange={e => setMtLoc1(e.target.value)} />
-                        <input style={{ ...gs.formInput, flex: 1 }} placeholder="Location 2" value={mtLoc2} onChange={e => setMtLoc2(e.target.value)} />
+                      <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Pick a day</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => (
+                          <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: mtDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: mtDay === d ? "#FAF0F2" : "white", color: mtDay === d ? "#6B2C3B" : "#666", fontWeight: mtDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setMtDay(d)}>{d}</button>
+                        ))}
                       </div>
                       <button
-                        style={{ ...styles.primaryBtn, marginTop: 4, opacity: mtSubmitting ? 0.6 : 1 }}
-                        disabled={mtSubmitting}
+                        style={{ ...styles.primaryBtn, marginTop: 4, opacity: mtSubmitting || !mtTitle.trim() || !mtDay ? 0.5 : 1 }}
+                        disabled={mtSubmitting || !mtTitle.trim() || !mtDay}
                         onClick={async () => {
-                          if (!mtTitle.trim()) return;
+                          if (!mtTitle.trim() || !mtDay) return;
                           setMtSubmitting(true);
                           if (onProposeMeetup && group.fromSupabase) {
-                            const timeOptions = [mtTime1, mtTime2, mtTime3].map(t => t.trim()).filter(Boolean);
-                            const locationOptions = [mtLoc1, mtLoc2].map(l => l.trim()).filter(Boolean);
+                            const TIMES = ["8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM"];
                             const result = await onProposeMeetup(group.id, {
                               title: mtTitle.trim(),
-                              description: mtDesc.trim(),
-                              timeOptions,
-                              locationOptions,
+                              description: `${mtDesc.trim() ? mtDesc.trim() + ' — ' : ''}What time works best on ${mtDay}?`,
+                              timeOptions: TIMES,
+                              locationOptions: [],
                             });
                             if (result.data) {
                               setMeetups(prev => [{ ...result.data, votes: [] }, ...prev]);
                             }
                           }
                           setMtSubmitting(false);
-                          setMtTitle(""); setMtDesc(""); setMtTime1(""); setMtTime2(""); setMtTime3(""); setMtLoc1(""); setMtLoc2("");
+                          setMtTitle(""); setMtDesc(""); setMtDay("");
                           setShowProposeMeetup(false);
                         }}
                       >
-                        {mtSubmitting ? "Proposing..." : "Propose to Group — Let's Vote! 🗳️"}
+                        {mtSubmitting ? "Proposing..." : "Post Poll — Let the Group Vote! 🗳️"}
                       </button>
                     </div>
                   </div>
