@@ -1155,6 +1155,7 @@ function MamaSquadsApp() {
         onProposeMeetup={handleProposeMeetup}
         loadMeetupProposals={loadMeetupProposals}
         onVote={handleVote}
+        onViewProfile={(req) => { setSelectedGroup(null); setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
         fadeIn={fadeIn}
       />
     );
@@ -4412,7 +4413,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
 }
 
 // ─── Group Detail Screen ───
-function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, fadeIn }) {
+function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, onViewProfile, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
@@ -4953,7 +4954,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       <button style={gs.denyBtn} onClick={() => handleDeny(req.id)}>
                         Decline
                       </button>
-                      <button style={gs.viewProfileBtn}>
+                      <button style={gs.viewProfileBtn} onClick={() => onViewProfile && onViewProfile(req)}>
                         View Profile
                       </button>
                     </div>
