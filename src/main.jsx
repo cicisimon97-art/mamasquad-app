@@ -2,6 +2,30 @@ import React, { useState, useEffect, useCallback } from 'react'
 import ReactDOM from 'react-dom/client'
 import { supabase } from './supabaseClient'
 
+// ─── Date Formatting ───
+const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const formatEventDate = (dateStr) => {
+  if (!dateStr) return 'TBD';
+  // If it's already a day name (Monday, Tuesday, etc.), shorten it
+  const fullDays = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+  const fullIdx = fullDays.findIndex(d => dateStr.toLowerCase().startsWith(d.toLowerCase()));
+  if (fullIdx >= 0) return SHORT_DAYS[(fullIdx + 1) % 7] + (dateStr.length > fullDays[fullIdx].length ? dateStr.slice(fullDays[fullIdx].length) : '');
+  // If it's Month/Day/Year format, add day of week
+  if (dateStr.includes('/')) {
+    const parts = dateStr.split('/');
+    const monthIdx = MONTHS.indexOf(parts[0]);
+    if (monthIdx >= 0 && parts[1] && parts[2]) {
+      const date = new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
+      if (!isNaN(date)) {
+        const dayName = SHORT_DAYS[date.getDay()];
+        const shortMonth = (monthIdx + 1);
+        return `${dayName} ${shortMonth}/${parts[1]}/${String(parts[2]).slice(-2)}`;
+      }
+    }
+  }
+  return dateStr;
+};
+
 // ─── Birthday Helpers ───
 const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 const parseDateStr = (dateStr) => {
@@ -2536,7 +2560,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
               <div style={styles.eventBody}>
                 <div style={styles.eventTop}>
                   <span style={styles.ageBadge}>{event.ages} yrs</span>
-                  <span style={styles.eventDay}>{event.date}</span>
+                  <span style={styles.eventDay}>{formatEventDate(event.date)}</span>
                 </div>
                 <h3 style={styles.eventTitle}>{event.title}</h3>
                 <div style={styles.eventMeta}>
@@ -2716,7 +2740,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
           <h2 style={{ ...styles.bannerTitle, color: event.color }}>{event.title}</h2>
           <div style={styles.bannerMeta}>
             <span>{Icons.location} {event.location}</span>
-            <span>{Icons.clock} {event.time} · {event.date}</span>
+            <span>{Icons.clock} {event.time} · {formatEventDate(event.date)}</span>
           </div>
         </div>
 
