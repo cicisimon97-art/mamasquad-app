@@ -6,12 +6,14 @@ import { supabase } from './supabaseClient'
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const formatEventDate = (dateStr) => {
   if (!dateStr) return 'TBD';
-  // ISO format: 2026-04-04
-  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-    const parts = dateStr.split('-');
-    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  // ISO format: 2026-04-04 or 2026-04-04T...
+  if (dateStr.length >= 10 && dateStr[4] === '-' && dateStr[7] === '-') {
+    const y = parseInt(dateStr.substring(0, 4));
+    const m = parseInt(dateStr.substring(5, 7));
+    const d = parseInt(dateStr.substring(8, 10));
+    const date = new Date(y, m - 1, d);
     const dayName = SHORT_DAYS[date.getDay()];
-    return `${dayName} ${parseInt(parts[1])}/${parseInt(parts[2])}/${parts[0].slice(-2)}`;
+    return `${dayName} ${m}/${d}/${String(y).slice(-2)}`;
   }
   // Full day name (Monday, Tuesday, etc.)
   const fullDays = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
@@ -2471,10 +2473,12 @@ const verifyKeyframes = `
 // Helper to get event date as a Date object for comparison
 const parseEventToDate = (dateStr) => {
   if (!dateStr) return null;
-  // ISO format: 2026-04-04
-  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
-    const parts = dateStr.split('-');
-    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  // ISO format: 2026-04-04 or 2026-04-04T...
+  if (dateStr.length >= 10 && dateStr[4] === '-' && dateStr[7] === '-') {
+    const y = parseInt(dateStr.substring(0, 4));
+    const m = parseInt(dateStr.substring(5, 7));
+    const d = parseInt(dateStr.substring(8, 10));
+    return new Date(y, m - 1, d);
   }
   // Month/Day/Year format: April/4/2026
   if (dateStr.includes('/')) {
