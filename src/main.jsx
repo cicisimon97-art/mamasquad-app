@@ -6,11 +6,18 @@ import { supabase } from './supabaseClient'
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const formatEventDate = (dateStr) => {
   if (!dateStr) return 'TBD';
-  // If it's already a day name (Monday, Tuesday, etc.), shorten it
+  // ISO format: 2026-04-04
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+    const parts = dateStr.split('-');
+    const date = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const dayName = SHORT_DAYS[date.getDay()];
+    return `${dayName} ${parseInt(parts[1])}/${parseInt(parts[2])}/${parts[0].slice(-2)}`;
+  }
+  // Full day name (Monday, Tuesday, etc.)
   const fullDays = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
   const fullIdx = fullDays.findIndex(d => dateStr.toLowerCase().startsWith(d.toLowerCase()));
-  if (fullIdx >= 0) return SHORT_DAYS[(fullIdx + 1) % 7] + (dateStr.length > fullDays[fullIdx].length ? dateStr.slice(fullDays[fullIdx].length) : '');
-  // If it's Month/Day/Year format, add day of week
+  if (fullIdx >= 0) return SHORT_DAYS[(fullIdx + 1) % 7];
+  // Month/Day/Year format
   if (dateStr.includes('/')) {
     const parts = dateStr.split('/');
     const monthIdx = MONTHS.indexOf(parts[0]);
@@ -18,8 +25,7 @@ const formatEventDate = (dateStr) => {
       const date = new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
       if (!isNaN(date)) {
         const dayName = SHORT_DAYS[date.getDay()];
-        const shortMonth = (monthIdx + 1);
-        return `${dayName} ${shortMonth}/${parts[1]}/${String(parts[2]).slice(-2)}`;
+        return `${dayName} ${monthIdx + 1}/${parts[1]}/${String(parts[2]).slice(-2)}`;
       }
     }
   }
@@ -339,15 +345,8 @@ function MamaSquadsApp() {
         .select('id, event_date, created_at');
       if (oldEvents) {
         for (const evt of oldEvents) {
-          // Parse event_date (could be "March/15/2026" or similar)
-          let eventDate = null;
-          if (evt.event_date) {
-            const parts = evt.event_date.split('/');
-            if (parts.length === 3) {
-              const monthIdx = MONTHS.indexOf(parts[0]);
-              if (monthIdx >= 0) eventDate = new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
-            }
-          }
+          // Parse event_date
+          let eventDate = parseEventToDate(evt.event_date);
           // Fall back to created_at if date can't be parsed
           if (!eventDate) eventDate = new Date(evt.created_at);
 
@@ -2472,12 +2471,20 @@ const verifyKeyframes = `
 // Helper to get event date as a Date object for comparison
 const parseEventToDate = (dateStr) => {
   if (!dateStr) return null;
+  // ISO format: 2026-04-04
+  if (dateStr.match(/^\d{4}-\d{2}-\d{2}/)) {
+    const parts = dateStr.split('-');
+    return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+  }
+  // Month/Day/Year format: April/4/2026
   if (dateStr.includes('/')) {
     const parts = dateStr.split('/');
     const monthIdx = MONTHS.indexOf(parts[0]);
     if (monthIdx >= 0 && parts[1] && parts[2]) return new Date(parseInt(parts[2]), monthIdx, parseInt(parts[1]));
+    // Numeric month: 4/4/2026
+    if (parts[0] && parts[1] && parts[2]) return new Date(parseInt(parts[2]), parseInt(parts[0]) - 1, parseInt(parts[1]));
   }
-  // Try full day name (Monday, etc.) — assume this week
+  // Full day name (Monday, etc.) — assume this week
   const fullDays = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
   const dayIdx = fullDays.findIndex(d => dateStr.toLowerCase().startsWith(d.toLowerCase()));
   if (dayIdx >= 0) {
