@@ -2520,17 +2520,16 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
   const filtered = visibleEvents.filter(e =>
     (() => {
       const eventDate = parseEventToDate(e.date);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
       // Hide past events in all views
-      if (eventDate && eventDate < today) return false;
+      if (eventDate && eventDate < now) return false;
       if (selectedDay === "All") return true;
-      if (!eventDate) return true;
+      if (!eventDate) return selectedDay === "All"; // unparseable dates only show in All
       if (selectedDay === "today") {
-        const today = new Date();
-        return eventDate.getFullYear() === today.getFullYear() && eventDate.getMonth() === today.getMonth() && eventDate.getDate() === today.getDate();
+        return eventDate.getFullYear() === now.getFullYear() && eventDate.getMonth() === now.getMonth() && eventDate.getDate() === now.getDate();
       }
-      // Compare with selected date key (YYYY-M-D)
+      // Compare with selected date key (YYYY-M-D where M is 0-indexed)
       const eventKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}-${eventDate.getDate()}`;
       return eventKey === selectedDay;
     })() &&
