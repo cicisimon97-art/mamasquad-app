@@ -1223,6 +1223,9 @@ function MamaSquadsApp() {
         onProposeMeetup={handleProposeMeetup}
         loadMeetupProposals={loadMeetupProposals}
         onVote={handleVote}
+        events={events}
+        joinedEvents={joinedEvents}
+        onEventSelect={(e) => { setSelectedGroup(null); setSelectedEvent(e); }}
         onViewProfile={(req) => { setSelectedGroup(null); setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
         fadeIn={fadeIn}
       />
@@ -4876,7 +4879,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
 }
 
 // ─── Group Detail Screen ───
-function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, onViewProfile, fadeIn }) {
+function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, events, joinedEvents, onEventSelect, onViewProfile, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
@@ -5265,6 +5268,35 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             </div>
           </div>
         )}
+
+        {/* Group's Playdates */}
+        {isMember && (() => {
+          const groupEvents = (events || []).filter(e => e.groupId === group.id);
+          if (groupEvents.length === 0) return null;
+          return (
+            <div>
+              <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>📅 Upcoming Playdates</h4>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {groupEvents.map(event => (
+                  <div key={event.id} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => onEventSelect && onEventSelect(event)}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{event.title}</strong>
+                      <span style={{ fontSize: 11, color: "#6B2C3B", fontWeight: 600 }}>{formatEventDate(event.date)}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
+                      {event.location && <span>{Icons.location} {event.location.split(',')[0]}</span>}
+                      {event.time && <span>{Icons.clock} {event.time}</span>}
+                      <span>{Icons.users} {event.attendees} going</span>
+                    </div>
+                    {(joinedEvents || []).includes(event.id) && (
+                      <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", marginTop: 4, display: "inline-block" }}>✓ You're going</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Edit Group form */}
         {editingGroup && (
