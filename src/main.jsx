@@ -1274,7 +1274,16 @@ function MamaSquadsApp() {
           )}
           {tab === "notifications" && (
             <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={async (notif) => {
-              if (notif.group_id) {
+              if (notif.type === 'new_event' && notif.group_id) {
+                // Find the most recent event in this group
+                const groupEvent = (events || []).find(e => e.groupId === notif.group_id);
+                if (groupEvent) {
+                  setSelectedEvent(groupEvent);
+                } else {
+                  const group = (groups || []).find(g => g.id === notif.group_id);
+                  if (group) setSelectedGroup(group);
+                }
+              } else if (notif.group_id) {
                 const group = (groups || []).find(g => g.id === notif.group_id);
                 if (group) { setSelectedGroup(group); }
               } else if (notif.type === 'connection_request' || notif.type === 'admin_application') {
