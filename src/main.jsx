@@ -2546,7 +2546,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
       const eventKey = `${eventDate.getFullYear()}-${eventDate.getMonth()}-${eventDate.getDate()}`;
       return eventKey === selectedDay;
     })() &&
-    (selectedAge === "All Ages" || e.ages === selectedAge)
+    (selectedAge === "All Ages" || e.ages === selectedAge || (e.ages || '').startsWith(selectedAge) || selectedAge.startsWith(e.ages || ''))
   );
 
   return (
