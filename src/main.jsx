@@ -325,7 +325,7 @@ function MamaSquadsApp() {
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
-  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_done'));
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_v2'));
   const [tutorialStep, setTutorialStep] = useState(0);
 
   const navigate = useCallback((dest, data) => {
@@ -1212,7 +1212,7 @@ function MamaSquadsApp() {
               style={{ flex: 1, padding: "14px 0", borderRadius: 50, background: "white", color: "#6B2C3B", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", border: "none" }}
               onClick={() => {
                 if (tutorialStep >= tutorialSlides.length - 1) {
-                  localStorage.setItem('mamasquads_tutorial_done', 'true');
+                  localStorage.setItem('mamasquads_tutorial_v2', 'true');
                   setShowTutorial(false);
                 } else {
                   setTutorialStep(tutorialStep + 1);
@@ -1224,7 +1224,7 @@ function MamaSquadsApp() {
           </div>
           <button
             style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 16 }}
-            onClick={() => { localStorage.setItem('mamasquads_tutorial_done', 'true'); setShowTutorial(false); }}
+            onClick={() => { localStorage.setItem('mamasquads_tutorial_v2', 'true'); setShowTutorial(false); }}
           >
             Skip tutorial
           </button>
