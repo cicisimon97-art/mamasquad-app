@@ -2775,6 +2775,8 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   const [localAttendees, setLocalAttendees] = useState(event.attendees);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [arrived, setArrived] = useState(false);
+  const [arrivingNotif, setArrivingNotif] = useState(false);
   const [attendeeList, setAttendeeList] = useState([]);
   const [showKidSelect, setShowKidSelect] = useState(false);
   const [selectedKids, setSelectedKids] = useState({});
@@ -2919,12 +2921,48 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
         </div>
 
         {joined ? (
-          <button
-            style={{ ...styles.primaryBtn, background: "#E8F5E9", color: "#2E7D32", width: "100%", boxShadow: "none" }}
-            onClick={handleRsvpClick}
-          >
-            ✓ You're Going! (tap to leave)
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              style={{ ...styles.primaryBtn, background: "#E8F5E9", color: "#2E7D32", width: "100%", boxShadow: "none" }}
+              onClick={handleRsvpClick}
+            >
+              ✓ You're Going! (tap to leave)
+            </button>
+            {!arrived ? (
+              <button
+                style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: arrivingNotif ? 0.6 : 1 }}
+                disabled={arrivingNotif}
+                onClick={async () => {
+                  setArrivingNotif(true);
+                  // Notify all other attendees
+                  if (event.fromSupabase && user) {
+                    const { data: rsvps } = await supabase.from('event_rsvps').select('user_id').eq('event_id', event.id);
+                    if (rsvps) {
+                      const notifs = rsvps
+                        .filter(r => r.user_id !== user.id)
+                        .map(r => ({
+                          user_id: r.user_id,
+                          type: 'arrived',
+                          title: "Someone's here!",
+                          body: `${user.full_name || 'A mom'} has arrived at ${event.title}! 📍`,
+                          group_id: event.groupId || null,
+                          is_read: false,
+                        }));
+                      if (notifs.length > 0) await supabase.from('notifications').insert(notifs);
+                    }
+                  }
+                  setArrived(true);
+                  setArrivingNotif(false);
+                }}
+              >
+                {arrivingNotif ? "Notifying..." : "📍 I've Arrived!"}
+              </button>
+            ) : (
+              <div style={{ textAlign: "center", padding: "10px 0", background: "#FAF0F2", borderRadius: 50 }}>
+                <p style={{ fontSize: 14, fontWeight: 600, color: "#6B2C3B" }}>📍 You're here! Others have been notified.</p>
+              </div>
+            )}
+          </div>
         ) : !showKidSelect ? (
           <button
             style={{ ...styles.primaryBtn, width: "100%" }}
