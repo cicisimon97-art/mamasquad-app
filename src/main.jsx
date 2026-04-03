@@ -325,6 +325,8 @@ function MamaSquadsApp() {
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
+  const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_done'));
+  const [tutorialStep, setTutorialStep] = useState(0);
 
   const navigate = useCallback((dest, data) => {
     setFadeIn(false);
@@ -1178,13 +1180,6 @@ function MamaSquadsApp() {
   }
 
   // Main App — only accessible to verified OR beta users
-  // ─── Tutorial overlay ───
-  const [showTutorial, setShowTutorial] = useState(() => {
-    if (typeof window !== 'undefined') return !localStorage.getItem('mamasquads_tutorial_done');
-    return false;
-  });
-  const [tutorialStep, setTutorialStep] = useState(0);
-
   if (screen === "main" && isVerified && showTutorial) {
     const tutorialSlides = [
       { emoji: "👋", title: "Welcome to MamaSquads!", desc: "Here's a quick tour of how everything works." },
