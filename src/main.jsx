@@ -1189,6 +1189,7 @@ function MamaSquadsApp() {
       { emoji: "🔔", title: "Alerts", desc: "Get notified when someone posts a playdate, creates a poll, requests to join your group, or wants to connect. Tap any notification to go there." },
       { emoji: "👤", title: "Me", desc: "Your profile, availability, and settings are all here. Other moms can see your Quick Q's, interests, and kids' ages. Tap Discover to find and connect with moms near you." },
       { emoji: "🗳️", title: "Polls", desc: "Inside groups, propose a meetup by picking a day. Members vote on the best time. The winning time can become a playdate with one tap." },
+      { emoji: "📲", title: "Add to Home Screen", desc: "For the best experience, add MamaSquads to your home screen!\n\niPhone: Tap the share button (□↑) at the bottom of Safari, then tap \"Add to Home Screen.\"\n\nAndroid: Tap the menu (⋮) in Chrome, then tap \"Add to Home screen.\"" },
       { emoji: "🎉", title: "You're all set!", desc: "Start by exploring groups or creating your first playdate. The more you engage, the more moms you'll meet!" },
     ];
     const slide = tutorialSlides[tutorialStep];
@@ -1197,7 +1198,7 @@ function MamaSquadsApp() {
         <div style={{ maxWidth: 340, width: "100%", textAlign: "center", padding: 24 }}>
           <span style={{ fontSize: 64 }}>{slide.emoji}</span>
           <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, color: "white", marginTop: 16 }}>{slide.title}</h2>
-          <p style={{ fontSize: 15, color: "#D4B5BA", marginTop: 12, lineHeight: 1.6 }}>{slide.desc}</p>
+          <p style={{ fontSize: 15, color: "#D4B5BA", marginTop: 12, lineHeight: 1.6, whiteSpace: "pre-line" }}>{slide.desc}</p>
           <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 24 }}>
             {tutorialSlides.map((_, i) => (
               <div key={i} style={{ width: 8, height: 8, borderRadius: 4, background: i === tutorialStep ? "white" : "rgba(255,255,255,0.3)" }} />
