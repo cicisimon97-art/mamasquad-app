@@ -1178,6 +1178,65 @@ function MamaSquadsApp() {
   }
 
   // Main App — only accessible to verified OR beta users
+  // ─── Tutorial overlay ───
+  const [showTutorial, setShowTutorial] = useState(() => {
+    if (typeof window !== 'undefined') return !localStorage.getItem('mamasquads_tutorial_done');
+    return false;
+  });
+  const [tutorialStep, setTutorialStep] = useState(0);
+
+  if (screen === "main" && isVerified && showTutorial) {
+    const tutorialSlides = [
+      { emoji: "👋", title: "Welcome to MamaSquads!", desc: "Here's a quick tour of how everything works." },
+      { emoji: "🏠", title: "Home", desc: "See upcoming playdates from your groups. Filter by day or age group. Tap any playdate to RSVP, comment, or see who's going." },
+      { emoji: "👥", title: "Groups", desc: "Join groups to connect with local moms. Inside each group you can post playdates, propose meetups, create polls, share photos, and see other members." },
+      { emoji: "➕", title: "Create", desc: "Tap the + button to create a new playdate. Pick a date, time, location, and age group. Other moms in your groups will be notified." },
+      { emoji: "🔔", title: "Alerts", desc: "Get notified when someone posts a playdate, creates a poll, requests to join your group, or wants to connect. Tap any notification to go there." },
+      { emoji: "👤", title: "Me", desc: "Your profile, availability, and settings are all here. Other moms can see your Quick Q's, interests, and kids' ages. Tap Discover to find and connect with moms near you." },
+      { emoji: "🗳️", title: "Polls", desc: "Inside groups, propose a meetup by picking a day. Members vote on the best time. The winning time can become a playdate with one tap." },
+      { emoji: "🎉", title: "You're all set!", desc: "Start by exploring groups or creating your first playdate. The more you engage, the more moms you'll meet!" },
+    ];
+    const slide = tutorialSlides[tutorialStep];
+    return (
+      <div style={{ ...styles.fullScreen, background: "#6B2C3B", justifyContent: "center", alignItems: "center" }}>
+        <div style={{ maxWidth: 340, width: "100%", textAlign: "center", padding: 24 }}>
+          <span style={{ fontSize: 64 }}>{slide.emoji}</span>
+          <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, color: "white", marginTop: 16 }}>{slide.title}</h2>
+          <p style={{ fontSize: 15, color: "#D4B5BA", marginTop: 12, lineHeight: 1.6 }}>{slide.desc}</p>
+          <div style={{ display: "flex", justifyContent: "center", gap: 6, marginTop: 24 }}>
+            {tutorialSlides.map((_, i) => (
+              <div key={i} style={{ width: 8, height: 8, borderRadius: 4, background: i === tutorialStep ? "white" : "rgba(255,255,255,0.3)" }} />
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10, marginTop: 24 }}>
+            {tutorialStep > 0 && (
+              <button style={{ flex: 1, padding: "14px 0", borderRadius: 50, background: "none", border: "1px solid rgba(255,255,255,0.3)", color: "white", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setTutorialStep(tutorialStep - 1)}>Back</button>
+            )}
+            <button
+              style={{ flex: 1, padding: "14px 0", borderRadius: 50, background: "white", color: "#6B2C3B", fontSize: 15, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", border: "none" }}
+              onClick={() => {
+                if (tutorialStep >= tutorialSlides.length - 1) {
+                  localStorage.setItem('mamasquads_tutorial_done', 'true');
+                  setShowTutorial(false);
+                } else {
+                  setTutorialStep(tutorialStep + 1);
+                }
+              }}
+            >
+              {tutorialStep >= tutorialSlides.length - 1 ? "Let's Go!" : "Next"}
+            </button>
+          </div>
+          <button
+            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.5)", fontSize: 13, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 16 }}
+            onClick={() => { localStorage.setItem('mamasquads_tutorial_done', 'true'); setShowTutorial(false); }}
+          >
+            Skip tutorial
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (screen === "main" && isVerified) {
     if (selectedEvent) return (
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
