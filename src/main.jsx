@@ -4,8 +4,9 @@ import { supabase } from './supabaseClient'
 
 // ─── Date Formatting ───
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-const formatEventDate = (dateStr) => {
-  if (!dateStr) return 'TBD';
+const formatEventDate = (rawDate) => {
+  if (!rawDate) return 'TBD';
+  const dateStr = String(rawDate);
   // ISO format: 2026-04-04 or 2026-04-04T...
   if (dateStr.length >= 10 && dateStr[4] === '-' && dateStr[7] === '-') {
     const y = parseInt(dateStr.substring(0, 4));
@@ -2471,8 +2472,9 @@ const verifyKeyframes = `
 
 // ─── Home Tab ───
 // Helper to get event date as a Date object for comparison
-const parseEventToDate = (dateStr) => {
-  if (!dateStr) return null;
+const parseEventToDate = (rawDate) => {
+  if (!rawDate) return null;
+  const dateStr = String(rawDate);
   // ISO format: 2026-04-04 or 2026-04-04T...
   if (dateStr.length >= 10 && dateStr[4] === '-' && dateStr[7] === '-') {
     const y = parseInt(dateStr.substring(0, 4));
@@ -3021,6 +3023,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
               interests: m.interests || [],
               area: m.area || '',
               admin: m.role === 'admin' || m.role === 'founder',
+              role: m.role,
               isVerified: m.is_verified,
               avatar_url: m.avatar_url,
               quick_answers: m.quick_answers || {},
@@ -3109,7 +3112,8 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
                 <Avatar url={mom.avatar_url} name={mom.name} size={56} />
                 {mom.isVerified && <div style={styles.verifiedDot} title="Verified Mom">✓</div>}
               </div>
-              {mom.admin && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
+              {mom.role === 'founder' && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>👑 Founder</span>}
+              {mom.role === 'admin' && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
               <h3 style={styles.profileName}>{mom.name}</h3>
               {mom.area && <p style={styles.profileArea}>{Icons.location} {mom.area}</p>}
               {mom.isVerified && <span style={styles.verifiedMomTag}>✓ Verified Mom</span>}
@@ -3171,9 +3175,14 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
             <Avatar url={profile.avatar_url} name={profile.name} size={80} />
             <div style={{ ...styles.verifiedDot, width: 24, height: 24, fontSize: 13, right: -2, bottom: -2 }} title="Verified Mom">✓</div>
           </div>
-          <span style={{ ...styles.verifiedMomTag, marginTop: 10, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>
-          {profile.admin && <span style={{ ...styles.adminBadge, position: "static", marginTop: 6 }}>{Icons.crown} Community Admin</span>}
-          <h2 style={styles.profileDetailName}>{profile.name}</h2>
+          {profile.isVerified && <span style={{ ...styles.verifiedMomTag, marginTop: 10, fontSize: 12, padding: "4px 12px" }}>✓ Verified Mom</span>}
+          {profile.role === 'founder' && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5, marginTop: 6, display: "inline-block" }}>👑 FOUNDER</span>
+          )}
+          {profile.role === 'admin' && profile.role !== 'founder' && (
+            <span style={{ ...styles.adminBadge, position: "static", marginTop: 6 }}>{Icons.crown} Community Admin</span>
+          )}
+          <h2 style={styles.profileDetailName}>{profile.role === 'founder' ? '👑 ' : ''}{profile.name}</h2>
           {profile.area && <p style={styles.profileDetailArea}>{Icons.location} {profile.area}</p>}
         </div>
 
