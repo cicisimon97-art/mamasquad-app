@@ -3299,7 +3299,14 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
     if ((myCoords || zipSearch.length === 5) && realMoms.length > 0) calcDistances();
   }, [myCoords, realMoms, zipSearch]);
 
-  const allMoms = [...realMoms];
+  // Sort founder(s) first, then admins
+  const allMoms = [...realMoms].sort((a, b) => {
+    if (a.role === 'founder' && b.role !== 'founder') return -1;
+    if (b.role === 'founder' && a.role !== 'founder') return 1;
+    if (a.role === 'admin' && b.role !== 'admin') return -1;
+    if (b.role === 'admin' && a.role !== 'admin') return 1;
+    return 0;
+  });
 
   const filtered = allMoms.filter(m => {
     const matchesSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) ||
