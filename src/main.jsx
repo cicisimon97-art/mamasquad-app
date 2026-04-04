@@ -1445,8 +1445,15 @@ function MamaSquadsApp() {
                 const group = (groups || []).find(g => g.id === notif.group_id);
                 if (group) { setSelectedGroup(group); }
               } else if (notif.type === 'connection_request' || notif.type === 'connection_accepted' || notif.type === 'admin_application') {
-                // Find the person who sent the notification
-                const otherId = notif.sender_id || connections.find(c => c.status === 'pending' && c.requester_id !== user?.id)?.requester_id;
+                let otherId = notif.sender_id;
+                // Fallback: try to find the sender by matching notification body to user names
+                if (!otherId && notif.body) {
+                  const { data: allUsers } = await supabase.from('users').select('id, full_name').neq('id', user?.id || '');
+                  if (allUsers) {
+                    const match = allUsers.find(u => u.full_name && notif.body.includes(u.full_name));
+                    if (match) otherId = match.id;
+                  }
+                }
                 if (otherId) {
                   const { data: profile } = await supabase.from('users').select('id, full_name, area, bio, kids, interests, is_verified, role, avatar_url, quick_answers').eq('id', otherId).single();
                   if (profile) {
