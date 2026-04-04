@@ -9,6 +9,6 @@
     "scheme": "MamaSquads"
   },
   "server": {
-    "hostname": "mamasquads.com"
+    "hostname": "localhost"
   }
 }

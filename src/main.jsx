@@ -145,23 +145,29 @@ function AddressInput({ value, onChange, inputStyle, placeholder, userArea }) {
     const timer = setTimeout(async () => {
       try {
         // If we have coords, search within a tight area first
+        // Long Island / NYC area bounding box
+        const nyViewbox = '-74.05,40.49,-71.85,41.15';
         let url;
         if (coords) {
           const offset = 0.3; // ~20 miles
           url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=us&limit=5&addressdetails=1&viewbox=${coords.lon - offset},${coords.lat + offset},${coords.lon + offset},${coords.lat - offset}&bounded=1`;
         } else {
-          // Fall back to appending area
-          const localQuery = userArea ? `${query}, ${userArea}` : query;
-          url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localQuery)}&countrycodes=us&limit=5&addressdetails=1`;
+          const localQuery = `${query}, New York`;
+          url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(localQuery)}&countrycodes=us&limit=5&addressdetails=1&viewbox=${nyViewbox}&bounded=1`;
         }
         let res = await fetch(url);
         let data = await res.json();
-        // If bounded search returned nothing, try unbounded with area
-        if (data.length === 0 && coords) {
-          const fallbackQuery = userArea ? `${query}, ${userArea}` : query;
-          res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=us&limit=5&addressdetails=1`);
+        // If bounded search returned nothing, try with New York appended
+        if (data.length === 0) {
+          const fallbackQuery = `${query}, New York`;
+          res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fallbackQuery)}&countrycodes=us&limit=5&addressdetails=1&viewbox=${nyViewbox}`);
           data = await res.json();
         }
+        // Filter to only New York state results
+        data = data.filter(d => {
+          const addr = d.address || {};
+          return addr.state === 'New York' || (d.display_name || '').includes('New York');
+        });
         // Shorten display names — keep just the useful parts
         setSuggestions(data.map(d => {
           const parts = d.display_name.split(', ');
@@ -2771,7 +2777,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
 
       {/* Events */}
       <div style={styles.eventsList}>
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && !(feedFilter === "all" && (groups || []).filter(g => (joinedGroups || []).includes(g.id)).length > 0) && !(feedFilter === "public" && (groups || []).filter(g => !g.isPrivate).length > 0) ? (
           <div style={styles.emptyState}>
             <span style={{ fontSize: 40 }}>🌤</span>
             <p style={styles.emptyText}>No playdates for this filter yet</p>
@@ -2810,8 +2816,8 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
         )}
       </div>
 
-      {/* My Groups section when My Groups filter is active */}
-      {feedFilter === "my-groups" && (() => {
+      {/* My Groups section when All or My Groups filter is active */}
+      {(feedFilter === "all" || feedFilter === "my-groups") && (() => {
         const myGroups = (groups || []).filter(g => (joinedGroups || []).includes(g.id));
         return myGroups.length > 0 ? (
           <div style={{ marginTop: 16 }}>
@@ -3191,8 +3197,50 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply }) {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
+  const [zipSearch, setZipSearch] = useState("");
+  const [distanceFilter, setDistanceFilter] = useState(15);
   const [realMoms, setRealMoms] = useState([]);
   const [loaded, setLoaded] = useState(false);
+
+  // Zip code to approximate lat/lon (US zips)
+  const zipCache = React.useRef({});
+  const getZipCoords = async (zip) => {
+    if (zipCache.current[zip]) return zipCache.current[zip];
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${zip}&countrycodes=us&limit=1`);
+      const data = await res.json();
+      if (data.length > 0) {
+        const coords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        zipCache.current[zip] = coords;
+        return coords;
+      }
+    } catch {}
+    return null;
+  };
+
+  // Haversine distance in miles
+  const getDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 3959;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  };
+
+  const [myCoords, setMyCoords] = useState(null);
+  const [momDistances, setMomDistances] = useState({});
+
+  // Get user's location, default to Long Island if unavailable
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        pos => setMyCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+        () => setMyCoords({ lat: 40.7891, lon: -73.1350 }) // Default: Long Island, NY
+      );
+    } else {
+      setMyCoords({ lat: 40.7891, lon: -73.1350 }); // Default: Long Island, NY
+    }
+  }, []);
 
   // Load real users from Supabase
   useEffect(() => {
@@ -3227,17 +3275,43 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
       });
   }, [loaded, user]);
 
+  // Calculate distances when we have coords and moms
+  useEffect(() => {
+    const calcDistances = async () => {
+      const baseCoords = zipSearch.length === 5 ? await getZipCoords(zipSearch) : myCoords;
+      if (!baseCoords) return;
+      const distances = {};
+      for (const mom of realMoms) {
+        if (mom.area) {
+          // Extract zip from area if present, otherwise geocode the area
+          const zipMatch = mom.area.match(/\b(\d{5})\b/);
+          if (zipMatch) {
+            const momCoords = await getZipCoords(zipMatch[1]);
+            if (momCoords) distances[mom.id] = getDistance(baseCoords.lat, baseCoords.lon, momCoords.lat, momCoords.lon);
+          } else {
+            const momCoords = await getZipCoords(mom.area);
+            if (momCoords) distances[mom.id] = getDistance(baseCoords.lat, baseCoords.lon, momCoords.lat, momCoords.lon);
+          }
+        }
+      }
+      setMomDistances(distances);
+    };
+    if ((myCoords || zipSearch.length === 5) && realMoms.length > 0) calcDistances();
+  }, [myCoords, realMoms, zipSearch]);
+
   const allMoms = [...realMoms];
-  // Get unique areas for filter
-  const areas = [...new Set(allMoms.map(m => m.area).filter(Boolean))];
-  const myArea = user?.area || '';
 
   const filtered = allMoms.filter(m => {
     const matchesSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) ||
       (m.interests || []).some(i => i.toLowerCase().includes(search.toLowerCase())) ||
       m.area.toLowerCase().includes(search.toLowerCase());
-    const matchesArea = areaFilter === "all" || (areaFilter === "nearby" && myArea && m.area.toLowerCase().includes(myArea.toLowerCase())) || m.area === areaFilter;
-    return matchesSearch && matchesArea;
+    if (!matchesSearch) return false;
+    if (areaFilter === "nearby") {
+      const dist = momDistances[m.id];
+      if (dist === undefined) return false;
+      return dist <= distanceFilter;
+    }
+    return true;
   });
 
   return (
@@ -3251,11 +3325,35 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
       {/* Area filter */}
       <div style={styles.filterRow}>
         <button style={{ ...styles.dayChip, ...(areaFilter === "all" ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter("all")}>All</button>
-        {myArea && <button style={{ ...styles.dayChip, ...(areaFilter === "nearby" ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter("nearby")}>📍 Near Me</button>}
-        {areas.map(a => (
-          <button key={a} style={{ ...styles.dayChip, ...(areaFilter === a ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter(a)}>{a}</button>
-        ))}
+        <button style={{ ...styles.dayChip, ...(areaFilter === "nearby" ? styles.dayChipActive : {}) }} onClick={() => setAreaFilter("nearby")}>📍 Near Me</button>
       </div>
+
+      {areaFilter === "nearby" && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 10 }}>
+            <input
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: "1px solid #E8E8E8", fontSize: 14, fontFamily: "inherit", background: "white" }}
+              placeholder="Search by zip code..."
+              value={zipSearch}
+              onChange={e => { const v = e.target.value.replace(/\D/g, '').slice(0, 5); setZipSearch(v); }}
+              inputMode="numeric"
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 12, color: "#888", whiteSpace: "nowrap" }}>Within</span>
+            <input
+              type="range"
+              min={5}
+              max={50}
+              step={5}
+              value={distanceFilter}
+              onChange={e => setDistanceFilter(parseInt(e.target.value))}
+              style={{ flex: 1, accentColor: "#6B2C3B" }}
+            />
+            <span style={{ fontSize: 13, fontWeight: 600, color: "#6B2C3B", whiteSpace: "nowrap" }}>{distanceFilter} mi</span>
+          </div>
+        </div>
+      )}
 
       {!loaded ? (
         <div style={{ textAlign: "center", padding: 40 }}>
@@ -6569,10 +6667,10 @@ const gray800 = "#2D2D2D";
 const radius = 16;
 
 const styles = {
-  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" },
+  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" },
   fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", position: "relative" },
-  mainContent: { flex: 1, overflow: "auto", paddingBottom: 100, WebkitOverflowScrolling: "touch" },
-  tabContent: { padding: "24px 18px", paddingTop: 28, paddingBottom: 40 },
+  mainContent: { flex: 1, overflow: "auto", overflowY: "scroll", paddingBottom: "calc(120px + env(safe-area-inset-bottom, 34px))", WebkitOverflowScrolling: "touch" },
+  tabContent: { padding: "24px 18px", paddingTop: 28, paddingBottom: 60 },
 
   // Welcome
   welcomeContent: { textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 8 },
@@ -6786,7 +6884,7 @@ const styles = {
   pollMeta: { fontSize: 12, color: gray400, marginTop: 12 },
 
   // Bottom Nav
-  bottomNav: { display: "flex", justifyContent: "space-around", alignItems: "center", padding: "8px 0 20px", background: "white", borderTop: `1px solid ${gray100}`, position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 100 },
+  bottomNav: { display: "flex", justifyContent: "space-around", alignItems: "center", padding: "8px 0 calc(20px + env(safe-area-inset-bottom, 0px))", background: "white", borderTop: `1px solid ${gray100}`, position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, zIndex: 100 },
   navItem: { display: "flex", flexDirection: "column", alignItems: "center", gap: 3, background: "none", border: "none", cursor: "pointer", fontFamily: font, padding: 4, transition: "color 0.2s ease" },
   navLabel: { fontSize: 10, fontWeight: 500 },
   navCreate: { marginTop: -16 },
