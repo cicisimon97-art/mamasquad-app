@@ -1039,17 +1039,25 @@ function MamaSquadsApp() {
   // ─── Send connection request ───
   const sendConnectionRequest = async (recipientId) => {
     if (!user) return { error: 'Not logged in' };
-    console.log('Sending connection request:', { from: user.id, to: recipientId });
+
+    // Check if there's already a pending incoming request from this person — auto-accept it
+    const existing = connections.find(c =>
+      c.status === 'pending' && c.requester_id === recipientId && c.recipient_id === user.id
+    );
+    if (existing) {
+      await respondToConnection(existing.id, true, recipientId);
+      return { success: true, autoAccepted: true };
+    }
+
     const { data, error } = await supabase.from('connections').insert({
       requester_id: user.id,
       recipient_id: recipientId,
       status: 'pending',
     }).select().single();
-    if (error) { console.error('Connection insert error:', error); return { error: error.message }; }
-    console.log('Connection created:', data);
+    if (error) return { error: error.message };
     setConnections(prev => [...prev, data]);
     // Notify the recipient
-    const { error: notifError } = await supabase.from('notifications').insert({
+    await supabase.from('notifications').insert({
       user_id: recipientId,
       type: 'connection_request',
       title: 'New Connection Request',
@@ -1057,8 +1065,6 @@ function MamaSquadsApp() {
       sender_id: user.id,
       is_read: false,
     });
-    if (notifError) console.error('Notification insert error:', notifError);
-    else console.log('Notification sent to:', recipientId);
     return { success: true };
   };
 
@@ -3427,8 +3433,13 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
             onClick={async () => {
               if (onConnect && profile.id) {
                 setConnectLoading(true);
-                await onConnect(profile.id);
-                setLocalStatus('sent');
+                const result = await onConnect(profile.id);
+                if (result?.autoAccepted) {
+                  setLocalStatus('connected');
+                  setShowConnectedPopup(true);
+                } else {
+                  setLocalStatus('sent');
+                }
                 setConnectLoading(false);
               }
             }}
