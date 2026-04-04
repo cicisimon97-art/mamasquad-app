@@ -3373,7 +3373,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
                 {mom.isVerified && <div style={styles.verifiedDot} title="Verified Mom">✓</div>}
               </div>
               {mom.role === 'founder' && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>👑 Founder</span>}
-              {mom.role === 'admin' && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
+              {(mom.role === 'admin' || mom.role === 'founder') && <span style={styles.adminBadge}>{Icons.crown} Admin</span>}
               <h3 style={styles.profileName}>{mom.name}</h3>
               {mom.area && <p style={styles.profileArea}>{Icons.location} {mom.area}</p>}
               {mom.isVerified && <span style={styles.verifiedMomTag}>✓ Verified Mom</span>}
@@ -3447,7 +3447,7 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
           {profile.role === 'founder' && (
             <span style={{ fontSize: 10, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50, letterSpacing: 0.5, marginTop: 6, display: "inline-block" }}>👑 FOUNDER</span>
           )}
-          {profile.role === 'admin' && profile.role !== 'founder' && (
+          {(profile.role === 'admin' || profile.role === 'founder') && (
             <span style={{ ...styles.adminBadge, position: "static", marginTop: 6 }}>{Icons.crown} Community Admin</span>
           )}
           <h2 style={styles.profileDetailName}>{profile.role === 'founder' ? '👑 ' : ''}{profile.name}</h2>
