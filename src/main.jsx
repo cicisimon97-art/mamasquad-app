@@ -1374,16 +1374,17 @@ function MamaSquadsApp() {
         <button
           onClick={() => setShowMyProfile(true)}
           style={{
-            position: "fixed", top: "calc(12px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
-            zIndex: 110, background: "none", border: "2px solid #6B2C3B", borderRadius: "50%",
-            width: 36, height: 36, padding: 0, cursor: "pointer", overflow: "hidden",
+            position: "fixed", top: "calc(10px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
+            zIndex: 110, background: "white", border: "2.5px solid #6B2C3B", borderRadius: "50%",
+            width: 42, height: 42, padding: 0, cursor: "pointer", overflow: "hidden",
             display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 2px 8px rgba(107,44,59,0.25)",
           }}
         >
           {user?.avatar_url ? (
             <img src={user.avatar_url} alt="Me" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
           ) : (
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#6B2C3B" }}>
+            <span style={{ fontSize: 14, fontWeight: 700, color: "white", background: "#6B2C3B", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
               {(user?.full_name || "M").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
             </span>
           )}
