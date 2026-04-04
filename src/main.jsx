@@ -1370,25 +1370,27 @@ function MamaSquadsApp() {
 
     return (
       <div style={styles.app}>
-        {/* Profile avatar button — top right */}
-        <button
-          onClick={() => setShowMyProfile(true)}
-          style={{
-            position: "fixed", top: "calc(10px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
-            zIndex: 110, background: "white", border: "2.5px solid #6B2C3B", borderRadius: "50%",
-            width: 42, height: 42, padding: 0, cursor: "pointer", overflow: "hidden",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            boxShadow: "0 2px 8px rgba(107,44,59,0.25)",
-          }}
-        >
-          {user?.avatar_url ? (
-            <img src={user.avatar_url} alt="Me" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
-          ) : (
-            <span style={{ fontSize: 14, fontWeight: 700, color: "white", background: "#6B2C3B", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
-              {(user?.full_name || "M").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
-            </span>
-          )}
-        </button>
+        {/* Profile avatar button — top right, Home tab only */}
+        {tab === "home" && (
+          <button
+            onClick={() => setShowMyProfile(true)}
+            style={{
+              position: "fixed", top: "calc(10px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
+              zIndex: 110, background: "white", border: "2.5px solid #6B2C3B", borderRadius: "50%",
+              width: 42, height: 42, padding: 0, cursor: "pointer", overflow: "hidden",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(107,44,59,0.25)",
+            }}
+          >
+            {user?.avatar_url ? (
+              <img src={user.avatar_url} alt="Me" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+            ) : (
+              <span style={{ fontSize: 14, fontWeight: 700, color: "white", background: "#6B2C3B", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", borderRadius: "50%" }}>
+                {(user?.full_name || "M").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+              </span>
+            )}
+          </button>
+        )}
         <div ref={mainContentRef} style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
           {tab === "home" && (
             <HomeTab
