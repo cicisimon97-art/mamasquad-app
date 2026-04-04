@@ -1030,8 +1030,7 @@ function MamaSquadsApp() {
       supabase.from('connections')
         .select('*, requester:users!requester_id(id, full_name, email, area, bio, kids, interests, mom_age), recipient:users!recipient_id(id, full_name, email, area, bio, kids, interests, mom_age)')
         .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .then(({ data, error }) => {
-          if (error) console.error('Load connections error:', error);
+        .then(({ data }) => {
           if (data) setConnections(data);
         });
     };
@@ -1296,22 +1295,15 @@ function MamaSquadsApp() {
 
   if (screen === "main" && isVerified) {
     if (showMyProfile) return (
-      <div style={styles.detailScreen}>
-        <div style={styles.detailHeader}>
-          <button style={styles.backBtn} onClick={() => setShowMyProfile(false)}>{Icons.back}</button>
-          <h2 style={styles.detailTitle}>My Profile</h2>
-          <div style={{ width: 40 }} />
-        </div>
-        <div style={styles.detailBody}>
-          <MyProfileTab
-            isBetaMember={isBetaMember} user={user} setUser={setUser}
-            joinedEvents={joinedEvents} joinedGroups={joinedGroups}
-            connections={connections || []} onSwitchTab={() => {}}
-            onShowDiscover={() => { setShowMyProfile(false); setTab("discover"); }}
-            notifications={notifications} setNotifications={setNotifications}
-            onUploadPhoto={uploadProfilePhoto} onBack={() => setShowMyProfile(false)}
-          />
-        </div>
+      <div style={{ ...styles.detailScreen, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+        <MyProfileTab
+          isBetaMember={isBetaMember} user={user} setUser={setUser}
+          joinedEvents={joinedEvents} joinedGroups={joinedGroups}
+          connections={connections || []} onSwitchTab={() => {}}
+          onShowDiscover={() => { setShowMyProfile(false); setTab("discover"); }}
+          notifications={notifications} setNotifications={setNotifications}
+          onUploadPhoto={uploadProfilePhoto} onBack={() => setShowMyProfile(false)}
+        />
       </div>
     );
     if (selectedEvent) return (
