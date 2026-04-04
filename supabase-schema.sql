@@ -24,10 +24,11 @@ create table if not exists public.users (
 -- Enable Row Level Security
 alter table public.users enable row level security;
 
--- Users can read their own profile
-create policy "Users can read own profile"
+-- Authenticated users can read all profiles (needed for Discover, group members, etc.)
+create policy "Authenticated users can read all profiles"
   on public.users for select
-  using (auth.uid() = id);
+  to authenticated
+  using (true);
 
 -- Users can update their own profile
 create policy "Users can update own profile"
@@ -283,5 +284,80 @@ create policy "Authenticated users can post comments"
 
 create policy "Users can delete own comments"
   on public.comments for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- ─── Connections ───
+
+create table if not exists public.connections (
+  id uuid default gen_random_uuid() primary key,
+  requester_id uuid references public.users(id) on delete cascade not null,
+  recipient_id uuid references public.users(id) on delete cascade not null,
+  status text default 'pending' check (status in ('pending', 'accepted', 'declined')),
+  created_at timestamptz default now()
+);
+
+alter table public.connections enable row level security;
+
+-- Users can read connections they're part of
+create policy "Users can read own connections"
+  on public.connections for select
+  to authenticated
+  using (auth.uid() = requester_id or auth.uid() = recipient_id);
+
+-- Authenticated users can send connection requests
+create policy "Users can create connections"
+  on public.connections for insert
+  to authenticated
+  with check (auth.uid() = requester_id);
+
+-- Users can update connections they received (accept/decline)
+create policy "Recipients can update connections"
+  on public.connections for update
+  to authenticated
+  using (auth.uid() = recipient_id);
+
+-- Users can delete connections they're part of (disconnect)
+create policy "Users can delete own connections"
+  on public.connections for delete
+  to authenticated
+  using (auth.uid() = requester_id or auth.uid() = recipient_id);
+
+-- ─── Notifications ───
+
+create table if not exists public.notifications (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references public.users(id) on delete cascade not null,
+  type text not null,
+  title text,
+  body text,
+  group_id uuid references public.groups(id) on delete cascade,
+  is_read boolean default false,
+  created_at timestamptz default now()
+);
+
+alter table public.notifications enable row level security;
+
+-- Users can read their own notifications
+create policy "Users can read own notifications"
+  on public.notifications for select
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- Any authenticated user can create notifications (needed so others can notify you)
+create policy "Authenticated users can create notifications"
+  on public.notifications for insert
+  to authenticated
+  with check (true);
+
+-- Users can update their own notifications (mark as read)
+create policy "Users can update own notifications"
+  on public.notifications for update
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- Users can delete their own notifications
+create policy "Users can delete own notifications"
+  on public.notifications for delete
   to authenticated
   using (auth.uid() = user_id);

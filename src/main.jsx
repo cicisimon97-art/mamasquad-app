@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import { supabase } from './supabaseClient'
 
@@ -305,7 +305,9 @@ function MamaSquadsApp() {
   const [inviteCode, setInviteCode] = useState(null);
   const [signupError, setSignupError] = useState(null);
   const [showResetPassword, setShowResetPassword] = useState(false);
-  const [tab, setTab] = useState("home");
+  const [tab, setTabRaw] = useState("home");
+  const mainContentRef = useRef(null);
+  const setTab = (t) => { setTabRaw(t); if (mainContentRef.current) mainContentRef.current.scrollTop = 0; };
   const [selectedDay, setSelectedDay] = useState("All");
   const [selectedAge, setSelectedAge] = useState("All Ages");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -1017,35 +1019,45 @@ function MamaSquadsApp() {
     }
   };
 
-  // ─── Load connections ───
+  // ─── Load connections + poll for updates ───
   useEffect(() => {
     if (!user) return;
-    supabase.from('connections')
-      .select('*, requester:users!requester_id(id, full_name, email, area, bio, kids, interests, mom_age), recipient:users!recipient_id(id, full_name, email, area, bio, kids, interests, mom_age)')
-      .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
-      .then(({ data }) => {
-        if (data) setConnections(data);
-      });
+    const loadConns = () => {
+      supabase.from('connections')
+        .select('*, requester:users!requester_id(id, full_name, email, area, bio, kids, interests, mom_age), recipient:users!recipient_id(id, full_name, email, area, bio, kids, interests, mom_age)')
+        .or(`requester_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .then(({ data, error }) => {
+          if (error) console.error('Load connections error:', error);
+          if (data) setConnections(data);
+        });
+    };
+    loadConns();
+    const poll = setInterval(loadConns, 5000);
+    return () => clearInterval(poll);
   }, [user]);
 
   // ─── Send connection request ───
   const sendConnectionRequest = async (recipientId) => {
     if (!user) return { error: 'Not logged in' };
+    console.log('Sending connection request:', { from: user.id, to: recipientId });
     const { data, error } = await supabase.from('connections').insert({
       requester_id: user.id,
       recipient_id: recipientId,
       status: 'pending',
     }).select().single();
-    if (error) return { error: error.message };
+    if (error) { console.error('Connection insert error:', error); return { error: error.message }; }
+    console.log('Connection created:', data);
     setConnections(prev => [...prev, data]);
     // Notify the recipient
-    await supabase.from('notifications').insert({
+    const { error: notifError } = await supabase.from('notifications').insert({
       user_id: recipientId,
       type: 'connection_request',
       title: 'New Connection Request',
       body: `${user.full_name || 'A mom'} wants to connect with you!`,
       is_read: false,
     });
+    if (notifError) console.error('Notification insert error:', notifError);
+    else console.log('Notification sent to:', recipientId);
     return { success: true };
   };
 
@@ -1065,6 +1077,33 @@ function MamaSquadsApp() {
       if (newConn) setConnections(prev => [...prev, newConn]);
     }
 
+  };
+
+  // ─── Unsend a pending connection request ───
+  const unsendConnectionRequest = async (otherId) => {
+    const conn = connections.find(c =>
+      c.requester_id === user?.id && c.recipient_id === otherId && c.status === 'pending'
+    );
+    if (conn) {
+      await supabase.from('connections').delete().eq('id', conn.id);
+      setConnections(prev => prev.filter(c => c.id !== conn.id));
+      // Also remove the notification
+      await supabase.from('notifications').delete()
+        .eq('user_id', otherId)
+        .eq('type', 'connection_request')
+        .filter('body', 'ilike', `%${user.full_name || ''}%`);
+    }
+  };
+
+  // ─── Disconnect from a user ───
+  const disconnectUser = async (otherId) => {
+    const conn = connections.find(c =>
+      (c.requester_id === otherId || c.recipient_id === otherId) && c.status === 'accepted'
+    );
+    if (conn) {
+      await supabase.from('connections').delete().eq('id', conn.id);
+      setConnections(prev => prev.filter(c => c.id !== conn.id));
+    }
   };
 
   // ─── Get connection status with a user ───
@@ -1238,7 +1277,7 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} fadeIn={fadeIn} />
+      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} />
     );
     if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} user={user} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
@@ -1290,7 +1329,7 @@ function MamaSquadsApp() {
 
     return (
       <div style={styles.app}>
-        <div style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
+        <div ref={mainContentRef} style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
           {tab === "home" && (
             <HomeTab
               events={events}
@@ -3252,9 +3291,16 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
 }
 
 // ─── Profile Detail ───
-function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
+function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onUnsend, connectionStatus, connections, user }) {
   const [connectLoading, setConnectLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(connectionStatus);
+  const [showConnectedPopup, setShowConnectedPopup] = useState(false);
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+
+  // Sync localStatus when connectionStatus changes (e.g., other person accepted)
+  useEffect(() => {
+    setLocalStatus(connectionStatus);
+  }, [connectionStatus]);
   return (
     <div style={styles.detailScreen}>
       <div style={styles.detailHeader}>
@@ -3327,12 +3373,41 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
         })()}
 
         {localStatus === 'connected' ? (
-          <button style={{ ...styles.primaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", boxShadow: "none", cursor: "default" }}>
+          <button
+            style={{ ...styles.primaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", boxShadow: "none" }}
+            onClick={() => setShowDisconnectConfirm(true)}
+          >
             ✓ Connected
           </button>
+        ) : localStatus === 'received' ? (
+          <button
+            style={{ ...styles.primaryBtn, width: "100%", opacity: connectLoading ? 0.6 : 1 }}
+            disabled={connectLoading}
+            onClick={async () => {
+              setConnectLoading(true);
+              const conn = connections?.find(c => c.status === 'pending' && c.requester_id === profile.id && c.recipient_id === user?.id);
+              if (onAccept) {
+                await onAccept(conn?.id, true, profile.id);
+              }
+              setLocalStatus('connected');
+              setShowConnectedPopup(true);
+              setConnectLoading(false);
+            }}
+          >
+            {connectLoading ? "..." : "Accept Request"}
+          </button>
         ) : localStatus === 'sent' ? (
-          <button style={{ ...styles.secondaryBtn, width: "100%", cursor: "default" }}>
-            Request Sent
+          <button
+            style={{ ...styles.secondaryBtn, width: "100%", opacity: connectLoading ? 0.6 : 1 }}
+            disabled={connectLoading}
+            onClick={async () => {
+              setConnectLoading(true);
+              if (onUnsend) await onUnsend(profile.id);
+              setLocalStatus('none');
+              setConnectLoading(false);
+            }}
+          >
+            {connectLoading ? "..." : "Unsend Request"}
           </button>
         ) : (
           <button
@@ -3349,6 +3424,43 @@ function ProfileDetail({ profile, onBack, onConnect, connectionStatus }) {
           >
             {connectLoading ? "..." : "Connect"}
           </button>
+        )}
+
+        {showConnectedPopup && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: 32, textAlign: "center", maxWidth: 300, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎉</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>You're now connected!</h3>
+              <p style={{ fontSize: 14, color: "#888", marginBottom: 20 }}>You and {profile.name || profile.full_name} are now connected.</p>
+              <button style={{ ...styles.primaryBtn, width: "100%" }} onClick={() => setShowConnectedPopup(false)}>
+                Done
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showDisconnectConfirm && (
+          <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => setShowDisconnectConfirm(false)}>
+            <div style={{ background: "#fff", borderRadius: 20, padding: 32, textAlign: "center", maxWidth: 300, width: "90%", boxShadow: "0 8px 32px rgba(0,0,0,0.2)" }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>Disconnect?</h3>
+              <p style={{ fontSize: 14, color: "#888", marginBottom: 20 }}>Are you sure you want to disconnect from {profile.name || profile.full_name}?</p>
+              <button
+                style={{ ...styles.primaryBtn, width: "100%", background: "#C62828", marginBottom: 10 }}
+                onClick={async () => {
+                  if (onDisconnect) {
+                    await onDisconnect(profile.id);
+                    setLocalStatus('none');
+                  }
+                  setShowDisconnectConfirm(false);
+                }}
+              >
+                Disconnect
+              </button>
+              <button style={{ ...styles.secondaryBtn, width: "100%" }} onClick={() => setShowDisconnectConfirm(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -5006,6 +5118,13 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
   const [activeSection, setActiveSection] = useState(isMember ? "feed" : "about");
 
+  const bodyRef = useRef(null);
+
+  // Scroll to top on mount
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, []);
+
   // Switch to feed tab when membership updates
   useEffect(() => {
     if (isMember && activeSection === "about") setActiveSection("feed");
@@ -5255,7 +5374,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         <h2 style={styles.detailTitle}>{group.emoji} {group.name}</h2>
         <div style={{ width: 40 }} />
       </div>
-      <div style={styles.detailBody}>
+      <div ref={bodyRef} style={styles.detailBody}>
         {/* Group Banner — tappable to show rules */}
         <div style={{ ...styles.eventBanner, background: `linear-gradient(135deg, ${group.color}18, ${group.color}35)`, cursor: "pointer" }} onClick={() => setShowRules(!showRules)}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -6500,7 +6619,7 @@ const styles = {
   emptyText: { fontSize: 14, color: gray400 },
 
   // Detail screens
-  detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC" },
+  detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", overflow: "hidden", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 19, fontWeight: 700, color: gray800 },
