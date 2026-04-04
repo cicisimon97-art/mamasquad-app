@@ -1077,6 +1077,16 @@ function MamaSquadsApp() {
       if (newConn) setConnections(prev => [...prev, newConn]);
     }
 
+    // Notify the requester that their request was accepted
+    if (accept && otherUserId) {
+      await supabase.from('notifications').insert({
+        user_id: otherUserId,
+        type: 'connection_accepted',
+        title: 'Connection Accepted!',
+        body: `${user.full_name || 'A mom'} accepted your connection request!`,
+        is_read: false,
+      });
+    }
   };
 
   // ─── Unsend a pending connection request ───
@@ -6423,7 +6433,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 22 }}>
-                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : '🔔'}
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : '🔔'}
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
