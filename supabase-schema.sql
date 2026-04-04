@@ -331,6 +331,7 @@ create table if not exists public.notifications (
   type text not null,
   title text,
   body text,
+  sender_id uuid references public.users(id) on delete cascade,
   group_id uuid references public.groups(id) on delete cascade,
   is_read boolean default false,
   created_at timestamptz default now()
