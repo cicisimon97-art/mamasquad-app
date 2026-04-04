@@ -3313,10 +3313,11 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
   const [localStatus, setLocalStatus] = useState(connectionStatus);
   const [showConnectedPopup, setShowConnectedPopup] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  const [manualOverride, setManualOverride] = useState(false);
 
-  // Sync localStatus when connectionStatus changes (e.g., other person accepted)
+  // Sync localStatus when connectionStatus changes, unless user manually changed it
   useEffect(() => {
-    setLocalStatus(connectionStatus);
+    if (!manualOverride) setLocalStatus(connectionStatus);
   }, [connectionStatus]);
   return (
     <div style={styles.detailScreen}>
@@ -3469,11 +3470,12 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
               <button
                 style={{ ...styles.primaryBtn, width: "100%", background: "#C62828", marginBottom: 10 }}
                 onClick={async () => {
+                  setShowDisconnectConfirm(false);
                   if (onDisconnect) {
                     await onDisconnect(profile.id);
-                    setLocalStatus('none');
                   }
-                  setShowDisconnectConfirm(false);
+                  setManualOverride(true);
+                  setLocalStatus('none');
                 }}
               >
                 Disconnect
