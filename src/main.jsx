@@ -271,6 +271,9 @@ const Icons = {
   bell: (
     <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
   ),
+  compass: (
+    <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="currentColor" stroke="none"/></svg>
+  ),
 };
 
 // ─── Data ───
@@ -316,6 +319,7 @@ function MamaSquadsApp() {
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
+  const [showMyProfile, setShowMyProfile] = useState(false);
   const [groupRequests, setGroupRequests] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -1291,6 +1295,25 @@ function MamaSquadsApp() {
   }
 
   if (screen === "main" && isVerified) {
+    if (showMyProfile) return (
+      <div style={styles.detailScreen}>
+        <div style={styles.detailHeader}>
+          <button style={styles.backBtn} onClick={() => setShowMyProfile(false)}>{Icons.back}</button>
+          <h2 style={styles.detailTitle}>My Profile</h2>
+          <div style={{ width: 40 }} />
+        </div>
+        <div style={styles.detailBody}>
+          <MyProfileTab
+            isBetaMember={isBetaMember} user={user} setUser={setUser}
+            joinedEvents={joinedEvents} joinedGroups={joinedGroups}
+            connections={connections || []} onSwitchTab={() => {}}
+            onShowDiscover={() => { setShowMyProfile(false); setTab("discover"); }}
+            notifications={notifications} setNotifications={setNotifications}
+            onUploadPhoto={uploadProfilePhoto} onBack={() => setShowMyProfile(false)}
+          />
+        </div>
+      </div>
+    );
     if (selectedEvent) return (
       <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
@@ -1347,6 +1370,24 @@ function MamaSquadsApp() {
 
     return (
       <div style={styles.app}>
+        {/* Profile avatar button — top right */}
+        <button
+          onClick={() => setShowMyProfile(true)}
+          style={{
+            position: "fixed", top: "calc(12px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
+            zIndex: 110, background: "none", border: "2px solid #6B2C3B", borderRadius: "50%",
+            width: 36, height: 36, padding: 0, cursor: "pointer", overflow: "hidden",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}
+        >
+          {user?.avatar_url ? (
+            <img src={user.avatar_url} alt="Me" style={{ width: "100%", height: "100%", objectFit: "cover", borderRadius: "50%" }} />
+          ) : (
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#6B2C3B" }}>
+              {(user?.full_name || "M").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+            </span>
+          )}
+        </button>
         <div ref={mainContentRef} style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
           {tab === "home" && (
             <HomeTab
@@ -3148,7 +3189,6 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply }) {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
-  const [showMyProfile, setShowMyProfile] = useState(false);
   const [realMoms, setRealMoms] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -3198,37 +3238,8 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
     return matchesSearch && matchesArea;
   });
 
-  if (showMyProfile) {
-    return <MyProfileTab isBetaMember={isBetaMember} user={user} setUser={setUser} joinedEvents={joinedEvents} joinedGroups={joinedGroups} connections={connections || []} onSwitchTab={() => {}} onShowDiscover={() => setShowMyProfile(false)} notifications={notifications} setNotifications={setNotifications} onUploadPhoto={onUploadPhoto} onBack={() => setShowMyProfile(false)} />;
-  }
-
-  const displayName = user?.full_name || "Mom";
-  const momAge = formatAge(user?.mom_age);
-  const isFounder = user?.role === 'founder';
-  const isFoundingMember = user?.is_founding_member || isBetaMember;
-
   return (
     <div style={styles.tabContent}>
-      {/* My Profile Card */}
-      <div style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0", marginBottom: 16, cursor: "pointer" }} onClick={() => setShowMyProfile(true)}>
-        <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-          <Avatar url={user?.avatar_url} name={displayName} size={56} />
-          <div style={{ flex: 1 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <strong style={{ fontSize: 16, color: "#2D2D2D" }}>{isFounder ? '👑 ' : ''}{displayName}</strong>
-              {momAge && <span style={{ fontSize: 12, color: "#888" }}>, {momAge}</span>}
-            </div>
-            {user?.area && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{Icons.location} {user.area}</p>}
-            <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-              {isFounder && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>FOUNDER</span>}
-              {!isFounder && isFoundingMember && <span style={{ fontSize: 9, fontWeight: 700, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>FOUNDING MEMBER</span>}
-              {user?.is_verified && <span style={{ fontSize: 9, fontWeight: 700, color: "#2E7D32", background: "#E8F5E9", padding: "2px 8px", borderRadius: 50 }}>VERIFIED</span>}
-            </div>
-          </div>
-          <span style={{ color: "#ccc", fontSize: 18 }}>›</span>
-        </div>
-      </div>
-
       <h1 style={styles.pageTitle}>Discover Moms</h1>
       <div style={styles.searchBar}>
         {Icons.search}
@@ -6485,7 +6496,7 @@ function BottomNav({ tab, setTab, unreadNotifications }) {
     { id: "groups", icon: Icons.group, label: "Groups" },
     { id: "create", icon: Icons.plus, label: "Create" },
     { id: "notifications", icon: Icons.bell, label: "Alerts", badge: unreadNotifications || 0 },
-    { id: "discover", icon: Icons.user, label: "Me" },
+    { id: "discover", icon: Icons.compass, label: "Discover" },
   ];
 
   return (
