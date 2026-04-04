@@ -317,6 +317,13 @@ function MamaSquadsApp() {
   const [tab, setTabRaw] = useState("home");
   const mainContentRef = useRef(null);
   const setTab = (t) => { setTabRaw(t); if (mainContentRef.current) mainContentRef.current.scrollTop = 0; };
+  const [pullRefreshing, setPullRefreshing] = useState(false);
+  const pullStartY = useRef(0);
+  const pullDist = useRef(0);
+  const [pullIndicator, setPullIndicator] = useState(0);
+  const handleTouchStart = (e) => { if (mainContentRef.current && mainContentRef.current.scrollTop <= 0) pullStartY.current = e.touches[0].clientY; else pullStartY.current = 0; };
+  const handleTouchMove = (e) => { if (!pullStartY.current) return; pullDist.current = Math.max(0, e.touches[0].clientY - pullStartY.current); setPullIndicator(Math.min(pullDist.current / 2, 40)); };
+  const handleTouchEnd = () => { if (pullDist.current > 80) { setPullRefreshing(true); setTimeout(() => { window.location.reload(); }, 300); } pullStartY.current = 0; pullDist.current = 0; setPullIndicator(0); };
   const [selectedDay, setSelectedDay] = useState("All");
   const [selectedAge, setSelectedAge] = useState("All Ages");
   const [selectedEvent, setSelectedEvent] = useState(null);
@@ -1389,7 +1396,13 @@ function MamaSquadsApp() {
             )}
           </button>
         )}
-        <div ref={mainContentRef} style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
+        <div ref={mainContentRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} style={{ ...styles.mainContent, opacity: fadeIn ? 1 : 0, transition: "opacity 0.15s ease" }}>
+          {pullIndicator > 0 && (
+            <div style={{ textAlign: "center", padding: `${pullIndicator}px 0 0`, transition: "padding 0.1s", color: "#6B2C3B", fontSize: 13 }}>
+              {pullIndicator >= 40 ? "Release to refresh" : "Pull to refresh"}
+            </div>
+          )}
+          {pullRefreshing && <div style={{ textAlign: "center", padding: 12, color: "#6B2C3B", fontSize: 13 }}>Refreshing...</div>}
           {tab === "home" && (
             <HomeTab
               events={events}

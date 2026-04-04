@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mamasquads-v7';
+const CACHE_NAME = 'mamasquads-v8';
 
 // Install — skip waiting to activate immediately
 self.addEventListener('install', event => {
