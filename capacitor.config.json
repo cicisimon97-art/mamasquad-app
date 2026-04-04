@@ -1,0 +1,14 @@
+{
+  "appId": "com.mamasquads.app",
+  "appName": "MamaSquads",
+  "webDir": "dist",
+  "ios": {
+    "contentInset": "automatic",
+    "backgroundColor": "#FFFBFC",
+    "preferredContentMode": "mobile",
+    "scheme": "MamaSquads"
+  },
+  "server": {
+    "hostname": "mamasquads.com"
+  }
+}
