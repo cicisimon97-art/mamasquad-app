@@ -362,3 +362,92 @@ create policy "Users can delete own notifications"
   on public.notifications for delete
   to authenticated
   using (auth.uid() = user_id);
+
+-- ─── Meetup Proposals (Polls) ───
+
+create table if not exists public.meetup_proposals (
+  id uuid default gen_random_uuid() primary key,
+  group_id uuid references public.groups(id) on delete cascade not null,
+  created_by uuid references public.users(id) on delete cascade not null,
+  title text not null,
+  description text,
+  time_options text[] default '{}',
+  location_options text[] default '{}',
+  status text default 'voting' check (status in ('voting', 'closed', 'confirmed')),
+  created_at timestamptz default now()
+);
+
+alter table public.meetup_proposals enable row level security;
+
+create policy "Authenticated users can read meetup proposals"
+  on public.meetup_proposals for select
+  to authenticated
+  using (true);
+
+create policy "Authenticated users can create meetup proposals"
+  on public.meetup_proposals for insert
+  to authenticated
+  with check (auth.uid() = created_by);
+
+create policy "Creator can update own proposals"
+  on public.meetup_proposals for update
+  to authenticated
+  using (auth.uid() = created_by);
+
+create policy "Creator and group admin can delete proposals"
+  on public.meetup_proposals for delete
+  to authenticated
+  using (
+    auth.uid() = created_by
+    or exists (
+      select 1 from public.groups
+      where groups.id = meetup_proposals.group_id
+      and groups.admin_id = auth.uid()
+    )
+  );
+
+-- ─── Votes ───
+
+create table if not exists public.votes (
+  id uuid default gen_random_uuid() primary key,
+  proposal_id uuid references public.meetup_proposals(id) on delete cascade not null,
+  user_id uuid references public.users(id) on delete cascade not null,
+  vote_type text not null,
+  option_index text not null,
+  created_at timestamptz default now()
+);
+
+alter table public.votes enable row level security;
+
+create policy "Authenticated users can read votes"
+  on public.votes for select
+  to authenticated
+  using (true);
+
+create policy "Authenticated users can insert votes"
+  on public.votes for insert
+  to authenticated
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own votes"
+  on public.votes for update
+  to authenticated
+  using (auth.uid() = user_id);
+
+create policy "Users can delete own votes"
+  on public.votes for delete
+  to authenticated
+  using (auth.uid() = user_id);
+
+-- Allow admins to delete votes when deleting polls
+create policy "Group admins can delete votes"
+  on public.votes for delete
+  to authenticated
+  using (
+    exists (
+      select 1 from public.meetup_proposals mp
+      join public.groups g on g.id = mp.group_id
+      where mp.id = votes.proposal_id
+      and g.admin_id = auth.uid()
+    )
+  );

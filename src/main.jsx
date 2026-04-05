@@ -1217,19 +1217,21 @@ function MamaSquadsApp() {
   const handleVote = async (proposalId, optionType, optionValue) => {
     if (!user) return;
     // Remove existing vote for this type on this proposal
-    await supabase.from('votes')
+    const { error: delErr } = await supabase.from('votes')
       .delete()
       .eq('proposal_id', proposalId)
       .eq('user_id', user.id)
       .eq('vote_type', optionType);
+    if (delErr) console.error('Vote delete error:', delErr);
 
     // Insert new vote
-    await supabase.from('votes').insert({
+    const { error: insErr } = await supabase.from('votes').insert({
       proposal_id: proposalId,
       user_id: user.id,
       vote_type: optionType,
       option_index: optionValue,
     });
+    if (insErr) console.error('Vote insert error:', insErr);
   };
 
   if (loading) {
