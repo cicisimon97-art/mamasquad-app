@@ -1184,6 +1184,7 @@ function MamaSquadsApp() {
   // ─── Propose meetup handler ───
   const handleProposeMeetup = async (groupId, proposal) => {
     if (!user) return { error: 'Not logged in' };
+    console.log('Creating proposal:', { groupId, userId: user.id, title: proposal.title });
     const { data, error } = await supabase.from('meetup_proposals').insert({
       group_id: groupId,
       created_by: user.id,
@@ -1194,7 +1195,12 @@ function MamaSquadsApp() {
       status: 'voting',
     }).select().single();
 
-    if (error) return { error: error.message };
+    if (error) {
+      console.error('Proposal create error:', error);
+      alert('Error creating poll: ' + error.message);
+      return { error: error.message };
+    }
+    console.log('Proposal created:', data);
 
     // Notify group members about new poll
     const groupName = (groups || []).find(g => g.id === groupId)?.name || 'your group';
@@ -1231,7 +1237,10 @@ function MamaSquadsApp() {
       vote_type: optionType,
       option_index: optionValue,
     });
-    if (insErr) console.error('Vote insert error:', insErr);
+    if (insErr) {
+      console.error('Vote insert error:', insErr);
+      alert('Error saving vote: ' + insErr.message);
+    }
   };
 
   if (loading) {
