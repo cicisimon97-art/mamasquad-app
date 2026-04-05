@@ -5463,17 +5463,45 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const samplePending = (group.pendingRequests || []).filter(
     r => !approvedRequests.includes(r.id) && !deniedRequests.includes(r.id)
   );
+  // Resolve zip codes to city, state
+  const [resolvedAreas, setResolvedAreas] = useState({});
+  useEffect(() => {
+    const resolveAreas = async () => {
+      for (const r of supaRequests) {
+        const area = r.users?.area || '';
+        if (!area || resolvedAreas[area]) continue;
+        const isZip = /^\d{5}$/.test(area.trim());
+        if (isZip) {
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${area.trim()}&countrycodes=us&limit=1&addressdetails=1`);
+            const data = await res.json();
+            if (data.length > 0 && data[0].address) {
+              const addr = data[0].address;
+              const city = addr.city || addr.town || addr.village || addr.hamlet || '';
+              const state = addr.state || '';
+              if (city || state) {
+                setResolvedAreas(prev => ({ ...prev, [area]: `${city}${city && state ? ', ' : ''}${state}` }));
+              }
+            }
+          } catch {}
+        }
+      }
+    };
+    if (supaRequests.length > 0) resolveAreas();
+  }, [supaRequests]);
+
   const pending = group.fromSupabase
     ? supaRequests.map(r => {
         const userName = r.users?.full_name || 'A mom';
         const kids = r.users?.kids || [];
+        const rawArea = r.users?.area || '';
         return {
           id: r.id,
           userId: r.user_id,
           name: userName,
           avatar: userName.split(' ').map(w => w[0]).join(''),
           bio: r.users?.bio || r.message || '',
-          area: r.users?.area || '',
+          area: resolvedAreas[rawArea] || rawArea,
           ages: kids.map(k => { const a = formatAge(k.birthday); const g = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : ""; const ageLabel = a ? (a.includes('mo') || a === 'Newborn' ? a : a + ' yrs') : ''; return `${g} ${ageLabel || k.gender || ''}`.trim(); }).filter(Boolean).join(', ') || '',
           requestedAt: new Date(r.created_at).toLocaleDateString(),
           fromSupabase: true,
