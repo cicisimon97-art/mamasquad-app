@@ -5639,13 +5639,117 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {/* Action buttons for members */}
         {isMember && (
           <div style={{ display: "flex", gap: 8 }}>
-            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowPostPlaydate(true); setTimeout(() => document.getElementById('playdate-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📅 Playdate</button>
-            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowPostPlaydate(true); setShowProposeMeetup(false); setTimeout(() => document.getElementById('playdate-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📅 Playdate</button>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setShowPostPlaydate(false); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
             <label style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: photoUploading ? 0.5 : 1 }}>
               {photoUploading ? "..." : "📸 Photo"}
               <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadGroupPhoto(file); }} />
             </label>
             <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setActiveSection("polls")}>🗳️ Polls</button>
+          </div>
+        )}
+
+        {/* Post Playdate inline form */}
+        {isMember && showPostPlaydate && (
+          <div id="playdate-form" style={gs.inlineForm}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <strong style={{ fontSize: 14, color: "#2D2D2D" }}>📅 Post a Playdate</strong>
+              <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowPostPlaydate(false)}>✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={gs.formInput} placeholder="Playdate title (e.g., Park Day!)" value={pdTitle} onChange={e => setPdTitle(e.target.value)} />
+              <AddressInput inputStyle={gs.formInput} placeholder="Search for a location..." value={pdLocation} onChange={setPdLocation} userArea={user?.area || group.area} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
+                  <option value="">Month</option>
+                  {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
+                </select>
+                <select style={{ ...gs.formInput, flex: 1 }} value={pdDate.split('/')[1] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${e.target.value}/${new Date().getFullYear()}`); }}>
+                  <option value="">Day</option>
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <span style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D", padding: "0 8px" }}>{new Date().getFullYear()}</span>
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Time</p>
+              <select style={gs.formInput} value={pdTime} onChange={e => setPdTime(e.target.value)}>
+                <option value="">Select a time</option>
+                {["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <input style={gs.formInput} placeholder="Max kids / families" type="number" value={pdMax} onChange={e => setPdMax(e.target.value)} />
+              <textarea style={{ ...gs.formInput, minHeight: 60, resize: "vertical" }} placeholder="Details — what to bring, what to expect..." value={pdDesc} onChange={e => setPdDesc(e.target.value)} />
+              <button
+                style={{ ...styles.primaryBtn, marginTop: 4, opacity: pdSubmitting ? 0.6 : 1 }}
+                disabled={pdSubmitting}
+                onClick={async () => {
+                  if (!pdTitle.trim()) return;
+                  setPdSubmitting(true);
+                  if (onCreateEvent) {
+                    await onCreateEvent({
+                      title: pdTitle.trim(),
+                      location: pdLocation.trim(),
+                      date: pdDate.trim() || "TBD",
+                      time: pdTime.trim() || "TBD",
+                      ages: group.ages || "All Ages",
+                      maxAttendees: parseInt(pdMax) || 15,
+                      description: pdDesc.trim(),
+                      groupId: group.fromSupabase ? group.id : null,
+                    });
+                  }
+                  setPdSubmitting(false);
+                  setPdTitle(""); setPdLocation(""); setPdDate(""); setPdTime(""); setPdMax(""); setPdDesc("");
+                  setShowPostPlaydate(false);
+                }}
+              >
+                {pdSubmitting ? "Posting..." : "Post Playdate to Group 🎉"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Propose Meetup inline form */}
+        {isMember && showProposeMeetup && (
+          <div id="meetup-form" style={gs.inlineForm}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <strong style={{ fontSize: 14, color: "#2D2D2D" }}>📍 Propose a Meetup</strong>
+              <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowProposeMeetup(false)}>✕</button>
+            </div>
+            <p style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>Pick a day and let the group vote on the best time!</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={gs.formInput} placeholder="What's the meetup? (e.g., Park playdate)" value={mtTitle} onChange={e => setMtTitle(e.target.value)} />
+              <textarea style={{ ...gs.formInput, minHeight: 50, resize: "vertical" }} placeholder="Any details or context..." value={mtDesc} onChange={e => setMtDesc(e.target.value)} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Pick a day</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => (
+                  <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: mtDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: mtDay === d ? "#FAF0F2" : "white", color: mtDay === d ? "#6B2C3B" : "#666", fontWeight: mtDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setMtDay(d)}>{d}</button>
+                ))}
+              </div>
+              <button
+                style={{ ...styles.primaryBtn, marginTop: 4, opacity: mtSubmitting || !mtTitle.trim() || !mtDay ? 0.5 : 1 }}
+                disabled={mtSubmitting || !mtTitle.trim() || !mtDay}
+                onClick={async () => {
+                  if (!mtTitle.trim() || !mtDay) return;
+                  setMtSubmitting(true);
+                  if (onProposeMeetup && group.fromSupabase) {
+                    const TIMES = ["8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM"];
+                    const result = await onProposeMeetup(group.id, {
+                      title: mtTitle.trim(),
+                      description: `${mtDesc.trim() ? mtDesc.trim() + ' — ' : ''}What time works best on ${mtDay}?`,
+                      timeOptions: TIMES,
+                      locationOptions: [],
+                    });
+                    if (result.data) {
+                      setMeetups(prev => [{ ...result.data, votes: [] }, ...prev]);
+                    }
+                  }
+                  setMtSubmitting(false);
+                  setMtTitle(""); setMtDesc(""); setMtDay("");
+                  setShowProposeMeetup(false);
+                }}
+              >
+                {mtSubmitting ? "Proposing..." : "Post Poll — Let the Group Vote! 🗳️"}
+              </button>
+            </div>
           </div>
         )}
 
