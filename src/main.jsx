@@ -6993,7 +6993,7 @@ const styles = {
   detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 19, fontWeight: 700, color: gray800 },
-  detailBody: { flex: 1, overflow: "auto", padding: 18, paddingBottom: 160, display: "flex", flexDirection: "column", gap: 16, WebkitOverflowScrolling: "touch" },
+  detailBody: { flex: 1, overflow: "auto", overflowY: "scroll", padding: 18, paddingBottom: "calc(180px + env(safe-area-inset-bottom, 34px))", display: "flex", flexDirection: "column", gap: 16, WebkitOverflowScrolling: "touch" },
   detailSection: { marginBottom: 4 },
   sectionTitle: { fontSize: 14, fontWeight: 700, color: gray800, marginBottom: 10, fontFamily: font },
 
