@@ -1207,7 +1207,7 @@ function MamaSquadsApp() {
   const loadMeetupProposals = async (groupId) => {
     const { data } = await supabase
       .from('meetup_proposals')
-      .select('*, votes(id, user_id, vote_type, option_index), users!created_by(full_name)')
+      .select('*, votes(id, user_id, vote_type, option_index, users!user_id(full_name)), users!created_by(full_name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false });
     return data || [];
@@ -4869,10 +4869,17 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
 
       {polls.map(poll => {
         const voteCounts = {};
-        (poll.votes || []).forEach(v => { if (v.vote_type === 'time') voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1; });
+        const votersByTime = {};
+        (poll.votes || []).forEach(v => {
+          if (v.vote_type === 'time') {
+            voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1;
+            if (!votersByTime[v.option_index]) votersByTime[v.option_index] = [];
+            votersByTime[v.option_index].push(v.users?.full_name || 'A mom');
+          }
+        });
         const totalVotes = Object.values(voteCounts).reduce((s, c) => s + c, 0);
         const myVote = myVotes[poll.id];
-        const topTimes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]).map(([time, votes]) => ({ time, votes }));
+        const topTimes = Object.entries(voteCounts).sort((a, b) => b[1] - a[1]).map(([time, votes]) => ({ time, votes, voters: votersByTime[time] || [] }));
 
         return (
           <div key={poll.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
@@ -5007,12 +5014,17 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
               <div style={{ marginTop: 10 }}>
                 <p style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 6 }}>Results</p>
                 {topTimes.slice(0, 5).map((t, j) => (
-                  <div key={j} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                    <div style={{ flex: 1, height: 24, borderRadius: 6, background: "#f5f5f5", overflow: "hidden", position: "relative" }}>
-                      <div style={{ height: "100%", background: j === 0 ? "#6B2C3B" : "#D4B5BA", borderRadius: 6, width: `${totalVotes > 0 ? (t.votes / totalVotes) * 100 : 0}%`, transition: "width 0.3s ease" }} />
-                      <span style={{ position: "absolute", left: 8, top: 4, fontSize: 11, fontWeight: 600, color: j === 0 ? "white" : "#666" }}>{t.time}</span>
+                  <div key={j} style={{ marginBottom: 8 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
+                      <div style={{ flex: 1, height: 24, borderRadius: 6, background: "#f5f5f5", overflow: "hidden", position: "relative" }}>
+                        <div style={{ height: "100%", background: j === 0 ? "#6B2C3B" : "#D4B5BA", borderRadius: 6, width: `${totalVotes > 0 ? (t.votes / totalVotes) * 100 : 0}%`, transition: "width 0.3s ease" }} />
+                        <span style={{ position: "absolute", left: 8, top: 4, fontSize: 11, fontWeight: 600, color: j === 0 ? "white" : "#666" }}>{t.time}</span>
+                      </div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: "#666", width: 20, textAlign: "right" }}>{t.votes}</span>
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "#666", width: 20, textAlign: "right" }}>{t.votes}</span>
+                    {t.voters.length > 0 && (
+                      <p style={{ fontSize: 11, color: "#999", marginLeft: 4 }}>{t.voters.join(', ')}</p>
+                    )}
                   </div>
                 ))}
               </div>
