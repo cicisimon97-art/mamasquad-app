@@ -333,6 +333,28 @@ function MamaSquadsApp() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [showDiscover, setShowDiscover] = useState(false);
   const [showMyProfile, setShowMyProfile] = useState(false);
+  const navHistory = useRef([]);
+  const pushNav = (state) => {
+    navHistory.current.push({
+      selectedEvent, selectedProfile, showAdminApply, selectedGroup,
+      showCreateGroup, showDiscover, showMyProfile, ...state
+    });
+  };
+  const popNav = () => {
+    if (navHistory.current.length === 0) {
+      setSelectedEvent(null); setSelectedProfile(null); setShowAdminApply(false);
+      setSelectedGroup(null); setShowCreateGroup(false); setShowDiscover(false); setShowMyProfile(false);
+      return;
+    }
+    const prev = navHistory.current.pop();
+    setSelectedEvent(prev.selectedEvent);
+    setSelectedProfile(prev.selectedProfile);
+    setShowAdminApply(prev.showAdminApply);
+    setSelectedGroup(prev.selectedGroup);
+    setShowCreateGroup(prev.showCreateGroup);
+    setShowDiscover(prev.showDiscover);
+    setShowMyProfile(prev.showMyProfile);
+  };
   const [groupRequests, setGroupRequests] = useState({});
   const [notifications, setNotifications] = useState([]);
   const [groups, setGroups] = useState([]);
@@ -1315,31 +1337,31 @@ function MamaSquadsApp() {
           connections={connections || []} onSwitchTab={() => {}}
           onShowDiscover={() => { setShowMyProfile(false); setTab("discover"); }}
           notifications={notifications} setNotifications={setNotifications}
-          onUploadPhoto={uploadProfilePhoto} onBack={() => setShowMyProfile(false)}
+          onUploadPhoto={uploadProfilePhoto} onBack={() => popNav()}
         />
       </div>
     );
     if (selectedEvent) return (
-      <EventDetail event={selectedEvent} onBack={() => { setSelectedEvent(null); }} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
+      <EventDetail event={selectedEvent} onBack={() => popNav()} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => setSelectedProfile(null)} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} />
+      <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} />
     );
     if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} user={user} fadeIn={fadeIn} />;
-    if (showAdminApply) return <AdminApplyScreen onBack={() => setShowAdminApply(false)} user={user} fadeIn={fadeIn} />;
-    if (showCreateGroup) return <CreateGroupScreen onBack={() => setShowCreateGroup(false)} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
+    if (showAdminApply) return <AdminApplyScreen onBack={() => popNav()} user={user} fadeIn={fadeIn} />;
+    if (showCreateGroup) return <CreateGroupScreen onBack={() => popNav()} onSubmit={handleCreateGroup} fadeIn={fadeIn} />;
     if (showDiscover) return (
       <div style={styles.detailScreen}>
         <div style={styles.detailHeader}>
-          <button style={styles.backBtn} onClick={() => setShowDiscover(false)}>{Icons.back}</button>
+          <button style={styles.backBtn} onClick={() => popNav()}>{Icons.back}</button>
           <h2 style={styles.detailTitle}>Discover Moms</h2>
           <div style={{ width: 40 }} />
         </div>
         <div style={{ flex: 1, overflow: "auto" }}>
           <DiscoverTab
             user={user}
-            onProfileSelect={(p) => { setShowDiscover(false); setSelectedProfile(p); }}
-            onAdminApply={() => { setShowDiscover(false); setShowAdminApply(true); }}
+            onProfileSelect={(p) => { pushNav({}); setShowDiscover(false); setSelectedProfile(p); }}
+            onAdminApply={() => { pushNav({}); setShowDiscover(false); setShowAdminApply(true); }}
           />
         </div>
       </div>
@@ -1347,7 +1369,7 @@ function MamaSquadsApp() {
     if (selectedGroup) return (
       <GroupDetailScreen
         group={selectedGroup}
-        onBack={() => setSelectedGroup(null)}
+        onBack={() => popNav()}
         joinedGroups={joinedGroups}
         setJoinedGroups={setJoinedGroups}
         pendingJoins={pendingJoins}
@@ -1367,8 +1389,8 @@ function MamaSquadsApp() {
         onVote={handleVote}
         events={events}
         joinedEvents={joinedEvents}
-        onEventSelect={(e) => { setSelectedEvent(e); }}
-        onViewProfile={(req) => { setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
+        onEventSelect={(e) => { pushNav({}); setSelectedEvent(e); }}
+        onViewProfile={(req) => { pushNav({}); setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
         fadeIn={fadeIn}
       />
     );
@@ -1378,7 +1400,7 @@ function MamaSquadsApp() {
         {/* Profile avatar button — top right, Home tab only */}
         {tab === "home" && (
           <button
-            onClick={() => setShowMyProfile(true)}
+            onClick={() => { pushNav({}); setShowMyProfile(true); }}
             style={{
               position: "fixed", top: "calc(10px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
               zIndex: 110, background: "white", border: "2.5px solid #6B2C3B", borderRadius: "50%",
@@ -1410,9 +1432,9 @@ function MamaSquadsApp() {
               joinedGroups={joinedGroups}
               selectedDay={selectedDay} setSelectedDay={setSelectedDay}
               selectedAge={selectedAge} setSelectedAge={setSelectedAge}
-              onEventSelect={(e) => navigate("event", e)}
+              onEventSelect={(e) => { pushNav({}); navigate("event", e); }}
               onCreateEvent={() => setTab("create")}
-              onGroupSelect={(g) => setSelectedGroup(g)}
+              onGroupSelect={(g) => { pushNav({}); setSelectedGroup(g); }}
               joinedEvents={joinedEvents}
             />
           )}
@@ -1427,15 +1449,15 @@ function MamaSquadsApp() {
               setNotifications={setNotifications}
               connections={connections}
               onUploadPhoto={uploadProfilePhoto}
-              onProfileSelect={(p) => navigate("profile", p)}
-              onAdminApply={() => setShowAdminApply(true)}
+              onProfileSelect={(p) => { pushNav({}); navigate("profile", p); }}
+              onAdminApply={() => { pushNav({}); setShowAdminApply(true); }}
             />
           )}
           {tab === "groups" && (
             <GroupsTab
               groups={groups}
-              onGroupSelect={(g) => setSelectedGroup(g)}
-              onCreateGroup={() => setShowCreateGroup(true)}
+              onGroupSelect={(g) => { pushNav({}); setSelectedGroup(g); }}
+              onCreateGroup={() => { pushNav({}); setShowCreateGroup(true); }}
               joinedGroups={joinedGroups}
               pendingJoins={pendingJoins}
               userRole={user?.role}
@@ -1443,6 +1465,7 @@ function MamaSquadsApp() {
           )}
           {tab === "notifications" && (
             <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={async (notif) => {
+              pushNav({});
               if (notif.type === 'new_event' && notif.group_id) {
                 // Find the most recent event in this group
                 const groupEvent = (events || []).find(e => e.groupId === notif.group_id);
