@@ -1341,7 +1341,7 @@ function MamaSquadsApp() {
 
   if (screen === "main" && isVerified) {
     if (showMyProfile) return (
-      <div style={{ ...styles.detailScreen, overflow: "auto", WebkitOverflowScrolling: "touch" }}>
+      <div style={{ ...styles.detailScreen, overflow: "auto", overflowY: "scroll", WebkitOverflowScrolling: "touch", paddingBottom: "calc(120px + env(safe-area-inset-bottom, 34px))" }}>
         <MyProfileTab
           isBetaMember={isBetaMember} user={user} setUser={setUser}
           joinedEvents={joinedEvents} joinedGroups={joinedGroups}
@@ -3764,6 +3764,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
         >
           {saving ? "Saving..." : "Save Changes"}
         </button>
+        <div style={{ height: 120 }} />
       </div>
     );
   }
