@@ -1367,8 +1367,8 @@ function MamaSquadsApp() {
         onVote={handleVote}
         events={events}
         joinedEvents={joinedEvents}
-        onEventSelect={(e) => { setSelectedGroup(null); setSelectedEvent(e); }}
-        onViewProfile={(req) => { setSelectedGroup(null); setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
+        onEventSelect={(e) => { setSelectedEvent(e); }}
+        onViewProfile={(req) => { setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
         fadeIn={fadeIn}
       />
     );
