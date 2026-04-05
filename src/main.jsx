@@ -748,15 +748,17 @@ function MamaSquadsApp() {
 
   // ─── Approve join request handler ───
   const handleApproveRequest = async (requestId, groupId, userId) => {
-    await supabase.from('join_requests')
+    const { error: reqErr } = await supabase.from('join_requests')
       .update({ status: 'approved' })
       .eq('id', requestId);
+    if (reqErr) { alert('Error approving request. Please try again.'); return; }
 
-    await supabase.from('group_members').insert({
+    const { error: memErr } = await supabase.from('group_members').insert({
       group_id: groupId,
       user_id: userId,
       role: 'member',
     });
+    if (memErr) { alert('Error adding member to group.'); return; }
 
     // Update member count in local state
     setGroups(prev => prev.map(g =>
@@ -885,10 +887,11 @@ function MamaSquadsApp() {
   const handleRsvp = async (eventId, joining) => {
     if (!user) return;
     if (joining) {
-      await supabase.from('event_rsvps').insert({
+      const { error } = await supabase.from('event_rsvps').insert({
         event_id: eventId,
         user_id: user.id,
       });
+      if (error) { console.error('RSVP error:', error); alert('Could not RSVP. Please try again.'); return; }
       setJoinedEvents(prev => [...prev, eventId]);
       setEvents(prev => prev.map(e =>
         e.id === eventId ? { ...e, attendees: (e.attendees || 0) + 1 } : e
@@ -929,7 +932,8 @@ function MamaSquadsApp() {
   const handleDeleteEvent = async (eventId) => {
     await supabase.from('comments').delete().eq('event_id', eventId);
     await supabase.from('event_rsvps').delete().eq('event_id', eventId);
-    await supabase.from('events').delete().eq('id', eventId);
+    const { error } = await supabase.from('events').delete().eq('id', eventId);
+    if (error) { alert('Error deleting event. Please try again.'); return; }
     setEvents(prev => prev.filter(e => e.id !== eventId));
     setJoinedEvents(prev => prev.filter(id => id !== eventId));
   };
@@ -3701,9 +3705,10 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       kids,
       interests: editInterests,
     };
-    await supabase.from('users').update(updates).eq('id', user.id);
-    setUser(prev => ({ ...prev, ...updates }));
+    const { error } = await supabase.from('users').update(updates).eq('id', user.id);
     setSaving(false);
+    if (error) { alert('Error saving profile. Please try again.'); return; }
+    setUser(prev => ({ ...prev, ...updates }));
     setEditing(false);
   };
 
@@ -5772,7 +5777,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   if (!pdTitle.trim()) return;
                   setPdSubmitting(true);
                   if (onCreateEvent) {
-                    await onCreateEvent({
+                    const result = await onCreateEvent({
                       title: pdTitle.trim(),
                       location: pdLocation.trim(),
                       date: pdDate.trim() || "TBD",
@@ -5782,6 +5787,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       description: pdDesc.trim(),
                       groupId: group.fromSupabase ? group.id : null,
                     });
+                    if (result?.error) { setPdSubmitting(false); alert('Error creating playdate: ' + result.error); return; }
                   }
                   setPdSubmitting(false);
                   setPdTitle(""); setPdLocation(""); setPdDate(""); setPdTime(""); setPdMax(""); setPdDesc("");
