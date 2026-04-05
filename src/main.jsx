@@ -4753,6 +4753,18 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
   const [pollProposedTime, setPollProposedTime] = useState("");
   const [creating, setCreating] = useState(false);
   const [myVotes, setMyVotes] = useState({});
+  const [deleting, setDeleting] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const isAdmin = user?.role === 'admin' || user?.role === 'founder';
+
+  const handleDeletePoll = async (pollId) => {
+    setDeleting(pollId);
+    await supabase.from('votes').delete().eq('proposal_id', pollId);
+    await supabase.from('meetup_proposals').delete().eq('id', pollId);
+    setPolls(prev => prev.filter(p => p.id !== pollId));
+    setConfirmDelete(null);
+    setDeleting(null);
+  };
 
   const TIMES = ["8:00 AM", "8:30 AM", "9:00 AM", "9:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM", "12:00 PM", "12:30 PM", "1:00 PM", "1:30 PM", "2:00 PM", "2:30 PM", "3:00 PM", "3:30 PM", "4:00 PM", "4:30 PM", "5:00 PM", "5:30 PM", "6:00 PM", "6:30 PM", "7:00 PM"];
 
@@ -4866,7 +4878,19 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
           <div key={poll.id} style={{ background: "white", borderRadius: 16, padding: 16, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
               <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50 }}>🗳️ Poll</span>
-              <span style={{ fontSize: 11, color: "#bbb" }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span style={{ fontSize: 11, color: "#bbb" }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+                {(isAdmin || poll.created_by === user?.id) && (
+                  confirmDelete === poll.id ? (
+                    <div style={{ display: "flex", gap: 4 }}>
+                      <button style={{ padding: "3px 8px", borderRadius: 6, background: "#C62828", color: "white", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: deleting === poll.id ? 0.5 : 1 }} onClick={() => handleDeletePoll(poll.id)} disabled={deleting === poll.id}>{deleting === poll.id ? "..." : "Delete"}</button>
+                      <button style={{ padding: "3px 8px", borderRadius: 6, background: "#f0f0f0", color: "#666", fontSize: 10, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setConfirmDelete(null)}>Cancel</button>
+                    </div>
+                  ) : (
+                    <button style={{ background: "none", border: "none", fontSize: 14, color: "#ccc", cursor: "pointer", padding: "0 4px" }} onClick={() => setConfirmDelete(poll.id)}>🗑️</button>
+                  )
+                )}
+              </div>
             </div>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 2 }}>{poll.title}</h3>
             <p style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>{poll.description}</p>
