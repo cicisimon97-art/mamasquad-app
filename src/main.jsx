@@ -4958,10 +4958,19 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
               <div style={{ background: "#FAF0F2", borderRadius: 10, padding: 10, marginBottom: 8 }}>
                 <p style={{ fontSize: 13, color: "#6B2C3B" }}>✓ You voted for <strong>{myVote}</strong></p>
                 <button
-                  style={{ background: "none", border: "none", fontSize: 12, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 4, textDecoration: "underline" }}
-                  onClick={() => setMyVotes(prev => { const n = { ...prev }; delete n[poll.id]; return n; })}
+                  style={{ padding: "6px 14px", borderRadius: 50, fontSize: 12, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 6, background: "white", border: "1.5px solid #6B2C3B", fontWeight: 600 }}
+                  onClick={async () => {
+                    // Remove old vote from DB
+                    await supabase.from('votes').delete().eq('proposal_id', poll.id).eq('user_id', user?.id).eq('vote_type', 'time');
+                    // Remove from local state
+                    setPolls(prev => prev.map(p => {
+                      if (p.id !== poll.id) return p;
+                      return { ...p, votes: (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'time')) };
+                    }));
+                    setMyVotes(prev => { const n = { ...prev }; delete n[poll.id]; return n; });
+                  }}
                 >
-                  Change my vote
+                  ✏️ Change Vote
                 </button>
               </div>
             ) : (
@@ -4980,7 +4989,8 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                           setMyVotes(prev => ({ ...prev, [poll.id]: t.time }));
                           setPolls(prev => prev.map(p => {
                             if (p.id !== poll.id) return p;
-                            return { ...p, votes: [...(p.votes || []), { user_id: user?.id, vote_type: 'time', option_index: t.time }] };
+                            const filtered = (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'time'));
+                            return { ...p, votes: [...filtered, { user_id: user?.id, vote_type: 'time', option_index: t.time, users: { full_name: user?.full_name } }] };
                           }));
                         }}
                       >
@@ -5000,7 +5010,8 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                     setMyVotes(prev => ({ ...prev, [poll.id]: time }));
                     setPolls(prev => prev.map(p => {
                       if (p.id !== poll.id) return p;
-                      return { ...p, votes: [...(p.votes || []), { user_id: user?.id, vote_type: 'time', option_index: time }] };
+                      const filtered = (p.votes || []).filter(v => !(v.user_id === user?.id && v.vote_type === 'time'));
+                      return { ...p, votes: [...filtered, { user_id: user?.id, vote_type: 'time', option_index: time, users: { full_name: user?.full_name } }] };
                     }));
                   }}
                 >
