@@ -5381,7 +5381,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   useEffect(() => {
     if (!isAdmin || !group.fromSupabase) return;
     supabase.from('join_requests')
-      .select('*, users!user_id(full_name, bio, kids)')
+      .select('*, users!user_id(full_name, bio, kids, area)')
       .eq('group_id', group.id)
       .eq('status', 'pending')
       .then(({ data }) => {
@@ -5426,6 +5426,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           name: userName,
           avatar: userName.split(' ').map(w => w[0]).join(''),
           bio: r.users?.bio || r.message || '',
+          area: r.users?.area || '',
           ages: kids.map(k => { const a = formatAge(k.birthday); const g = k.gender === "Girl" ? "👧" : k.gender === "Boy" ? "👦" : ""; const ageLabel = a ? (a.includes('mo') || a === 'Newborn' ? a : a + ' yrs') : ''; return `${g} ${ageLabel || k.gender || ''}`.trim(); }).filter(Boolean).join(', ') || '',
           requestedAt: new Date(r.created_at).toLocaleDateString(),
           fromSupabase: true,
@@ -6030,8 +6031,9 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                           <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{req.name}</strong>
                           <span style={styles.verifiedMomTag}>✓ Verified</span>
                         </div>
-                        <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Kids: {req.ages}</p>
-                        <p style={{ fontSize: 13, color: "#555", marginTop: 4, lineHeight: 1.4 }}>{req.bio}</p>
+                        {req.area && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>📍 {req.area}</p>}
+                        {req.ages && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Kids: {req.ages}</p>}
+                        {req.bio && <p style={{ fontSize: 13, color: "#555", marginTop: 4, lineHeight: 1.4 }}>{req.bio}</p>}
                         <p style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Requested {req.requestedAt}</p>
                       </div>
                     </div>
