@@ -4768,6 +4768,7 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
   const [pollTitle, setPollTitle] = useState("");
   const [pollDay, setPollDay] = useState("");
   const [pollProposedTime, setPollProposedTime] = useState("");
+  const [pollLocation, setPollLocation] = useState("");
   const [creating, setCreating] = useState(false);
   const [myVotes, setMyVotes] = useState({});
   const [deleting, setDeleting] = useState(null);
@@ -4807,11 +4808,13 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
     setCreating(true);
     if (onProposeMeetup) {
       const proposedLabel = pollProposedTime ? `Proposed: ${pollProposedTime}` : '';
+      const locationLabel = pollLocation ? `📍 ${pollLocation}` : '';
+      const descParts = [proposedLabel, locationLabel].filter(Boolean).join(' | ');
       const result = await onProposeMeetup(group.id, {
         title: pollTitle.trim(),
-        description: `${proposedLabel ? proposedLabel + ' — ' : ''}What time works best on ${pollDay}?`,
+        description: `${descParts ? descParts + ' — ' : ''}What time works best on ${pollDay}?`,
         timeOptions: TIMES.slice(),
-        locationOptions: [],
+        locationOptions: pollLocation ? [pollLocation] : [],
       });
       if (result.data) {
         // Auto-vote for proposed time if set
@@ -4825,7 +4828,7 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
       }
     }
     setCreating(false);
-    setPollTitle(""); setPollDay(""); setPollProposedTime("");
+    setPollTitle(""); setPollDay(""); setPollProposedTime(""); setPollLocation("");
     setShowCreate(false);
   };
 
@@ -4854,6 +4857,14 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                 <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: pollDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: pollDay === d ? "#FAF0F2" : "white", color: pollDay === d ? "#6B2C3B" : "#666", fontWeight: pollDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setPollDay(d)}>{d}</button>
               ))}
             </div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Location (optional)</p>
+            <AddressInput
+              inputStyle={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D" }}
+              placeholder="Search for a location..."
+              value={pollLocation}
+              onChange={setPollLocation}
+              userArea={user?.area || group.area}
+            />
             <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Your proposed time</p>
             <select
               style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D", background: "white" }}
@@ -4917,7 +4928,10 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
               </div>
             </div>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", marginBottom: 2 }}>{poll.title}</h3>
-            <p style={{ fontSize: 13, color: "#888", marginBottom: 8 }}>{poll.description}</p>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 4 }}>{poll.description}</p>
+            {poll.location_options && poll.location_options.length > 0 && (
+              <p style={{ fontSize: 12, color: "#6B2C3B", marginBottom: 8 }}>{Icons.location} {poll.location_options[0]}</p>
+            )}
 
             {topTimes.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 10 }}>
@@ -4936,7 +4950,7 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                       onClick={async () => {
                         const dayMatch = poll.description?.match(/on (\w+)\??/);
                         const day = dayMatch ? dayMatch[1] : "TBD";
-                        await onCreateEvent({ title: poll.title, location: '', date: day, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
+                        await onCreateEvent({ title: poll.title, location: poll.location_options?.[0] || '', date: day, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
                       }}
                     >
                       Create Playdate
@@ -4960,7 +4974,7 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                         onClick={async () => {
                           const dayMatch = poll.description?.match(/on (\w+)\??/);
                           const day = dayMatch ? dayMatch[1] : "TBD";
-                          await onCreateEvent({ title: `${poll.title} (Alt time)`, location: '', date: day, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
+                          await onCreateEvent({ title: `${poll.title} (Alt time)`, location: poll.location_options?.[0] || '', date: day, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
                         }}
                       >
                         Create Playdate
@@ -5909,6 +5923,50 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     )}
                   </div>
                 ))}
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Active Polls & Meetups preview */}
+        {isMember && meetups.length > 0 && (() => {
+          const activePolls = meetups.filter(p => p.status === 'voting');
+          if (activePolls.length === 0) return null;
+          return (
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D" }}>🗳️ Active Polls</h4>
+                <button
+                  style={{ background: "none", border: "none", fontSize: 12, color: "#6B2C3B", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                  onClick={() => setActiveSection("polls")}
+                >View all →</button>
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {activePolls.slice(0, 3).map(poll => {
+                  const voteCounts = {};
+                  (poll.votes || []).forEach(v => { if (v.vote_type === 'time') voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1; });
+                  const totalVotes = Object.values(voteCounts).reduce((s, c) => s + c, 0);
+                  const topTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
+                  const hasVoted = (poll.votes || []).some(v => v.user_id === user?.id);
+                  return (
+                    <div key={poll.id} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => setActiveSection("polls")}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>🗳️ Poll</span>
+                          <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{poll.title}</strong>
+                        </div>
+                        <span style={{ fontSize: 11, color: "#bbb" }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
+                        {poll.location_options && poll.location_options.length > 0 && (
+                          <span>{Icons.location} {poll.location_options[0].split(',')[0]}</span>
+                        )}
+                        {topTime && <span>{Icons.clock} Leading: {topTime[0]}</span>}
+                      </div>
+                      {hasVoted && <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", marginTop: 4, display: "inline-block" }}>✓ Voted</span>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           );
