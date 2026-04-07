@@ -5452,6 +5452,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [pendingPhoto, setPendingPhoto] = useState(null);
   const [pendingPhotoPreview, setPendingPhotoPreview] = useState(null);
   const [photoCaption, setPhotoCaption] = useState("");
+  const [viewingPhoto, setViewingPhoto] = useState(null);
   const [showDeleteGroup, setShowDeleteGroup] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState(null);
@@ -6079,7 +6080,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {groupPhotos.map((photo, i) => (
                       <div key={i} style={{ background: "white", borderRadius: 12, overflow: "hidden", border: "1px solid #f0f0f0" }}>
-                        <img src={photo.url} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "cover" }} />
+                        <img src={photo.url} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "cover", cursor: "pointer" }} onClick={() => setViewingPhoto(photo)} />
                         <div style={{ padding: "10px 12px" }}>
                           {photo.caption && <p style={{ fontSize: 14, color: "#2D2D2D", marginBottom: 4 }}>{photo.caption}</p>}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -6445,6 +6446,23 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         )}
         <PageFooter />
       </div>
+
+      {/* Fullscreen photo viewer */}
+      {viewingPhoto && (
+        <div
+          style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.9)", zIndex: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setViewingPhoto(null)}
+        >
+          <button style={{ position: "absolute", top: "calc(16px + env(safe-area-inset-top, 20px))", right: 16, background: "none", border: "none", color: "white", fontSize: 28, cursor: "pointer", zIndex: 201 }} onClick={() => setViewingPhoto(null)}>✕</button>
+          <img src={viewingPhoto.url} alt="" style={{ maxWidth: "95%", maxHeight: "80vh", objectFit: "contain", borderRadius: 8 }} onClick={e => e.stopPropagation()} />
+          {(viewingPhoto.caption || viewingPhoto.postedBy) && (
+            <div style={{ marginTop: 12, textAlign: "center", padding: "0 20px" }} onClick={e => e.stopPropagation()}>
+              {viewingPhoto.caption && <p style={{ fontSize: 15, color: "white", marginBottom: 4 }}>{viewingPhoto.caption}</p>}
+              {viewingPhoto.postedBy && <p style={{ fontSize: 12, color: "rgba(255,255,255,0.6)" }}>by {viewingPhoto.postedBy}</p>}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
