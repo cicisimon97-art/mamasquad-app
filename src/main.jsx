@@ -6080,12 +6080,23 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     {groupPhotos.map((photo, i) => (
                       <div key={i} style={{ background: "white", borderRadius: 12, overflow: "hidden", border: "1px solid #f0f0f0" }}>
                         <img src={photo.url} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "cover" }} />
-                        {(photo.caption || photo.postedBy) && (
-                          <div style={{ padding: "10px 12px" }}>
-                            {photo.caption && <p style={{ fontSize: 14, color: "#2D2D2D", marginBottom: 4 }}>{photo.caption}</p>}
+                        <div style={{ padding: "10px 12px" }}>
+                          {photo.caption && <p style={{ fontSize: 14, color: "#2D2D2D", marginBottom: 4 }}>{photo.caption}</p>}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             {photo.postedBy && <p style={{ fontSize: 11, color: "#999" }}>by {photo.postedBy}</p>}
+                            {isAdmin && (
+                              <button
+                                style={{ background: "none", border: "none", fontSize: 12, color: "#ccc", cursor: "pointer", padding: "2px 6px" }}
+                                onClick={async () => {
+                                  if (!confirm('Delete this photo?')) return;
+                                  const { error } = await supabase.storage.from('avatars').remove([`groups/${group.id}/${photo.name}`]);
+                                  if (error) { alert('Error deleting photo'); return; }
+                                  setGroupPhotos(prev => prev.filter((_, j) => j !== i));
+                                }}
+                              >🗑️</button>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </div>
                     ))}
                   </div>
