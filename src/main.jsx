@@ -5449,6 +5449,9 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
   const [groupPhotos, setGroupPhotos] = useState([]);
   const [photoUploading, setPhotoUploading] = useState(false);
+  const [pendingPhoto, setPendingPhoto] = useState(null);
+  const [pendingPhotoPreview, setPendingPhotoPreview] = useState(null);
+  const [photoCaption, setPhotoCaption] = useState("");
   const [showDeleteGroup, setShowDeleteGroup] = useState(false);
   const [deletePassword, setDeletePassword] = useState("");
   const [deleteError, setDeleteError] = useState(null);
@@ -5499,17 +5502,29 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
       });
   }, [group.id, group.fromSupabase]);
 
-  const uploadGroupPhoto = async (file) => {
-    if (!user || !file) return;
+  const handlePhotoSelect = (file) => {
+    if (!file) return;
+    setPendingPhoto(file);
+    setPendingPhotoPreview(URL.createObjectURL(file));
+    setPhotoCaption("");
+  };
+
+  const uploadGroupPhoto = async () => {
+    if (!user || !pendingPhoto) return;
     setPhotoUploading(true);
+    const file = pendingPhoto;
     const ext = file.name.split('.').pop();
     const fileName = `${Date.now()}.${ext}`;
     const filePath = `groups/${group.id}/${fileName}`;
 
-    await supabase.storage.from('avatars').upload(filePath, file);
+    const { error } = await supabase.storage.from('avatars').upload(filePath, file);
+    if (error) { alert('Error uploading photo: ' + error.message); setPhotoUploading(false); return; }
     const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(filePath);
-    setGroupPhotos(prev => [{ name: fileName, url: publicUrl, created: new Date().toISOString() }, ...prev]);
+    setGroupPhotos(prev => [{ name: fileName, url: publicUrl, caption: photoCaption.trim(), postedBy: user.full_name || 'A mom', created: new Date().toISOString() }, ...prev]);
     setPhotoUploading(false);
+    setPendingPhoto(null);
+    setPendingPhotoPreview(null);
+    setPhotoCaption("");
   };
 
   // Load pending requests from Supabase for admin
@@ -5806,9 +5821,33 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setShowPostPlaydate(false); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
             <label style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: photoUploading ? 0.5 : 1 }}>
               {photoUploading ? "..." : "📸 Photo"}
-              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) uploadGroupPhoto(file); }} />
+              <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) handlePhotoSelect(file); }} />
             </label>
             <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setActiveSection("polls")}>🗳️ Polls</button>
+          </div>
+        )}
+
+        {/* Photo preview + caption form */}
+        {pendingPhotoPreview && (
+          <div style={gs.inlineForm}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <strong style={{ fontSize: 14, color: "#2D2D2D" }}>📸 Post a Photo</strong>
+              <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => { setPendingPhoto(null); setPendingPhotoPreview(null); setPhotoCaption(""); }}>✕</button>
+            </div>
+            <img src={pendingPhotoPreview} alt="Preview" style={{ width: "100%", maxHeight: 300, objectFit: "cover", borderRadius: 12, marginBottom: 10 }} />
+            <input
+              style={gs.formInput}
+              placeholder="Add a caption..."
+              value={photoCaption}
+              onChange={e => setPhotoCaption(e.target.value)}
+            />
+            <button
+              style={{ ...styles.primaryBtn, marginTop: 8, opacity: photoUploading ? 0.6 : 1 }}
+              disabled={photoUploading}
+              onClick={uploadGroupPhoto}
+            >
+              {photoUploading ? "Uploading..." : "Post Photo to Group 📸"}
+            </button>
           </div>
         )}
 
@@ -6037,9 +6076,17 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               {groupPhotos.length > 0 && (
                 <div>
                   <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>📸 Photos ({groupPhotos.length})</h4>
-                  <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                     {groupPhotos.map((photo, i) => (
-                      <img key={i} src={photo.url} alt="" style={{ width: 120, height: 120, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                      <div key={i} style={{ background: "white", borderRadius: 12, overflow: "hidden", border: "1px solid #f0f0f0" }}>
+                        <img src={photo.url} alt="" style={{ width: "100%", maxHeight: 300, objectFit: "cover" }} />
+                        {(photo.caption || photo.postedBy) && (
+                          <div style={{ padding: "10px 12px" }}>
+                            {photo.caption && <p style={{ fontSize: 14, color: "#2D2D2D", marginBottom: 4 }}>{photo.caption}</p>}
+                            {photo.postedBy && <p style={{ fontSize: 11, color: "#999" }}>by {photo.postedBy}</p>}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -6061,7 +6108,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     {photoUploading ? "..." : "📸 Photo"}
                     <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => {
                       const file = e.target.files?.[0];
-                      if (file) uploadGroupPhoto(file);
+                      if (file) handlePhotoSelect(file);
                     }} />
                   </label>
                 </div>
