@@ -5956,75 +5956,94 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
-        {/* Group's Playdates */}
+        {/* ── GROUP FEED: Playdates, Polls, Photos ── */}
         {isMember && (() => {
           const groupEvents = (events || []).filter(e => e.groupId === group.id);
-          if (groupEvents.length === 0) return null;
-          return (
-            <div>
-              <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>📅 Upcoming Playdates</h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {groupEvents.map(event => (
-                  <div key={event.id} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => onEventSelect && onEventSelect(event)}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                      <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{event.title}</strong>
-                      <span style={{ fontSize: 11, color: "#6B2C3B", fontWeight: 600 }}>{formatEventDate(event.date)}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
-                      {event.location && <span>{Icons.location} {event.location.split(',')[0]}</span>}
-                      {event.time && <span>{Icons.clock} {event.time}</span>}
-                      <span>{Icons.users} {event.attendees} going</span>
-                    </div>
-                    {(joinedEvents || []).includes(event.id) && (
-                      <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", marginTop: 4, display: "inline-block" }}>✓ You're going</span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          );
-        })()}
+          const activePolls = (meetups || []).filter(p => p.status === 'voting');
+          const hasContent = groupEvents.length > 0 || activePolls.length > 0 || groupPhotos.length > 0;
+          if (!hasContent) return null;
 
-        {/* Active Polls & Meetups preview */}
-        {isMember && meetups.length > 0 && (() => {
-          const activePolls = meetups.filter(p => p.status === 'voting');
-          if (activePolls.length === 0) return null;
           return (
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D" }}>🗳️ Active Polls</h4>
-                <button
-                  style={{ background: "none", border: "none", fontSize: 12, color: "#6B2C3B", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                  onClick={() => setActiveSection("polls")}
-                >View all →</button>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {activePolls.slice(0, 3).map(poll => {
-                  const voteCounts = {};
-                  (poll.votes || []).forEach(v => { if (v.vote_type === 'time') voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1; });
-                  const totalVotes = Object.values(voteCounts).reduce((s, c) => s + c, 0);
-                  const topTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
-                  const hasVoted = (poll.votes || []).some(v => v.user_id === user?.id);
-                  return (
-                    <div key={poll.id} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => setActiveSection("polls")}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>🗳️ Poll</span>
-                          <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{poll.title}</strong>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <h4 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D" }}>Group Feed</h4>
+
+              {/* Upcoming Playdates */}
+              {groupEvents.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>📅 Upcoming Playdates</h4>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {groupEvents.map(event => (
+                      <div key={event.id} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => onEventSelect && onEventSelect(event)}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                          <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{event.title}</strong>
+                          <span style={{ fontSize: 11, color: "#6B2C3B", fontWeight: 600 }}>{formatEventDate(event.date)}</span>
                         </div>
-                        <span style={{ fontSize: 11, color: "#bbb" }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
-                      </div>
-                      <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
-                        {poll.location_options && poll.location_options.length > 0 && (
-                          <span>{Icons.location} {poll.location_options[0].split(',')[0]}</span>
+                        <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
+                          {event.location && <span>{Icons.location} {event.location.split(',')[0]}</span>}
+                          {event.time && <span>{Icons.clock} {event.time}</span>}
+                          <span>{Icons.users} {event.attendees} going</span>
+                        </div>
+                        {(joinedEvents || []).includes(event.id) && (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", marginTop: 4, display: "inline-block" }}>✓ You're going</span>
                         )}
-                        {topTime && <span>{Icons.clock} Leading: {topTime[0]}</span>}
                       </div>
-                      {hasVoted && <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", marginTop: 4, display: "inline-block" }}>✓ Voted</span>}
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Active Polls & Proposed Meetups */}
+              {activePolls.length > 0 && (
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D" }}>🗳️ Polls & Proposed Meetups</h4>
+                    <button style={{ background: "none", border: "none", fontSize: 12, color: "#6B2C3B", fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setActiveSection("polls")}>Vote →</button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {activePolls.map(poll => {
+                      const voteCounts = {};
+                      (poll.votes || []).forEach(v => { if (v.vote_type === 'time') voteCounts[v.option_index] = (voteCounts[v.option_index] || 0) + 1; });
+                      const totalVotes = Object.values(voteCounts).reduce((s, c) => s + c, 0);
+                      const topTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
+                      const hasVoted = (poll.votes || []).some(v => v.user_id === user?.id);
+                      return (
+                        <div key={poll.id} style={{ background: "white", borderRadius: 12, padding: 12, border: "1px solid #f0f0f0", cursor: "pointer" }} onClick={() => setActiveSection("polls")}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "2px 8px", borderRadius: 50 }}>🗳️ Poll</span>
+                              <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{poll.title}</strong>
+                            </div>
+                            <span style={{ fontSize: 11, color: "#bbb" }}>{totalVotes} vote{totalVotes !== 1 ? 's' : ''}</span>
+                          </div>
+                          <div style={{ display: "flex", gap: 12, fontSize: 12, color: "#888" }}>
+                            {poll.location_options && poll.location_options.length > 0 && (
+                              <span>{Icons.location} {poll.location_options[0].split(',')[0]}</span>
+                            )}
+                            {topTime && <span>{Icons.clock} Leading: {topTime[0]}</span>}
+                          </div>
+                          {hasVoted ? (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", marginTop: 4, display: "inline-block" }}>✓ Voted</span>
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginTop: 4, display: "inline-block" }}>Tap to vote</span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Photos */}
+              {groupPhotos.length > 0 && (
+                <div>
+                  <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 8 }}>📸 Photos ({groupPhotos.length})</h4>
+                  <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8 }}>
+                    {groupPhotos.map((photo, i) => (
+                      <img key={i} src={photo.url} alt="" style={{ width: 120, height: 120, borderRadius: 12, objectFit: "cover", flexShrink: 0 }} />
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })()}
