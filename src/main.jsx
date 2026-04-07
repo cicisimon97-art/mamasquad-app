@@ -1,6 +1,55 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import ReactDOM from 'react-dom/client'
 import { supabase } from './supabaseClient'
+import { Capacitor } from '@capacitor/core'
+
+// ─── Native Features ───
+const isNative = Capacitor.isNativePlatform();
+
+// Haptic feedback helper — only runs on native iOS
+const haptic = async (style = 'Medium') => {
+  if (!isNative) return;
+  try {
+    const { Haptics, ImpactStyle } = await import('@capacitor/haptics');
+    if (style === 'Light') await Haptics.impact({ style: ImpactStyle.Light });
+    else if (style === 'Heavy') await Haptics.impact({ style: ImpactStyle.Heavy });
+    else await Haptics.impact({ style: ImpactStyle.Medium });
+  } catch {}
+};
+
+const hapticSuccess = async () => {
+  if (!isNative) return;
+  try {
+    const { Haptics, NotificationType } = await import('@capacitor/haptics');
+    await Haptics.notification({ type: NotificationType.Success });
+  } catch {}
+};
+
+// Push notifications setup — only on native
+const setupPushNotifications = async () => {
+  if (!isNative) return;
+  try {
+    const { PushNotifications } = await import('@capacitor/push-notifications');
+    const permResult = await PushNotifications.requestPermissions();
+    if (permResult.receive === 'granted') {
+      await PushNotifications.register();
+    }
+    PushNotifications.addListener('registration', token => {
+      console.log('Push token:', token.value);
+    });
+    PushNotifications.addListener('registrationError', err => {
+      console.error('Push registration error:', err);
+    });
+    PushNotifications.addListener('pushNotificationReceived', notification => {
+      console.log('Push received:', notification);
+    });
+    PushNotifications.addListener('pushNotificationActionPerformed', notification => {
+      console.log('Push action:', notification);
+    });
+  } catch (e) {
+    console.log('Push notifications not available:', e);
+  }
+};
 
 // ─── Date Formatting ───
 const SHORT_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -470,6 +519,9 @@ function MamaSquadsApp() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // ─── Init push notifications on native ───
+  useEffect(() => { setupPushNotifications(); }, []);
+
   // ─── Forgot password handler ───
   const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
   const handleForgotPassword = async (email) => {
@@ -729,6 +781,7 @@ function MamaSquadsApp() {
     });
 
     if (error) return { error: error.message };
+    hapticSuccess();
     setPendingJoins(prev => [...prev, groupId]);
 
     // Notify the group admin
@@ -892,6 +945,7 @@ function MamaSquadsApp() {
         user_id: user.id,
       });
       if (error) { console.error('RSVP error:', error); alert('Could not RSVP. Please try again.'); return; }
+      hapticSuccess();
       setJoinedEvents(prev => [...prev, eventId]);
       setEvents(prev => prev.map(e =>
         e.id === eventId ? { ...e, attendees: (e.attendees || 0) + 1 } : e
@@ -1097,6 +1151,7 @@ function MamaSquadsApp() {
       status: 'pending',
     }).select().single();
     if (error) return { error: error.message };
+    hapticSuccess();
     setConnections(prev => [...prev, data]);
     // Notify the recipient
     await supabase.from('notifications').insert({
@@ -1244,6 +1299,8 @@ function MamaSquadsApp() {
     if (insErr) {
       console.error('Vote insert error:', insErr);
       alert('Error saving vote: ' + insErr.message);
+    } else {
+      haptic('Light');
     }
   };
 
@@ -6910,7 +6967,7 @@ function BottomNav({ tab, setTab, unreadNotifications }) {
             color: tab === t.id ? "#6B2C3B" : "#999",
             position: "relative",
           }}
-          onClick={() => setTab(t.id)}
+          onClick={() => { haptic('Light'); setTab(t.id); }}
         >
           {t.id === "create" ? (
             <div style={styles.createBtn}>{t.icon}</div>

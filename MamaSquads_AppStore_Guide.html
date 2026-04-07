@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+  body { font-family: Helvetica, Arial, sans-serif; margin: 40px; color: #333; line-height: 1.6; font-size: 14px; }
+  h1 { color: #6B2C3B; font-size: 28px; border-bottom: 3px solid #6B2C3B; padding-bottom: 8px; margin-bottom: 24px; }
+  h2 { color: #6B2C3B; font-size: 18px; margin-top: 28px; margin-bottom: 8px; }
+  .section { background: #FFF8F9; border: 1px solid #E8D0D5; border-radius: 8px; padding: 16px; margin: 12px 0; }
+  .label { font-weight: bold; color: #6B2C3B; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  td { padding: 8px 12px; border: 1px solid #E8D0D5; vertical-align: top; }
+  td.label { background: #FFF0F2; width: 180px; }
+  .checklist { list-style: none; padding: 0; }
+  .checklist li { padding: 4px 0; }
+  .checklist li:before { content: "[ ] "; font-family: monospace; }
+  .note { font-size: 12px; color: #888; font-style: italic; }
+</style>
+</head>
+<body>
+
+<h1>MamaSquads - App Store Submission Guide</h1>
+
+<h2>App Identity</h2>
+<table>
+  <tr><td class="label">App Name</td><td>MamaSquads</td></tr>
+  <tr><td class="label">Bundle ID</td><td>com.mamasquads.app</td></tr>
+  <tr><td class="label">Version</td><td>1.0.0</td></tr>
+  <tr><td class="label">Category</td><td>Social Networking</td></tr>
+  <tr><td class="label">Age Rating</td><td>18+</td></tr>
+  <tr><td class="label">SKU</td><td>mamasquads-ios-001</td></tr>
+</table>
+
+<h2>App Store Description</h2>
+<div class="section">
+<p><strong>Subtitle (30 chars max):</strong> Less Chaos. More Playdates.</p>
+<br/>
+<p><strong>Description:</strong></p>
+<p>Less Chaos. More Playdates.</p>
+<p>We saw a need for moms to build villages around them, and we found a solution to make it happen. MamaSquads is a verified, moms-only community where you can find your people, organize playdates, and build the village every mom deserves.</p>
+<p>Create or join local mom squads, plan playdates and events, and connect with verified moms in your area - all in one place. No strangers, no guesswork, just real moms supporting each other.</p>
+<p><strong>Features:</strong></p>
+<p>- Verified, moms-only community<br/>
+- Create and join local mom groups<br/>
+- Plan and RSVP to playdates and events<br/>
+- Group chat and coordination<br/>
+- Simple, intuitive design</p>
+</div>
+
+<h2>Keywords (99/100 characters)</h2>
+<div class="section">
+playdate,mom,moms,parenting,kids,community,momlife,motherhood,playdates,village,mom groups,families
+</div>
+
+<h2>URLs</h2>
+<table>
+  <tr><td class="label">Privacy Policy URL</td><td>https://mamasquads.com/privacy-policy.html</td></tr>
+  <tr><td class="label">Website</td><td>https://mamasquads.com</td></tr>
+  <tr><td class="label">Support URL</td><td>https://mamasquads.com</td></tr>
+</table>
+
+<h2>App Review Information</h2>
+<div class="section">
+<p class="label">Review Notes for Apple:</p>
+<p>MamaSquads is a verified community for mothers to organize playdates and connect with other moms in their area. Users can create accounts, join groups, create events, and RSVP to playdates.</p>
+<br/>
+<p><span class="label">Demo Account:</span> You may need to create a demo account for Apple reviewers. Set one up before submission with a test email and password.</p>
+</div>
+
+<h2>Screenshots Needed</h2>
+<div class="section">
+<p>You need screenshots for these device sizes:</p>
+<ul class="checklist">
+  <li>6.7 inch display - iPhone 15 Pro Max / 16 Pro Max - REQUIRED</li>
+  <li>6.5 inch display - iPhone 11 Pro Max - Recommended</li>
+  <li>5.5 inch display - iPhone 8 Plus - Optional</li>
+</ul>
+<p class="note">Minimum 3 screenshots, maximum 10. Show key features: login screen, groups list, event details, playdate planning.</p>
+</div>
+
+<h2>Submission Checklist</h2>
+<ul class="checklist">
+  <li>Enroll at developer.apple.com/programs - $99/year</li>
+  <li>Wait for enrollment approval - up to 48 hours</li>
+  <li>Sign into Xcode with your Apple Developer account</li>
+  <li>Set Team in Xcode: App target, Signing and Capabilities</li>
+  <li>Create App Store Connect listing at appstoreconnect.apple.com</li>
+  <li>Upload app icon 1024x1024 - already prepared</li>
+  <li>Add screenshots</li>
+  <li>Fill in description, keywords, URLs from this document</li>
+  <li>Deploy privacy policy - push code to GitHub so it goes live on Vercel</li>
+  <li>Archive app in Xcode: Product, then Archive</li>
+  <li>Upload to App Store Connect from Xcode</li>
+  <li>Submit for Apple review</li>
+</ul>
+
+<h2>Technical Details</h2>
+<table>
+  <tr><td class="label">Platform</td><td>iOS - Capacitor wrapper</td></tr>
+  <tr><td class="label">Minimum iOS Version</td><td>16.0</td></tr>
+  <tr><td class="label">Framework</td><td>React 18 + Vite + Capacitor 8</td></tr>
+  <tr><td class="label">Backend</td><td>Supabase</td></tr>
+  <tr><td class="label">Xcode Project Location</td><td>~/mamasquad-app/ios/App/App.xcodeproj</td></tr>
+  <tr><td class="label">Build Command</td><td>npm run build:ios</td></tr>
+  <tr><td class="label">Open Xcode Command</td><td>npx cap open ios</td></tr>
+</table>
+
+<p class="note" style="margin-top: 30px; text-align: center;">Generated April 3, 2026 - MamaSquads App Store Submission Guide</p>
+
+</body>
+</html>
