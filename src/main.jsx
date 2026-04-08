@@ -3017,6 +3017,21 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   const [showKidSelect, setShowKidSelect] = useState(false);
   const [selectedKids, setSelectedKids] = useState({});
   const [showAttendees, setShowAttendees] = useState(false);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const commentRef = useRef(null);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const offset = window.innerHeight - vv.height;
+      setKeyboardOffset(offset > 50 ? offset : 0);
+      if (offset > 50 && commentRef.current) {
+        setTimeout(() => commentRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
+      }
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
   const [editing, setEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(event.title);
   const [editLocation, setEditLocation] = useState(event.location || '');
@@ -3364,7 +3379,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
         </div>
       </div>
       {/* Fixed comment input at bottom */}
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "white", borderTop: "1px solid #f0f0f0", padding: "10px 18px calc(10px + env(safe-area-inset-bottom, 20px))", display: "flex", gap: 8, zIndex: 60 }}>
+      <div ref={commentRef} style={{ position: "fixed", bottom: keyboardOffset || 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "white", borderTop: "1px solid #f0f0f0", padding: keyboardOffset ? "10px 18px" : "10px 18px calc(10px + env(safe-area-inset-bottom, 20px))", display: "flex", gap: 8, zIndex: 60, transition: "bottom 0.15s ease" }}>
         <input
           style={{ ...styles.msgInput, flex: 1 }}
           placeholder="Add a comment..."
