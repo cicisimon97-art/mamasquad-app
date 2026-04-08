@@ -1542,47 +1542,65 @@ function MamaSquadsApp() {
           )}
           {tab === "notifications" && (
             <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={async (notif) => {
+              // Helper to navigate to a user's profile by ID
+              const goToProfile = async (userId) => {
+                if (!userId) return;
+                const { data: profile } = await supabase.from('users').select('id, full_name, area, bio, kids, interests, is_verified, role, avatar_url, quick_answers').eq('id', userId).single();
+                if (profile) {
+                  const name = profile.full_name || 'A mom';
+                  const kidAges = (profile.kids || []).map(k => formatAge(k.birthday)).filter(Boolean);
+                  setSelectedProfile({
+                    id: profile.id, name, avatar: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
+                    bio: profile.bio || '', ages: kidAges.map(a => a.includes('mo') || a === 'Newborn' ? a : a + ' yrs').join(', '),
+                    interests: profile.interests || [], area: profile.area || '',
+                    isVerified: profile.is_verified, role: profile.role, avatar_url: profile.avatar_url, quick_answers: profile.quick_answers || {},
+                  });
+                }
+              };
+
               pushNav({});
+
+              // Join request → go to the group
               if (notif.type === 'join_request' && notif.group_id) {
                 const group = (groups || []).find(g => g.id === notif.group_id);
-                if (group) { setSelectedGroup(group); }
-                return;
+                if (group) { setSelectedGroup(group); return; }
               }
-              if (notif.type === 'new_event' && notif.group_id) {
-                // Find the most recent event in this group
-                const groupEvent = (events || []).find(e => e.groupId === notif.group_id);
-                if (groupEvent) {
-                  setSelectedEvent(groupEvent);
-                } else {
-                  const group = (groups || []).find(g => g.id === notif.group_id);
-                  if (group) setSelectedGroup(group);
-                }
-              } else if (notif.group_id) {
-                const group = (groups || []).find(g => g.id === notif.group_id);
-                if (group) { setSelectedGroup(group); }
-              } else if (notif.type === 'connection_request' || notif.type === 'connection_accepted' || notif.type === 'admin_application') {
-                let otherId = notif.sender_id;
-                // Fallback: try to find the sender by matching notification body to user names
-                if (!otherId && notif.body) {
+
+              // Admin application → go to the applicant's profile
+              if (notif.type === 'admin_application') {
+                const senderId = notif.sender_id;
+                if (senderId) { await goToProfile(senderId); return; }
+                // Fallback: try matching name in notification body
+                if (notif.body) {
                   const { data: allUsers } = await supabase.from('users').select('id, full_name').neq('id', user?.id || '');
-                  if (allUsers) {
-                    const match = allUsers.find(u => u.full_name && notif.body.includes(u.full_name));
-                    if (match) otherId = match.id;
-                  }
+                  const match = (allUsers || []).find(u => u.full_name && notif.body.includes(u.full_name));
+                  if (match) { await goToProfile(match.id); return; }
                 }
-                if (otherId) {
-                  const { data: profile } = await supabase.from('users').select('id, full_name, area, bio, kids, interests, is_verified, role, avatar_url, quick_answers').eq('id', otherId).single();
-                  if (profile) {
-                    const name = profile.full_name || 'A mom';
-                    const kidAges = (profile.kids || []).map(k => formatAge(k.birthday)).filter(Boolean);
-                    setSelectedProfile({
-                      id: profile.id, name, avatar: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase(),
-                      bio: profile.bio || '', ages: kidAges.map(a => a.includes('mo') || a === 'Newborn' ? a : a + ' yrs').join(', '),
-                      interests: profile.interests || [], area: profile.area || '',
-                      isVerified: profile.is_verified, avatar_url: profile.avatar_url, quick_answers: profile.quick_answers || {},
-                    });
-                  }
+              }
+
+              // New event → go to event or group
+              if (notif.type === 'new_event' && notif.group_id) {
+                const groupEvent = (events || []).find(e => e.groupId === notif.group_id);
+                if (groupEvent) { setSelectedEvent(groupEvent); return; }
+                const group = (groups || []).find(g => g.id === notif.group_id);
+                if (group) { setSelectedGroup(group); return; }
+              }
+
+              // Connection request/accepted → go to their profile
+              if (notif.type === 'connection_request' || notif.type === 'connection_accepted') {
+                let senderId = notif.sender_id;
+                if (!senderId && notif.body) {
+                  const { data: allUsers } = await supabase.from('users').select('id, full_name').neq('id', user?.id || '');
+                  const match = (allUsers || []).find(u => u.full_name && notif.body.includes(u.full_name));
+                  if (match) senderId = match.id;
                 }
+                if (senderId) { await goToProfile(senderId); return; }
+              }
+
+              // Any other notification with a group → go to the group
+              if (notif.group_id) {
+                const group = (groups || []).find(g => g.id === notif.group_id);
+                if (group) { setSelectedGroup(group); return; }
               }
             }} />
           )}
