@@ -5012,8 +5012,18 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                         btn.textContent = "Creating...";
                         btn.disabled = true;
                         const dayMatch = poll.description?.match(/on (\w+)\??/);
-                        const day = dayMatch ? dayMatch[1] : "TBD";
-                        const result = await onCreateEvent({ title: poll.title, location: poll.location_options?.[0] || '', date: day, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
+                        const dayName = dayMatch ? dayMatch[1] : "";
+                        const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+                        const targetDay = dayNames.findIndex(d => d.toLowerCase() === dayName.toLowerCase());
+                        let dateStr = "TBD";
+                        if (targetDay >= 0) {
+                          const now = new Date();
+                          const diff = (targetDay - now.getDay() + 7) % 7 || 7;
+                          const next = new Date(now);
+                          next.setDate(now.getDate() + diff);
+                          dateStr = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
+                        }
+                        const result = await onCreateEvent({ title: poll.title, location: poll.location_options?.[0] || '', date: dateStr, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
                         if (result?.error) {
                           alert('Error creating playdate: ' + result.error);
                           btn.textContent = "Create Playdate";
@@ -5047,8 +5057,18 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                           btn.textContent = "Creating...";
                           btn.disabled = true;
                           const dayMatch = poll.description?.match(/on (\w+)\??/);
-                          const day = dayMatch ? dayMatch[1] : "TBD";
-                          const result = await onCreateEvent({ title: `${poll.title} (Alt time)`, location: poll.location_options?.[0] || '', date: day, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
+                          const dayName = dayMatch ? dayMatch[1] : "";
+                          const dayNames = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+                          const targetDay = dayNames.findIndex(d => d.toLowerCase() === dayName.toLowerCase());
+                          let dateStr = "TBD";
+                          if (targetDay >= 0) {
+                            const now = new Date();
+                            const diff = (targetDay - now.getDay() + 7) % 7 || 7;
+                            const next = new Date(now);
+                            next.setDate(now.getDate() + diff);
+                            dateStr = `${next.getFullYear()}-${String(next.getMonth()+1).padStart(2,'0')}-${String(next.getDate()).padStart(2,'0')}`;
+                          }
+                          const result = await onCreateEvent({ title: `${poll.title} (Alt time)`, location: poll.location_options?.[0] || '', date: dateStr, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
                           if (result?.error) {
                             alert('Error creating playdate: ' + result.error);
                             btn.textContent = "Create Playdate";
