@@ -6070,6 +6070,17 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
+        {/* Invite code for admins — always visible */}
+        {isAdmin && group.inviteCode && (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FAF0F2", borderRadius: 10, padding: "10px 14px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, color: "#6B2C3B", fontWeight: 600 }}>Invite Code:</span>
+              <span style={{ fontSize: 16, fontWeight: 700, color: "#6B2C3B", letterSpacing: 3, fontFamily: "monospace" }}>{group.inviteCode}</span>
+            </div>
+            <button style={{ background: "#6B2C3B", border: "none", borderRadius: 8, padding: "6px 12px", fontSize: 11, fontWeight: 600, color: "white", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={(e) => { e.stopPropagation(); navigator.clipboard?.writeText(group.inviteCode); const btn = e.target; btn.textContent = "Copied!"; setTimeout(() => { btn.textContent = "Copy"; }, 1500); }}>Copy</button>
+          </div>
+        )}
+
         {/* Inline edit group form */}
         {editingGroup && isAdmin && (
           <div id="edit-group-form" style={{ background: "#FAF0F2", borderRadius: 12, padding: 16 }}>
