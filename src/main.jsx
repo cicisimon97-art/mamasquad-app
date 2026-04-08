@@ -1535,6 +1535,7 @@ function MamaSquadsApp() {
               groups={groups}
               onGroupSelect={(g) => { pushNav({}); setSelectedGroup(g); }}
               onCreateGroup={() => { pushNav({}); setShowCreateGroup(true); }}
+              onAdminApply={() => { pushNav({}); setShowAdminApply(true); }}
               joinedGroups={joinedGroups}
               pendingJoins={pendingJoins}
               userRole={user?.role}
@@ -5537,7 +5538,7 @@ function AdminApplyScreen({ onBack, user }) {
 }
 
 // ─── Groups Tab ───
-function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pendingJoins, userRole }) {
+function GroupsTab({ groups, onGroupSelect, onCreateGroup, onAdminApply, joinedGroups, pendingJoins, userRole }) {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
@@ -5553,8 +5554,10 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, joinedGroups, pending
     <div style={styles.tabContent}>
       <div style={styles.homeHeader}>
         <h1 style={styles.pageTitle}>Groups</h1>
-        {(userRole === 'admin' || userRole === 'founder') && (
+        {(userRole === 'admin' || userRole === 'founder') ? (
           <button style={styles.secondaryBtn} onClick={onCreateGroup}>+ Create Squad</button>
+        ) : (
+          <button style={{ ...styles.secondaryBtn, background: "#FAF0F2", color: "#6B2C3B", border: "1.5px solid #6B2C3B" }} onClick={onAdminApply}>👑 Become an Admin</button>
         )}
       </div>
 
