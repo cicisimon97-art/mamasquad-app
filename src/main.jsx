@@ -678,6 +678,7 @@ function MamaSquadsApp() {
           area: g.area || '',
           rules: g.rules || [],
           joinQuestions: g.join_questions || [],
+          acceptingMembers: g.accepting_members !== false,
           recentActivity: 'New group',
           color: g.color || '#6B2C3B',
           pendingRequests: [],
@@ -761,6 +762,7 @@ function MamaSquadsApp() {
       area: data.area || '',
       rules: data.rules || [],
       joinQuestions: data.join_questions || [],
+      acceptingMembers: true,
       recentActivity: 'Just created',
       color: data.color || '#6B2C3B',
       pendingRequests: [],
@@ -5648,6 +5650,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [editGroupAge, setEditGroupAge] = useState(group.ages || "All Ages");
   const [editGroupPrivate, setEditGroupPrivate] = useState(group.isPrivate);
   const [editGroupJoinQs, setEditGroupJoinQs] = useState((group.joinQuestions || []).join("\n"));
+  const [acceptingMembers, setAcceptingMembers] = useState(group.acceptingMembers !== false);
   const [savingGroup, setSavingGroup] = useState(false);
   const [pdTitle, setPdTitle] = useState("");
   const [pdLocation, setPdLocation] = useState("");
@@ -5941,13 +5944,18 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
       <div ref={bodyRef} style={styles.detailBody}>
         {/* Group Banner — tappable to show rules */}
         <div style={{ ...styles.eventBanner, background: `linear-gradient(135deg, ${group.color}18, ${group.color}35)`, cursor: "pointer" }} onClick={() => setShowRules(!showRules)}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
             {group.isPrivate ? (
               <span style={{ ...gs.privBadge, fontSize: 12, padding: "4px 12px" }}>{Icons.lock} Private</span>
             ) : (
               <span style={{ ...gs.pubBadge, fontSize: 12, padding: "4px 12px" }}>{Icons.globe} Public</span>
             )}
             <span style={styles.ageBadge}>{group.ages}</span>
+            {acceptingMembers ? (
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#2E7D32", background: "#E8F5E9", padding: "3px 10px", borderRadius: 50 }}>✅ Accepting Members</span>
+            ) : (
+              <span style={{ fontSize: 11, fontWeight: 600, color: "#C62828", background: "#FFEBEE", padding: "3px 10px", borderRadius: 50 }}>🚫 Closed</span>
+            )}
           </div>
           <p style={{ fontSize: 13, color: "#666", lineHeight: 1.4, marginBottom: 8 }}>{group.desc}</p>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -5997,6 +6005,15 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                 <option>5-8 years</option>
                 <option>8+ years</option>
               </select>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "white", borderRadius: 12, border: "1.5px solid #E8E8E8" }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>Accepting New Members</p>
+                  <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{acceptingMembers ? "New members can request to join" : "Group is closed to new members"}</p>
+                </div>
+                <div style={{ width: 44, height: 24, borderRadius: 12, cursor: "pointer", position: "relative", background: acceptingMembers ? "#4CAF50" : "#E8E8E8", transition: "background 0.2s ease" }} onClick={() => setAcceptingMembers(!acceptingMembers)}>
+                  <div style={{ width: 20, height: 20, borderRadius: 10, background: "white", position: "absolute", top: 2, transition: "transform 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transform: acceptingMembers ? "translateX(20px)" : "translateX(2px)" }} />
+                </div>
+              </div>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Rules (one per line)</p>
               <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Be kind&#10;No spam" value={editGroupRules} onChange={e => setEditGroupRules(e.target.value)} />
               <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Join Questions (one per line)</p>
@@ -6013,6 +6030,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       age_group: editGroupAge,
                       rules: editGroupRules.trim() ? editGroupRules.trim().split('\n').filter(Boolean) : [],
                       join_questions: editGroupJoinQs.trim() ? editGroupJoinQs.trim().split('\n').filter(Boolean) : [],
+                      accepting_members: acceptingMembers,
                     };
                     const { error } = await supabase.from('groups').update(updates).eq('id', group.id);
                     if (error) { alert('Error saving: ' + error.message); setSavingGroup(false); return; }
@@ -6021,6 +6039,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     group.ages = updates.age_group;
                     group.rules = updates.rules;
                     group.joinQuestions = updates.join_questions;
+                    group.acceptingMembers = updates.accepting_members;
                     setSavingGroup(false);
                     setEditingGroup(false);
                   }}
@@ -6057,10 +6076,17 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         )}
 
         {/* Join / Pending for non-members */}
-        {!isMember && !isPending && (
+        {!isMember && !isPending && acceptingMembers && (
           <button style={{ ...styles.primaryBtn, width: "100%" }} onClick={() => group.isPrivate ? setShowJoinModal(true) : handleJoinRequest()}>
             {group.isPrivate ? "🔒 Request to Join" : "Join Group"}
           </button>
+        )}
+        {!isMember && !isPending && !acceptingMembers && (
+          <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 14, textAlign: "center" }}>
+            <span style={{ fontSize: 24 }}>🚫</span>
+            <p style={{ fontSize: 14, fontWeight: 600, color: "#C62828", marginTop: 6 }}>Not Accepting New Members</p>
+            <p style={{ fontSize: 12, color: "#888", marginTop: 4 }}>This group is currently closed to new members.</p>
+          </div>
         )}
         {isPending && (
           <div style={gs.pendingCard}>
