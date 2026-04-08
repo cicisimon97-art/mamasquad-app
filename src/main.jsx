@@ -679,6 +679,8 @@ function MamaSquadsApp() {
           rules: g.rules || [],
           joinQuestions: g.join_questions || [],
           acceptingMembers: g.accepting_members !== false,
+          isHidden: g.is_hidden || false,
+          inviteCode: g.invite_code || '',
           recentActivity: 'New group',
           color: g.color || '#6B2C3B',
           pendingRequests: [],
@@ -723,6 +725,7 @@ function MamaSquadsApp() {
   const handleCreateGroup = async (groupData) => {
     if (!user) return { error: 'Not logged in' };
 
+    const genCode = () => { const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let code = ''; for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)]; return code; };
     const { data, error } = await supabase.from('groups').insert({
       name: groupData.name,
       description: groupData.description,
@@ -732,6 +735,7 @@ function MamaSquadsApp() {
       is_private: groupData.isPrivate,
       rules: groupData.rules,
       join_questions: groupData.joinQuestions || [],
+      invite_code: genCode(),
       emoji: groupData.emoji || '👥',
       color: groupData.color || '#6B2C3B',
       admin_id: user.id,
@@ -763,6 +767,8 @@ function MamaSquadsApp() {
       rules: data.rules || [],
       joinQuestions: data.join_questions || [],
       acceptingMembers: true,
+      isHidden: data.is_hidden || false,
+      inviteCode: data.invite_code || '',
       recentActivity: 'Just created',
       color: data.color || '#6B2C3B',
       pendingRequests: [],
@@ -5542,7 +5548,12 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, onAdminApply, joinedG
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
 
+  const [inviteCodeSearch, setInviteCodeSearch] = useState("");
+  const [foundGroup, setFoundGroup] = useState(null);
+
   const filtered = (groups || []).filter(g => {
+    // Hide hidden groups from non-members
+    if (g.isHidden && !joinedGroups.includes(g.id)) return false;
     const matchesSearch = g.name.toLowerCase().includes(search.toLowerCase()) || g.area.toLowerCase().includes(search.toLowerCase());
     if (filter === "my") return matchesSearch && joinedGroups.includes(g.id);
     if (filter === "private") return matchesSearch && g.isPrivate;
@@ -5565,6 +5576,38 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, onAdminApply, joinedG
         {Icons.search}
         <input style={styles.searchInput} placeholder="Search groups by name or area..." value={search} onChange={e => setSearch(e.target.value)} />
       </div>
+
+      {/* Invite code search */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <input
+          style={{ flex: 1, padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "inherit", background: "white", letterSpacing: 2, textTransform: "uppercase" }}
+          placeholder="Have an invite code?"
+          value={inviteCodeSearch}
+          onChange={e => { setInviteCodeSearch(e.target.value.toUpperCase()); setFoundGroup(null); }}
+          maxLength={6}
+        />
+        <button
+          style={{ padding: "10px 16px", borderRadius: 10, background: "#6B2C3B", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: inviteCodeSearch.length < 4 ? 0.5 : 1 }}
+          disabled={inviteCodeSearch.length < 4}
+          onClick={() => {
+            const match = (groups || []).find(g => g.inviteCode && g.inviteCode.toUpperCase() === inviteCodeSearch.trim().toUpperCase());
+            if (match) { setFoundGroup(match); }
+            else { alert('No group found with that code. Check the code and try again.'); }
+          }}
+        >Find</button>
+      </div>
+      {foundGroup && (
+        <div style={{ background: "#E8F5E9", borderRadius: 12, padding: 14, marginBottom: 12, cursor: "pointer" }} onClick={() => { onGroupSelect(foundGroup); setFoundGroup(null); setInviteCodeSearch(""); }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 24 }}>{foundGroup.emoji}</span>
+            <div>
+              <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{foundGroup.name}</strong>
+              <p style={{ fontSize: 12, color: "#888" }}>{foundGroup.desc?.slice(0, 60)}{foundGroup.desc?.length > 60 ? '...' : ''}</p>
+              <p style={{ fontSize: 11, color: "#2E7D32", fontWeight: 600, marginTop: 4 }}>Tap to view and join →</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={styles.filterRow}>
         {[
@@ -5687,6 +5730,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [editGroupPrivate, setEditGroupPrivate] = useState(group.isPrivate);
   const [editGroupJoinQs, setEditGroupJoinQs] = useState((group.joinQuestions || []).join("\n"));
   const [acceptingMembers, setAcceptingMembers] = useState(group.acceptingMembers !== false);
+  const [isHidden, setIsHidden] = useState(group.isHidden || false);
   const [savingGroup, setSavingGroup] = useState(false);
   const [pdTitle, setPdTitle] = useState("");
   const [pdLocation, setPdLocation] = useState("");
@@ -6050,6 +6094,25 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   <div style={{ width: 20, height: 20, borderRadius: 10, background: "white", position: "absolute", top: 2, transition: "transform 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transform: acceptingMembers ? "translateX(20px)" : "translateX(2px)" }} />
                 </div>
               </div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "white", borderRadius: 12, border: "1.5px solid #E8E8E8" }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D" }}>Hidden Group</p>
+                  <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{isHidden ? "Only findable by invite code" : "Visible to everyone in Groups tab"}</p>
+                </div>
+                <div style={{ width: 44, height: 24, borderRadius: 12, cursor: "pointer", position: "relative", background: isHidden ? "#6B2C3B" : "#E8E8E8", transition: "background 0.2s ease" }} onClick={() => setIsHidden(!isHidden)}>
+                  <div style={{ width: 20, height: 20, borderRadius: 10, background: "white", position: "absolute", top: 2, transition: "transform 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transform: isHidden ? "translateX(20px)" : "translateX(2px)" }} />
+                </div>
+              </div>
+              {group.inviteCode && (
+                <div style={{ background: "white", borderRadius: 12, padding: 14, border: "1.5px solid #E8E8E8" }}>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 4 }}>Group Invite Code</p>
+                  <p style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>Share this code so people can find and join your group.</p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 20, fontWeight: 700, color: "#6B2C3B", letterSpacing: 3, fontFamily: "monospace", background: "#FAF0F2", padding: "8px 16px", borderRadius: 8 }}>{group.inviteCode}</span>
+                    <button style={{ background: "none", border: "1px solid #6B2C3B", borderRadius: 8, padding: "8px 12px", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => { navigator.clipboard?.writeText(group.inviteCode); alert('Invite code copied!'); }}>Copy</button>
+                  </div>
+                </div>
+              )}
               <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Rules (one per line)</p>
               <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Be kind&#10;No spam" value={editGroupRules} onChange={e => setEditGroupRules(e.target.value)} />
               <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Join Questions (one per line)</p>
@@ -6067,6 +6130,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                       rules: editGroupRules.trim() ? editGroupRules.trim().split('\n').filter(Boolean) : [],
                       join_questions: editGroupJoinQs.trim() ? editGroupJoinQs.trim().split('\n').filter(Boolean) : [],
                       accepting_members: acceptingMembers,
+                      is_hidden: isHidden,
                     };
                     const { error } = await supabase.from('groups').update(updates).eq('id', group.id);
                     if (error) { alert('Error saving: ' + error.message); setSavingGroup(false); return; }
@@ -6076,6 +6140,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                     group.rules = updates.rules;
                     group.joinQuestions = updates.join_questions;
                     group.acceptingMembers = updates.accepting_members;
+                    group.isHidden = updates.is_hidden;
                     setSavingGroup(false);
                     setEditingGroup(false);
                   }}
