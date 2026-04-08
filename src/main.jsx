@@ -5560,6 +5560,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [joinSent, setJoinSent] = useState(false);
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
+  const [showInlinePoll, setShowInlinePoll] = useState(false);
   const [groupPhotos, setGroupPhotos] = useState([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState(null);
@@ -5592,6 +5593,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [mtDesc, setMtDesc] = useState("");
   const [mtDay, setMtDay] = useState("");
   const [mtSubmitting, setMtSubmitting] = useState(false);
+  const [ipTitle, setIpTitle] = useState("");
+  const [ipDay, setIpDay] = useState("");
+  const [ipTime, setIpTime] = useState("");
+  const [ipLocations, setIpLocations] = useState([""]);
+  const [ipSubmitting, setIpSubmitting] = useState(false);
   const [meetups, setMeetups] = useState([]);
   const [meetupsLoaded, setMeetupsLoaded] = useState(false);
   const [myVotes, setMyVotes] = useState({});
@@ -5951,13 +5957,13 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {/* Action buttons for members */}
         {isMember && (
           <div style={{ display: "flex", gap: 8 }}>
-            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowPostPlaydate(true); setShowProposeMeetup(false); setTimeout(() => document.getElementById('playdate-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📅 Playdate</button>
-            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setShowPostPlaydate(false); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowPostPlaydate(true); setShowProposeMeetup(false); setShowInlinePoll(false); setTimeout(() => document.getElementById('playdate-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📅 Playdate</button>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowProposeMeetup(true); setShowPostPlaydate(false); setShowInlinePoll(false); setTimeout(() => document.getElementById('meetup-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>📍 Meetup</button>
             <label style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: photoUploading ? 0.5 : 1 }}>
               {photoUploading ? "..." : "📸 Photo"}
               <input type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => { const file = e.target.files?.[0]; if (file) handlePhotoSelect(file); }} />
             </label>
-            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => setActiveSection("polls")}>🗳️ Polls</button>
+            <button style={{ ...gs.composeAction, flex: 1, padding: "12px 0", textAlign: "center" }} onClick={() => { setShowInlinePoll(true); setShowPostPlaydate(false); setShowProposeMeetup(false); setTimeout(() => document.getElementById('inline-poll-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>🗳️ Poll</button>
           </div>
         )}
 
@@ -6085,6 +6091,76 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                 }}
               >
                 {mtSubmitting ? "Proposing..." : "Post Poll — Let the Group Vote! 🗳️"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Inline Poll creation form */}
+        {isMember && showInlinePoll && (
+          <div id="inline-poll-form" style={gs.inlineForm}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+              <strong style={{ fontSize: 14, color: "#2D2D2D" }}>🗳️ Create a Poll</strong>
+              <button style={{ background: "none", border: "none", fontSize: 18, color: "#999", cursor: "pointer" }} onClick={() => setShowInlinePoll(false)}>✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={gs.formInput} placeholder="What's the occasion? (e.g., Park playdate)" value={ipTitle} onChange={e => setIpTitle(e.target.value)} />
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Pick a day</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"].map(d => (
+                  <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: ipDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: ipDay === d ? "#FAF0F2" : "white", color: ipDay === d ? "#6B2C3B" : "#666", fontWeight: ipDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setIpDay(d)}>{d}</button>
+                ))}
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Location options (optional)</p>
+              {ipLocations.map((loc, i) => (
+                <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ flex: 1 }}>
+                    <AddressInput inputStyle={gs.formInput} placeholder={`Location option ${i + 1}...`} value={loc} onChange={val => setIpLocations(prev => prev.map((l, j) => j === i ? val : l))} userArea={user?.area || group.area} />
+                  </div>
+                  {ipLocations.length > 1 && <button style={{ background: "none", border: "none", fontSize: 18, color: "#E53935", cursor: "pointer", padding: 4 }} onClick={() => setIpLocations(prev => prev.filter((_, j) => j !== i))}>✕</button>}
+                </div>
+              ))}
+              {ipLocations.length < 5 && (
+                <button style={{ background: "none", border: "none", fontSize: 13, color: "#6B2C3B", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif", textAlign: "left", padding: 0 }} onClick={() => setIpLocations(prev => [...prev, ""])}>+ Add another location</button>
+              )}
+              <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Your proposed time</p>
+              <select style={gs.formInput} value={ipTime} onChange={e => setIpTime(e.target.value)}>
+                <option value="">Select your preferred time...</option>
+                {["8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <button
+                style={{ ...styles.primaryBtn, marginTop: 4, opacity: ipSubmitting || !ipTitle.trim() || !ipDay ? 0.5 : 1 }}
+                disabled={ipSubmitting || !ipTitle.trim() || !ipDay}
+                onClick={async () => {
+                  if (!ipTitle.trim() || !ipDay) return;
+                  setIpSubmitting(true);
+                  const locs = ipLocations.map(l => l.trim()).filter(Boolean);
+                  const proposedLabel = ipTime ? `Proposed: ${ipTime}` : '';
+                  const locationLabel = locs.length > 0 ? `📍 ${locs.length} location${locs.length > 1 ? 's' : ''}` : '';
+                  const descParts = [proposedLabel, locationLabel].filter(Boolean).join(' | ');
+                  const TIMES = ["8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM"];
+                  if (onProposeMeetup && group.fromSupabase) {
+                    const result = await onProposeMeetup(group.id, {
+                      title: ipTitle.trim(),
+                      description: `${descParts ? descParts + ' — ' : ''}What time works best on ${ipDay}?`,
+                      timeOptions: TIMES,
+                      locationOptions: locs,
+                    });
+                    if (result.data) {
+                      if (ipTime && onVote) {
+                        await onVote(result.data.id, 'time', ipTime);
+                        setMeetups(prev => [{ ...result.data, votes: [{ user_id: user?.id, vote_type: 'time', option_index: ipTime }] }, ...prev]);
+                      } else {
+                        setMeetups(prev => [{ ...result.data, votes: [] }, ...prev]);
+                      }
+                    }
+                  }
+                  setIpSubmitting(false);
+                  setIpTitle(""); setIpDay(""); setIpTime(""); setIpLocations([""]);
+                  setShowInlinePoll(false);
+                }}
+              >
+                {ipSubmitting ? "Creating..." : "Post Poll 🗳️"}
               </button>
             </div>
           </div>
