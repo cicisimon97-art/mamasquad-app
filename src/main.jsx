@@ -2823,7 +2823,14 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
       return eventKey === selectedDay;
     })() &&
     (selectedAge === "All Ages" || e.ages === selectedAge || (e.ages || '').startsWith(selectedAge) || selectedAge.startsWith(e.ages || ''))
-  );
+  ).sort((a, b) => {
+    const dateA = parseEventToDate(a.date);
+    const dateB = parseEventToDate(b.date);
+    if (!dateA && !dateB) return 0;
+    if (!dateA) return 1;
+    if (!dateB) return -1;
+    return dateA - dateB;
+  });
 
   return (
     <div style={styles.tabContent}>
