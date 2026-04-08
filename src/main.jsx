@@ -2908,6 +2908,10 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
             >
               <div style={{ ...styles.eventAccent, background: event.color }} />
               <div style={styles.eventBody}>
+                {event.groupId && (() => {
+                  const g = (groups || []).find(g => g.id === event.groupId);
+                  return g ? <p style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginBottom: 4 }}>{g.emoji || '👥'} {g.name}</p> : null;
+                })()}
                 <div style={styles.eventTop}>
                   <span style={styles.ageBadge}>{event.ages} yrs</span>
                   <span style={styles.eventDay}>{formatEventDate(event.date)}</span>
