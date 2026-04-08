@@ -2925,7 +2925,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
                 <div style={styles.eventBottom}>
                   <span style={styles.hostName}>by {event.host}</span>
                   <span style={styles.attendeeCount}>
-                    {event.attendees} going
+                    {event.attendees}{event.groupId && (() => { const g = (groups || []).find(g => g.id === event.groupId); return g ? `/${g.members}` : ''; })()} going
                   </span>
                 </div>
                 {joinedEvents.includes(event.id) && (
