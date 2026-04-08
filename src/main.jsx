@@ -2902,11 +2902,11 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
 
       {/* Events */}
       <div style={styles.eventsList}>
-        {filtered.length === 0 && !(feedFilter === "all" && (groups || []).filter(g => (joinedGroups || []).includes(g.id)).length > 0) && !(feedFilter === "public" && (groups || []).filter(g => !g.isPrivate).length > 0) ? (
+        {filtered.length === 0 ? (
           <div style={styles.emptyState}>
             <span style={{ fontSize: 40 }}>🌤</span>
             <p style={styles.emptyText}>No playdates for this filter yet</p>
-            <button style={styles.secondaryBtn} onClick={onCreateEvent}>Create One!</button>
+            {(events || []).length === 0 && <button style={styles.secondaryBtn} onClick={onCreateEvent}>Create One!</button>}
           </div>
         ) : (
           filtered.map((event, i) => (
