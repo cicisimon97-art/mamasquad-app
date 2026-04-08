@@ -6070,8 +6070,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
-        {/* Invite code for admins — always visible */}
-        {isAdmin && group.inviteCode && (
+        {/* Invite code for admins — only when group is hidden */}
+        {isAdmin && group.inviteCode && isHidden && (
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#FAF0F2", borderRadius: 10, padding: "10px 14px" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ fontSize: 12, color: "#6B2C3B", fontWeight: 600 }}>Invite Code:</span>
