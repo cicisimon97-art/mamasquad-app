@@ -1479,7 +1479,7 @@ function MamaSquadsApp() {
           <button
             onClick={() => { pushNav({}); setShowMyProfile(true); }}
             style={{
-              position: "fixed", top: "calc(10px + env(safe-area-inset-top, 0px))", right: "calc(50% - 200px)",
+              position: "fixed", top: "max(14px, calc(10px + env(safe-area-inset-top, 14px)))", right: "calc(50% - 200px)",
               zIndex: 110, background: "white", border: "2.5px solid #6B2C3B", borderRadius: "50%",
               width: 42, height: 42, padding: 0, cursor: "pointer", overflow: "hidden",
               display: "flex", alignItems: "center", justifyContent: "center",
@@ -7548,7 +7548,7 @@ const gray800 = "#2D2D2D";
 const radius = 16;
 
 const styles = {
-  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "env(safe-area-inset-top, 0px)" },
+  app: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", position: "relative", overflow: "hidden", paddingTop: "max(12px, env(safe-area-inset-top, 12px))" },
   fullScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", position: "relative" },
   mainContent: { flex: 1, overflow: "auto", overflowY: "scroll", paddingBottom: "calc(120px + env(safe-area-inset-bottom, 34px))", WebkitOverflowScrolling: "touch" },
   tabContent: { padding: "24px 18px", paddingTop: 28, paddingBottom: 60 },
