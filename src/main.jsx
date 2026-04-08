@@ -3362,7 +3362,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
         </div>
       </div>
       {/* Fixed comment input at bottom */}
-      <div style={{ position: "sticky", bottom: 0, background: "white", borderTop: "1px solid #f0f0f0", padding: "10px 18px", display: "flex", gap: 8, zIndex: 10 }}>
+      <div style={{ background: "white", borderTop: "1px solid #f0f0f0", padding: "10px 18px calc(10px + env(safe-area-inset-bottom, 20px))", display: "flex", gap: 8, flexShrink: 0 }}>
         <input
           style={{ ...styles.msgInput, flex: 1 }}
           placeholder="Add a comment..."
