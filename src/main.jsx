@@ -5640,6 +5640,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [editGroupRules, setEditGroupRules] = useState((group.rules || []).join("\n"));
   const [editGroupAge, setEditGroupAge] = useState(group.ages || "All Ages");
   const [editGroupPrivate, setEditGroupPrivate] = useState(group.isPrivate);
+  const [editGroupJoinQs, setEditGroupJoinQs] = useState((group.joinQuestions || []).join("\n"));
   const [savingGroup, setSavingGroup] = useState(false);
   const [pdTitle, setPdTitle] = useState("");
   const [pdLocation, setPdLocation] = useState("");
@@ -5956,7 +5957,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           <div style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D" }}>Group Rules</h4>
-              {isAdmin && group.fromSupabase && <button style={{ fontSize: 12, color: "#6B2C3B", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }} onClick={() => { setShowRules(false); setEditingGroup(true); setActiveSection("about"); }}>✏️ Edit</button>}
+              {isAdmin && group.fromSupabase && <button style={{ fontSize: 12, color: "#6B2C3B", background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }} onClick={() => { setShowRules(false); setEditingGroup(true); setTimeout(() => document.getElementById('edit-group-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>✏️ Edit</button>}
             </div>
             {(group.rules || []).length === 0 ? (
               <p style={{ fontSize: 13, color: "#888" }}>No rules set yet.</p>
@@ -5974,6 +5975,57 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
+        {/* Inline edit group form */}
+        {editingGroup && isAdmin && (
+          <div id="edit-group-form" style={{ background: "#FAF0F2", borderRadius: 12, padding: 16 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 10 }}>Edit Group</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={styles.input} placeholder="Group name" value={editGroupName} onChange={e => setEditGroupName(e.target.value)} />
+              <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder="Description" value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} />
+              <select style={styles.input} value={editGroupAge} onChange={e => setEditGroupAge(e.target.value)}>
+                <option>All Ages</option>
+                <option>0-1 years</option>
+                <option>1-3 years</option>
+                <option>3-5 years</option>
+                <option>5-8 years</option>
+                <option>8+ years</option>
+              </select>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Rules (one per line)</p>
+              <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Be kind&#10;No spam" value={editGroupRules} onChange={e => setEditGroupRules(e.target.value)} />
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>Join Questions (one per line)</p>
+              <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="What area are you in?&#10;How old are your kids?" value={editGroupJoinQs} onChange={e => setEditGroupJoinQs(e.target.value)} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  style={{ ...styles.primaryBtn, flex: 1, opacity: savingGroup ? 0.6 : 1 }}
+                  disabled={savingGroup}
+                  onClick={async () => {
+                    setSavingGroup(true);
+                    const updates = {
+                      name: editGroupName.trim(),
+                      description: editGroupDesc.trim(),
+                      age_group: editGroupAge,
+                      rules: editGroupRules.trim() ? editGroupRules.trim().split('\n').filter(Boolean) : [],
+                      join_questions: editGroupJoinQs.trim() ? editGroupJoinQs.trim().split('\n').filter(Boolean) : [],
+                    };
+                    const { error } = await supabase.from('groups').update(updates).eq('id', group.id);
+                    if (error) { alert('Error saving: ' + error.message); setSavingGroup(false); return; }
+                    group.name = updates.name;
+                    group.desc = updates.description;
+                    group.ages = updates.age_group;
+                    group.rules = updates.rules;
+                    group.joinQuestions = updates.join_questions;
+                    setSavingGroup(false);
+                    setEditingGroup(false);
+                  }}
+                >
+                  {savingGroup ? "Saving..." : "Save Changes"}
+                </button>
+                <button style={{ ...styles.secondaryBtn, flex: 1 }} onClick={() => setEditingGroup(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Member count + View Members */}
         {isMember && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
@@ -5987,7 +6039,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               <button style={{ padding: "10px 14px", borderRadius: 10, background: "#FFF5F5", border: "none", fontSize: 13, fontWeight: 600, color: "#C62828", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={handleLeave}>Leave</button>
             )}
             {isAdmin && group.fromSupabase && (
-              <button style={{ padding: "10px 14px", borderRadius: 10, background: "#FAF0F2", border: "none", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setEditingGroup(true)}>✏️ Edit</button>
+              <button style={{ padding: "10px 14px", borderRadius: 10, background: "#FAF0F2", border: "none", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => { setEditingGroup(true); setTimeout(() => document.getElementById('edit-group-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>✏️ Edit</button>
             )}
           </div>
         )}
