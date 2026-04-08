@@ -1541,6 +1541,11 @@ function MamaSquadsApp() {
           {tab === "notifications" && (
             <NotificationsTab notifications={notifications} setNotifications={setNotifications} user={user} groups={groups} onNavigate={async (notif) => {
               pushNav({});
+              if (notif.type === 'join_request' && notif.group_id) {
+                const group = (groups || []).find(g => g.id === notif.group_id);
+                if (group) { setSelectedGroup(group); }
+                return;
+              }
               if (notif.type === 'new_event' && notif.group_id) {
                 // Find the most recent event in this group
                 const groupEvent = (events || []).find(e => e.groupId === notif.group_id);
