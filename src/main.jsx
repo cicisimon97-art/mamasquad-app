@@ -2925,7 +2925,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
                 <div style={styles.eventBottom}>
                   <span style={styles.hostName}>by {event.host}</span>
                   <span style={styles.attendeeCount}>
-                    {event.attendees}/{event.maxAttendees} going
+                    {event.attendees} going
                   </span>
                 </div>
                 {joinedEvents.includes(event.id) && (
