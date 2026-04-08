@@ -6023,11 +6023,41 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
           </div>
         )}
 
-        {/* Admin: Delete Group + Requests */}
-        {isAdmin && group.fromSupabase && !showDeleteGroup && pending.length > 0 && (
-          <button style={{ width: "100%", padding: "10px 0", borderRadius: 10, background: "#FFF8E1", border: "none", fontSize: 13, fontWeight: 600, color: "#F57F17", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setActiveSection("requests")}>
-            📬 {pending.length} Pending Request{pending.length !== 1 ? 's' : ''} — Review
-          </button>
+        {/* Admin: Pending Requests (inline above feed) */}
+        {isAdmin && group.fromSupabase && pending.length > 0 && (
+          <div>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: "#F57F17", marginBottom: 8 }}>📬 {pending.length} Pending Request{pending.length !== 1 ? 's' : ''}</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {pending.map(req => (
+                <div key={req.id} style={gs.requestCard}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                    <div style={{ ...styles.avatarSmall, background: group.color }}>{req.avatar}</div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{req.name}</strong>
+                        <span style={styles.verifiedMomTag}>✓ Verified</span>
+                      </div>
+                      {req.area && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>📍 {req.area}</p>}
+                      {req.ages && <p style={{ fontSize: 12, color: "#888", marginTop: 2 }}>Kids: {req.ages}</p>}
+                      {req.bio && <p style={{ fontSize: 13, color: "#555", marginTop: 4, lineHeight: 1.4 }}>{req.bio}</p>}
+                      <p style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Requested {req.requestedAt}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                    <button style={gs.approveBtn} onClick={() => handleApprove(req.id)}>
+                      {Icons.check} Approve
+                    </button>
+                    <button style={gs.denyBtn} onClick={() => handleDeny(req.id)}>
+                      Decline
+                    </button>
+                    <button style={gs.viewProfileBtn} onClick={() => onViewProfile && onViewProfile(req)}>
+                      View Profile
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
         {isAdmin && group.fromSupabase && !showDeleteGroup && (
           <button style={{ width: "100%", padding: "8px 0", borderRadius: 50, background: "none", border: "1px solid #ddd", color: "#C62828", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setShowDeleteGroup(true)}>Delete Group</button>
