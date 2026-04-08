@@ -677,6 +677,7 @@ function MamaSquadsApp() {
           ages: g.age_group || 'All Ages',
           area: g.area || '',
           rules: g.rules || [],
+          joinQuestions: g.join_questions || [],
           recentActivity: 'New group',
           color: g.color || '#6B2C3B',
           pendingRequests: [],
@@ -729,6 +730,7 @@ function MamaSquadsApp() {
       max_members: groupData.maxMembers || 30,
       is_private: groupData.isPrivate,
       rules: groupData.rules,
+      join_questions: groupData.joinQuestions || [],
       emoji: groupData.emoji || '👥',
       color: groupData.color || '#6B2C3B',
       admin_id: user.id,
@@ -758,6 +760,7 @@ function MamaSquadsApp() {
       ages: data.age_group || 'All Ages',
       area: data.area || '',
       rules: data.rules || [],
+      joinQuestions: data.join_questions || [],
       recentActivity: 'Just created',
       color: data.color || '#6B2C3B',
       pendingRequests: [],
@@ -5004,10 +5007,21 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                   {onCreateEvent && (
                     <button
                       style={{ padding: "6px 12px", borderRadius: 50, background: "#2E7D32", color: "white", fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                      onClick={async () => {
+                      onClick={async (e) => {
+                        const btn = e.target;
+                        btn.textContent = "Creating...";
+                        btn.disabled = true;
                         const dayMatch = poll.description?.match(/on (\w+)\??/);
                         const day = dayMatch ? dayMatch[1] : "TBD";
-                        await onCreateEvent({ title: poll.title, location: poll.location_options?.[0] || '', date: day, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
+                        const result = await onCreateEvent({ title: poll.title, location: poll.location_options?.[0] || '', date: day, time: topTimes[0].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll — ${topTimes[0].votes} votes for this time`, groupId: group.id });
+                        if (result?.error) {
+                          alert('Error creating playdate: ' + result.error);
+                          btn.textContent = "Create Playdate";
+                          btn.disabled = false;
+                        } else {
+                          btn.textContent = "✓ Created!";
+                          btn.style.background = "#1B5E20";
+                        }
                       }}
                     >
                       Create Playdate
@@ -5028,10 +5042,21 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                     {onCreateEvent && (
                       <button
                         style={{ padding: "6px 12px", borderRadius: 50, background: "#F57F17", color: "white", fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          const btn = e.target;
+                          btn.textContent = "Creating...";
+                          btn.disabled = true;
                           const dayMatch = poll.description?.match(/on (\w+)\??/);
                           const day = dayMatch ? dayMatch[1] : "TBD";
-                          await onCreateEvent({ title: `${poll.title} (Alt time)`, location: poll.location_options?.[0] || '', date: day, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
+                          const result = await onCreateEvent({ title: `${poll.title} (Alt time)`, location: poll.location_options?.[0] || '', date: day, time: topTimes[1].time, ages: group.ages || 'All Ages', maxAttendees: 15, description: `Created from poll runner-up — ${topTimes[1].votes} votes for this time`, groupId: group.id });
+                          if (result?.error) {
+                            alert('Error creating playdate: ' + result.error);
+                            btn.textContent = "Create Playdate";
+                            btn.disabled = false;
+                          } else {
+                            btn.textContent = "✓ Created!";
+                            btn.style.background = "#E65100";
+                          }
                         }}
                       >
                         Create Playdate
@@ -5443,6 +5468,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
     if (isMember && activeSection === "about") setActiveSection("feed");
   }, [isMember]);
   const [requestMessage, setRequestMessage] = useState("");
+  const [joinAnswers, setJoinAnswers] = useState({});
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinSent, setJoinSent] = useState(false);
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
@@ -5648,7 +5674,11 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const handleJoinRequest = async () => {
     if (group.isPrivate) {
       if (group.fromSupabase && onJoinRequest) {
-        await onJoinRequest(group.id, requestMessage);
+        // Combine question answers with free text message
+        const answerParts = (group.joinQuestions || []).map((q, i) => joinAnswers[i] ? `Q: ${q}\nA: ${joinAnswers[i]}` : '').filter(Boolean);
+        const fullMessage = [...answerParts, requestMessage.trim()].filter(Boolean).join('\n\n');
+        await onJoinRequest(group.id, fullMessage);
+        setJoinAnswers({});
       } else {
         setPendingJoins(p => [...p, group.id]);
       }
@@ -5706,14 +5736,30 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                 </div>
               </div>
             )}
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>Tell the admin why you'd like to join:</p>
+            {/* Admin's join questions */}
+            {group.joinQuestions && group.joinQuestions.length > 0 && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 12 }}>
+                {group.joinQuestions.map((q, i) => (
+                  <div key={i}>
+                    <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 4 }}>{q}</p>
+                    <input
+                      style={styles.input}
+                      placeholder="Your answer..."
+                      value={joinAnswers[i] || ''}
+                      onChange={e => setJoinAnswers(prev => ({ ...prev, [i]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginBottom: 6 }}>Anything else you'd like to share:</p>
             <textarea
-              style={{ ...styles.input, minHeight: 80, fontFamily: "inherit", marginBottom: 12 }}
-              placeholder="Hi! I'd love to join because..."
+              style={{ ...styles.input, minHeight: 60, fontFamily: "inherit", marginBottom: 12 }}
+              placeholder="Hi! I'd love to join because... (optional)"
               value={requestMessage}
               onChange={e => setRequestMessage(e.target.value)}
             />
-            <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>The admin will see your profile, kids' info, and this message.</p>
+            <p style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>The admin will see your profile, kids' info, and your answers.</p>
             <button style={{ ...styles.primaryBtn, marginTop: 0 }} onClick={handleJoinRequest}>
               Send Join Request
             </button>
@@ -6824,6 +6870,7 @@ function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
   const [ageGroup, setAgeGroup] = useState("All Ages");
   const [maxMembers, setMaxMembers] = useState("");
   const [rules, setRules] = useState("");
+  const [joinQuestions, setJoinQuestions] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
@@ -6843,6 +6890,7 @@ function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
       maxMembers: parseInt(maxMembers) || 30,
       isPrivate,
       rules: rules.trim() ? rules.trim().split('\n').filter(Boolean) : [],
+      joinQuestions: joinQuestions.trim() ? joinQuestions.trim().split('\n').filter(Boolean) : [],
       color: randomColor,
     });
 
@@ -6916,6 +6964,14 @@ function CreateGroupScreen({ onBack, onSubmit, fadeIn }) {
           )}
 
           <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Group rules (one per line)..." value={rules} onChange={e => setRules(e.target.value)} />
+
+          {isPrivate && (
+            <>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Join Questions (optional)</p>
+              <p style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>Ask questions that people must answer when requesting to join. One per line.</p>
+              <textarea style={{ ...styles.input, minHeight: 80, fontFamily: "inherit" }} placeholder={"What area are you in?\nHow old are your kids?\nHow did you hear about us?"} value={joinQuestions} onChange={e => setJoinQuestions(e.target.value)} />
+            </>
+          )}
         </div>
 
         {error && <p style={{ fontSize: 13, color: "#E53935", textAlign: "center", marginTop: 8 }}>{error}</p>}
