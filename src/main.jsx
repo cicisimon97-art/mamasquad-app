@@ -3004,6 +3004,12 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
   const [showKidSelect, setShowKidSelect] = useState(false);
   const [selectedKids, setSelectedKids] = useState({});
   const [showAttendees, setShowAttendees] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(event.title);
+  const [editLocation, setEditLocation] = useState(event.location || '');
+  const [editTime, setEditTime] = useState(event.time || '');
+  const [editDesc, setEditDesc] = useState(event.description || '');
+  const [saving, setSaving] = useState(false);
   const isCreator = user && event.hostId === user.id;
 
   // Load attendee list
@@ -3242,14 +3248,63 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
           </div>
         )}
 
-        {/* Delete button for creator */}
-        {isCreator && event.fromSupabase && !showDeleteConfirm && (
-          <button
-            style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "none", border: "1.5px solid #E53935", color: "#E53935", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 8 }}
-            onClick={() => setShowDeleteConfirm(true)}
-          >
-            Delete This Playdate
-          </button>
+        {/* Edit button for creator */}
+        {isCreator && event.fromSupabase && !editing && !showDeleteConfirm && (
+          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+            <button
+              style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "none", border: "1.5px solid #6B2C3B", color: "#6B2C3B", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={() => setEditing(true)}
+            >
+              ✏️ Edit Playdate
+            </button>
+            <button
+              style={{ flex: 1, padding: "12px 0", borderRadius: 50, background: "none", border: "1.5px solid #E53935", color: "#E53935", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={() => setShowDeleteConfirm(true)}
+            >
+              🗑️ Delete
+            </button>
+          </div>
+        )}
+
+        {/* Edit form for creator */}
+        {isCreator && editing && (
+          <div style={{ background: "#FAF0F2", borderRadius: 12, padding: 16, marginTop: 8 }}>
+            <h4 style={{ fontSize: 14, fontWeight: 700, color: "#2D2D2D", marginBottom: 10 }}>Edit Playdate</h4>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <input style={styles.input} placeholder="Title" value={editTitle} onChange={e => setEditTitle(e.target.value)} />
+              <AddressInput inputStyle={styles.input} placeholder="Location" value={editLocation} onChange={setEditLocation} />
+              <select style={styles.input} value={editTime} onChange={e => setEditTime(e.target.value)}>
+                <option value="">Select time</option>
+                {["8:00 AM","8:30 AM","9:00 AM","9:30 AM","10:00 AM","10:30 AM","11:00 AM","11:30 AM","12:00 PM","12:30 PM","1:00 PM","1:30 PM","2:00 PM","2:30 PM","3:00 PM","3:30 PM","4:00 PM","4:30 PM","5:00 PM","5:30 PM","6:00 PM","6:30 PM","7:00 PM"].map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+              <textarea style={{ ...styles.input, minHeight: 60, fontFamily: "inherit" }} placeholder="Description" value={editDesc} onChange={e => setEditDesc(e.target.value)} />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  style={{ ...styles.primaryBtn, flex: 1, opacity: saving ? 0.6 : 1 }}
+                  disabled={saving}
+                  onClick={async () => {
+                    setSaving(true);
+                    const { error } = await supabase.from('events').update({
+                      title: editTitle.trim(),
+                      location: editLocation.trim(),
+                      event_time: editTime,
+                      description: editDesc.trim(),
+                    }).eq('id', event.id);
+                    setSaving(false);
+                    if (error) { alert('Error saving: ' + error.message); return; }
+                    event.title = editTitle.trim();
+                    event.location = editLocation.trim();
+                    event.time = editTime;
+                    event.description = editDesc.trim();
+                    setEditing(false);
+                  }}
+                >
+                  {saving ? "Saving..." : "Save Changes"}
+                </button>
+                <button style={{ ...styles.secondaryBtn, flex: 1 }} onClick={() => setEditing(false)}>Cancel</button>
+              </div>
+            </div>
+          </div>
         )}
         {isCreator && showDeleteConfirm && (
           <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 16, marginTop: 8, textAlign: "center" }}>
@@ -6324,7 +6379,7 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                           {photo.caption && <p style={{ fontSize: 14, color: "#2D2D2D", marginBottom: 4 }}>{photo.caption}</p>}
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                             {photo.postedBy && <p style={{ fontSize: 11, color: "#999" }}>by {photo.postedBy}</p>}
-                            {isAdmin && (
+                            {(isAdmin || photo.postedBy === user?.full_name) && (
                               <button
                                 style={{ background: "none", border: "none", fontSize: 12, color: "#ccc", cursor: "pointer", padding: "2px 6px" }}
                                 onClick={async () => {
