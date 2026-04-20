@@ -1275,32 +1275,26 @@ function MamaSquadsApp() {
 
   // ─── Start a DM with a user ───
   const handleStartDM = async (p) => {
-    alert('Starting DM with: ' + p.name + ' (id: ' + p.id + ')');
     try {
       const { data: all, error: findErr } = await supabase.from('conversations').select('*');
-      alert('Found ' + (all?.length || 0) + ' conversations. Error: ' + (findErr?.message || 'none'));
-      if (findErr) return;
+      if (findErr) { alert('Error: ' + findErr.message); return; }
       let convo = (all || []).find(c =>
         (c.participant_1 === user.id && c.participant_2 === p.id) ||
         (c.participant_1 === p.id && c.participant_2 === user.id)
       );
-      alert('Existing convo: ' + (convo ? 'yes' : 'no'));
       if (!convo) {
-        alert('Creating new conversation...');
         const { data: newConvo, error: createErr } = await supabase.from('conversations')
           .insert({ participant_1: user.id, participant_2: p.id })
           .select().single();
-        alert('Create result: ' + (createErr ? createErr.message : 'success'));
-        if (createErr) return;
+        if (createErr) { alert('Error: ' + createErr.message); return; }
         convo = newConvo;
       }
       if (convo) {
-        alert('Opening chat...');
         pushNav({});
         setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
       }
     } catch (e) {
-      alert('Caught error: ' + e.message);
+      alert('Error: ' + e.message);
     }
   };
 
@@ -3881,9 +3875,10 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
         <div style={{ width: 40 }} />
       </div>
       <div style={styles.detailBody}>
-        <div style={{ padding: 10, background: "red", color: "white", textAlign: "center", cursor: "pointer", borderRadius: 8, marginBottom: 8 }} onClick={() => window.alert('TEST CLICK WORKS')}>TAP HERE TO TEST</div>
-        <div style={{ padding: 10, background: "blue", color: "white", textAlign: "center", cursor: "pointer", borderRadius: 8, marginBottom: 8 }} onClick={() => { window.alert('BACK TEST'); onBack(); }}>TEST BACK BUTTON</div>
-        <div style={{ padding: 10, background: "green", color: "white", textAlign: "center", cursor: "pointer", borderRadius: 8, marginBottom: 8 }} onClick={() => { window.alert('MSG TEST'); if(onMessage) onMessage(profile); }}>TEST MESSAGE BUTTON</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 18, background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onBack}>{Icons.back}</div>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D" }}>Profile</span>
+        </div>
         <div style={styles.profileDetailTop}>
           <div style={{ position: "relative", display: "inline-block" }}>
             <Avatar url={profile.avatar_url} name={profile.name} size={80} />
@@ -3949,18 +3944,18 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
 
         {localStatus === 'connected' ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button
-              style={{ ...styles.primaryBtn, width: "100%" }}
+            <div
+              style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
               onClick={() => onMessage && onMessage(profile)}
             >
               💬 Send Message
-            </button>
-            <button
-              style={{ ...styles.secondaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", border: "none" }}
+            </div>
+            <div
+              style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#E8F5E9", color: "#2E7D32", fontSize: 14, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
               onClick={() => setShowDisconnectConfirm(true)}
             >
               ✓ Connected
-            </button>
+            </div>
           </div>
         ) : localStatus === 'received' ? (
           <button
