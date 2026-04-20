@@ -3875,6 +3875,7 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
         <div style={{ width: 40 }} />
       </div>
       <div style={styles.detailBody}>
+        <div style={{ padding: 10, background: "red", color: "white", textAlign: "center", cursor: "pointer", borderRadius: 8, marginBottom: 8 }} onClick={() => window.alert('TEST CLICK WORKS')}>TAP HERE TO TEST</div>
         <div style={styles.profileDetailTop}>
           <div style={{ position: "relative", display: "inline-block" }}>
             <Avatar url={profile.avatar_url} name={profile.name} size={80} />
