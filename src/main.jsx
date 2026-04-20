@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client'
 import { supabase } from './supabaseClient'
 import { Capacitor } from '@capacitor/core'
 
+// ─── Stripe ───
+const STRIPE_PK = 'pk_test_51TFfVdEeHMnjyMgrcqhQWhNqUzFQDDQR8PSlbVoYUqIDi1NX98zpzUFMeFCu2ufrZ7gqiFKotNBmPuJD3F00DHCz00zvwKWI5B';
+const SUPABASE_URL = 'https://khowgzwwculgcesoadlu.supabase.co';
+
 // ─── Native Features ───
 const isNative = Capacitor.isNativePlatform();
 
@@ -521,6 +525,21 @@ function MamaSquadsApp() {
 
   // ─── Init push notifications on native ───
   useEffect(() => { setupPushNotifications(); }, []);
+
+  // ─── Check for Stripe return (payment success) ───
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success' && user) {
+      supabase.from('users').update({ verification_status: 'paid' }).eq('id', user.id)
+        .then(() => { setUser(prev => ({ ...prev, verification_status: 'paid' })); });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+    if (params.get('identity') === 'complete' && user) {
+      supabase.from('users').update({ verification_status: 'pending' }).eq('id', user.id)
+        .then(() => { setUser(prev => ({ ...prev, verification_status: 'pending' })); });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [user]);
 
   // ─── Forgot password handler ───
   const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
@@ -1354,7 +1373,7 @@ function MamaSquadsApp() {
 
   // HARD GATE: Block unverified users from accessing anything
   if (screen === "main" && !isVerified) {
-    return <VerificationBlockedScreen onVerify={() => navigate("screen", "verify")} />;
+    return <VerificationBlockedScreen onVerify={() => navigate("screen", "verify")} user={user} />;
   }
 
   // Main App — only accessible to verified OR beta users
@@ -1645,7 +1664,67 @@ function WelcomeScreen({ onContinue, fadeIn }) {
 }
 
 // ─── Verification Blocked Screen (Hard Gate) ───
-function VerificationBlockedScreen({ onVerify }) {
+function VerificationBlockedScreen({ onVerify, user }) {
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(user?.verification_status || null);
+  const [error, setError] = useState(null);
+
+  // Check if user already paid but verification is pending
+  useEffect(() => {
+    if (user?.verification_status === 'pending') setStatus('pending');
+    if (user?.verification_status === 'paid') setStatus('paid');
+  }, [user]);
+
+  const handlePayAndVerify = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      // Step 1: Create Stripe Checkout session via Edge Function
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession?.access_token}`,
+        },
+        body: JSON.stringify({ userId: user?.id, email: user?.email }),
+      });
+      const data = await res.json();
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      if (data.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  };
+
+  const handleStartIdentity = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session: authSession } } = await supabase.auth.getSession();
+      const res = await fetch(`${SUPABASE_URL}/functions/v1/create-identity-session`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession?.access_token}`,
+        },
+        body: JSON.stringify({ userId: user?.id }),
+      });
+      const data = await res.json();
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch (e) {
+      setError('Something went wrong. Please try again.');
+      setLoading(false);
+    }
+  };
+
   return (
     <div style={{ ...styles.fullScreen, background: "#FFFBFC" }}>
       <div style={{ display: "flex", flexDirection: "column", alignItems: "center", textAlign: "center", gap: 16, maxWidth: 340 }}>
@@ -1657,37 +1736,74 @@ function VerificationBlockedScreen({ onVerify }) {
         </div>
         <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 24, fontWeight: 700, color: "#2D2D2D" }}>Verification Required</h2>
         <p style={{ fontSize: 14, color: "#666", lineHeight: 1.6 }}>
-          MamaSquads is a verified, moms-only community. To protect every child and family, you must complete identity verification before accessing the app.
+          MamaSquads is a moms-only community. To protect every child and family, we verify every member before granting access.
         </p>
-        <div style={{ width: "100%", background: "#FFF8E1", borderRadius: 12, padding: 16, textAlign: "left" }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: "#E65100", marginBottom: 8 }}>You cannot access MamaSquads until you:</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {[
-              "Upload a valid government-issued photo ID",
-              "Take a live selfie for facial matching",
-              "Pass a national background check",
-              "Confirm your status as a mother/guardian",
-            ].map((r, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div style={{ width: 20, height: 20, borderRadius: 10, background: "#FFE0B2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: "#E65100" }}>{i + 1}</span>
-                </div>
-                <span style={{ fontSize: 13, color: "#555" }}>{r}</span>
+
+        {status === 'pending' ? (
+          <>
+            <div style={{ width: "100%", background: "#FFF8E1", borderRadius: 12, padding: 16 }}>
+              <span style={{ fontSize: 32 }}>⏳</span>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#E65100", marginTop: 8 }}>Verification Under Review</h3>
+              <p style={{ fontSize: 13, color: "#666", marginTop: 6, lineHeight: 1.5 }}>Your ID and selfie have been submitted. We'll notify you once your verification is approved. This usually takes a few minutes.</p>
+            </div>
+            <button style={{ ...styles.secondaryBtn, width: "100%" }} onClick={() => window.location.reload()}>
+              Check Status
+            </button>
+          </>
+        ) : status === 'paid' ? (
+          <>
+            <div style={{ width: "100%", background: "#E8F5E9", borderRadius: 12, padding: 16 }}>
+              <span style={{ fontSize: 32 }}>✅</span>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#2E7D32", marginTop: 8 }}>Payment Received!</h3>
+              <p style={{ fontSize: 13, color: "#666", marginTop: 6, lineHeight: 1.5 }}>Now complete your ID verification. You'll need to upload a photo ID and take a selfie.</p>
+            </div>
+            <button
+              style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #4CAF50, #388E3C)", boxShadow: "0 4px 16px rgba(76,175,80,0.3)", width: "100%", opacity: loading ? 0.6 : 1 }}
+              disabled={loading}
+              onClick={handleStartIdentity}
+            >
+              {loading ? "Loading..." : "Verify My Identity"}
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ width: "100%", background: "#FFF8E1", borderRadius: 12, padding: 16, textAlign: "left" }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#E65100", marginBottom: 8 }}>What's included:</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {[
+                  "Government-issued photo ID verification",
+                  "Live selfie facial matching",
+                  "Background check screening",
+                  "Lifetime access to MamaSquads",
+                ].map((r, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ width: 20, height: 20, borderRadius: 10, background: "#FFE0B2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: "#E65100" }}>✓</span>
+                    </div>
+                    <span style={{ fontSize: 13, color: "#555" }}>{r}</span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </div>
-        <div style={{ width: "100%", background: "#FFEBEE", borderRadius: 12, padding: 14, border: "1px solid #FFCDD2" }}>
-          <p style={{ fontSize: 12, color: "#C62828", lineHeight: 1.5 }}>
-            <strong>Zero tolerance policy:</strong> Unverified profiles cannot view member profiles, events, messages, or any community content. This is non-negotiable — it's how we keep kids safe.
-          </p>
-        </div>
-        <button
-          style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #E65100, #BF360C)", boxShadow: "0 4px 16px rgba(230,81,0,0.3)", width: "100%" }}
-          onClick={onVerify}
-        >
-          Complete Verification Now
-        </button>
+            </div>
+            <div style={{ width: "100%", background: "white", borderRadius: 12, padding: 16, border: "2px solid #6B2C3B" }}>
+              <p style={{ fontSize: 24, fontWeight: 700, color: "#6B2C3B" }}>$9.99</p>
+              <p style={{ fontSize: 12, color: "#888" }}>One-time verification fee</p>
+            </div>
+            <button
+              style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #6B2C3B, #4A1D2A)", boxShadow: "0 4px 16px rgba(107,44,59,0.3)", width: "100%", opacity: loading ? 0.6 : 1 }}
+              disabled={loading}
+              onClick={handlePayAndVerify}
+            >
+              {loading ? "Loading..." : "Pay & Verify — $9.99"}
+            </button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+              {["256-bit Encrypted", "Secure Payment", "Powered by Stripe"].map((b, i) => (
+                <span key={i} style={{ fontSize: 10, color: "#999", background: "#f5f5f5", padding: "3px 8px", borderRadius: 50 }}>{b}</span>
+              ))}
+            </div>
+          </>
+        )}
+        {error && <p style={{ fontSize: 13, color: "#C62828" }}>{error}</p>}
         <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? <a href="mailto:mama.squads1@gmail.com" style={{ color: "#6B2C3B", textDecoration: "none" }}>mama.squads1@gmail.com</a></p>
       </div>
       <style>{keyframes}</style>
