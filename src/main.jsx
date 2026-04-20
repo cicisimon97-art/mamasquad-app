@@ -1275,26 +1275,32 @@ function MamaSquadsApp() {
 
   // ─── Start a DM with a user ───
   const handleStartDM = async (p) => {
+    alert('Starting DM with: ' + p.name + ' (id: ' + p.id + ')');
     try {
       const { data: all, error: findErr } = await supabase.from('conversations').select('*');
-      if (findErr) { alert('Error: ' + findErr.message); return; }
+      alert('Found ' + (all?.length || 0) + ' conversations. Error: ' + (findErr?.message || 'none'));
+      if (findErr) return;
       let convo = (all || []).find(c =>
         (c.participant_1 === user.id && c.participant_2 === p.id) ||
         (c.participant_1 === p.id && c.participant_2 === user.id)
       );
+      alert('Existing convo: ' + (convo ? 'yes' : 'no'));
       if (!convo) {
+        alert('Creating new conversation...');
         const { data: newConvo, error: createErr } = await supabase.from('conversations')
           .insert({ participant_1: user.id, participant_2: p.id })
           .select().single();
-        if (createErr) { alert('Error: ' + createErr.message); return; }
+        alert('Create result: ' + (createErr ? createErr.message : 'success'));
+        if (createErr) return;
         convo = newConvo;
       }
       if (convo) {
+        alert('Opening chat...');
         pushNav({});
         setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
       }
     } catch (e) {
-      alert('Error: ' + e.message);
+      alert('Caught error: ' + e.message);
     }
   };
 
