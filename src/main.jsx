@@ -390,13 +390,14 @@ function MamaSquadsApp() {
   const pushNav = (state) => {
     navHistory.current.push({
       selectedEvent, selectedProfile, showAdminApply, selectedGroup,
-      showCreateGroup, showDiscover, showMyProfile, ...state
+      showCreateGroup, showDiscover, showMyProfile, selectedConversation, selectedGroupChat, ...state
     });
   };
   const popNav = () => {
     if (navHistory.current.length === 0) {
       setSelectedEvent(null); setSelectedProfile(null); setShowAdminApply(false);
       setSelectedGroup(null); setShowCreateGroup(false); setShowDiscover(false); setShowMyProfile(false);
+      setSelectedConversation(null); setSelectedGroupChat(null);
       return;
     }
     const prev = navHistory.current.pop();
@@ -406,6 +407,8 @@ function MamaSquadsApp() {
     setSelectedGroup(prev.selectedGroup);
     setShowCreateGroup(prev.showCreateGroup);
     setShowDiscover(prev.showDiscover);
+    setSelectedConversation(prev.selectedConversation || null);
+    setSelectedGroupChat(prev.selectedGroupChat || null);
     setShowMyProfile(prev.showMyProfile);
   };
   const [groupRequests, setGroupRequests] = useState({});
@@ -419,6 +422,10 @@ function MamaSquadsApp() {
   const [events, setEvents] = useState([]);
   const [joinedEvents, setJoinedEvents] = useState([]);
   const [fadeIn, setFadeIn] = useState(true);
+  const [conversations, setConversations] = useState([]);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [selectedGroupChat, setSelectedGroupChat] = useState(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_v2'));
   const [tutorialStep, setTutorialStep] = useState(0);
 
@@ -525,6 +532,21 @@ function MamaSquadsApp() {
 
   // ─── Init push notifications on native ───
   useEffect(() => { setupPushNotifications(); }, []);
+
+  // ─── Load conversations ───
+  useEffect(() => {
+    if (!user) return;
+    const loadConvos = async () => {
+      const { data } = await supabase.from('conversations')
+        .select('*, messages(id, text, sender_id, sender_name, created_at)')
+        .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+        .order('last_message_at', { ascending: false });
+      if (data) setConversations(data);
+    };
+    loadConvos();
+    const poll = setInterval(loadConvos, 5000);
+    return () => clearInterval(poll);
+  }, [user]);
 
   // ─── Check for Stripe return (payment success) ───
   useEffect(() => {
@@ -1447,7 +1469,26 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => popNav()} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} />
+      <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} onMessage={async (p) => {
+        // Find or create conversation
+        const { data: existing } = await supabase.from('conversations')
+          .select('*')
+          .or(`and(participant_1.eq.${user.id},participant_2.eq.${p.id}),and(participant_1.eq.${p.id},participant_2.eq.${user.id})`)
+          .limit(1);
+        let convo;
+        if (existing && existing.length > 0) {
+          convo = existing[0];
+        } else {
+          const { data: newConvo } = await supabase.from('conversations')
+            .insert({ participant_1: user.id, participant_2: p.id })
+            .select().single();
+          convo = newConvo;
+        }
+        if (convo) {
+          pushNav({});
+          setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
+        }
+      }} />
     );
     if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} user={user} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => popNav()} user={user} fadeIn={fadeIn} />;
@@ -1467,6 +1508,12 @@ function MamaSquadsApp() {
           />
         </div>
       </div>
+    );
+    if (selectedConversation) return (
+      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} />
+    );
+    if (selectedGroupChat) return (
+      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} />
     );
     if (selectedGroup) return (
       <GroupDetailScreen
@@ -1630,8 +1677,18 @@ function MamaSquadsApp() {
               }
             }} />
           )}
+          {tab === "messages" && (
+            <MessagesTab
+              user={user}
+              conversations={conversations}
+              groups={groups}
+              joinedGroups={joinedGroups}
+              onOpenConvo={(convo, other) => { pushNav({}); setSelectedConversation({ convo, other }); }}
+              onOpenGroupChat={(g) => { pushNav({}); setSelectedGroupChat(g); }}
+            />
+          )}
         </div>
-        <BottomNav tab={tab} setTab={setTab} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} />
+        <BottomNav tab={tab} setTab={setTab} unreadNotifications={(notifications || []).filter(n => !n.is_read).length} unreadMessages={unreadMsgCount} />
       </div>
     );
   }
@@ -3793,7 +3850,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
 }
 
 // ─── Profile Detail ───
-function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onUnsend, connectionStatus, connections, user }) {
+function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onUnsend, connectionStatus, connections, user, onMessage }) {
   const [connectLoading, setConnectLoading] = useState(false);
   const [localStatus, setLocalStatus] = useState(connectionStatus);
   const [showConnectedPopup, setShowConnectedPopup] = useState(false);
@@ -3876,12 +3933,20 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
         })()}
 
         {localStatus === 'connected' ? (
-          <button
-            style={{ ...styles.primaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", boxShadow: "none" }}
-            onClick={() => setShowDisconnectConfirm(true)}
-          >
-            ✓ Connected
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              style={{ ...styles.primaryBtn, flex: 1, background: "#6B2C3B" }}
+              onClick={() => onMessage && onMessage(profile)}
+            >
+              💬 Message
+            </button>
+            <button
+              style={{ ...styles.secondaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", border: "none" }}
+              onClick={() => setShowDisconnectConfirm(true)}
+            >
+              ✓ Connected
+            </button>
+          </div>
         ) : localStatus === 'received' ? (
           <button
             style={{ ...styles.primaryBtn, width: "100%", opacity: connectLoading ? 0.6 : 1 }}
@@ -7689,11 +7754,211 @@ function PageFooter() {
   );
 }
 
-function BottomNav({ tab, setTab, unreadNotifications }) {
+// ─── Messages Inbox ───
+function MessagesTab({ user, conversations, groups, joinedGroups, onOpenConvo, onOpenGroupChat }) {
+  const [search, setSearch] = useState("");
+
+  // Get other participant's info for each DM
+  const [userNames, setUserNames] = useState({});
+  useEffect(() => {
+    const ids = conversations.map(c => c.participant_1 === user?.id ? c.participant_2 : c.participant_1).filter(Boolean);
+    if (ids.length === 0) return;
+    supabase.from('users').select('id, full_name, avatar_url').in('id', ids)
+      .then(({ data }) => {
+        if (data) {
+          const map = {};
+          data.forEach(u => { map[u.id] = u; });
+          setUserNames(map);
+        }
+      });
+  }, [conversations, user]);
+
+  const myGroups = (groups || []).filter(g => (joinedGroups || []).includes(g.id));
+
+  return (
+    <div style={styles.tabContent}>
+      <h1 style={styles.pageTitle}>Messages</h1>
+      <div style={styles.searchBar}>
+        {Icons.search}
+        <input style={styles.searchInput} placeholder="Search conversations..." value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {/* Group chats */}
+      {myGroups.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <p style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 8 }}>GROUP CHATS</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {myGroups.filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase())).map(g => (
+              <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "white", borderRadius: 12, cursor: "pointer", border: "1px solid #f0f0f0" }} onClick={() => onOpenGroupChat(g)}>
+                <span style={{ fontSize: 28 }}>{g.emoji || '👥'}</span>
+                <div style={{ flex: 1 }}>
+                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{g.name}</strong>
+                  <p style={{ fontSize: 12, color: "#888" }}>{g.members} members</p>
+                </div>
+                <span style={{ color: "#ccc" }}>›</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Direct messages */}
+      <p style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 8 }}>DIRECT MESSAGES</p>
+      {conversations.length === 0 ? (
+        <div style={{ textAlign: "center", padding: 30 }}>
+          <span style={{ fontSize: 40 }}>💬</span>
+          <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No messages yet. Connect with a mom and start chatting!</p>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {conversations.map(c => {
+            const otherId = c.participant_1 === user?.id ? c.participant_2 : c.participant_1;
+            const other = userNames[otherId] || {};
+            const lastMsg = (c.messages || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+            const name = other.full_name || 'A mom';
+            if (search && !name.toLowerCase().includes(search.toLowerCase())) return null;
+            return (
+              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "white", borderRadius: 12, cursor: "pointer", border: "1px solid #f0f0f0" }} onClick={() => onOpenConvo(c, other)}>
+                {other.avatar_url ? (
+                  <img src={other.avatar_url} alt="" style={{ width: 44, height: 44, borderRadius: 22, objectFit: "cover" }} />
+                ) : (
+                  <div style={{ width: 44, height: 44, borderRadius: 22, background: "#6B2C3B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 14, fontWeight: 700 }}>
+                    {name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{name}</strong>
+                  {lastMsg && <p style={{ fontSize: 12, color: "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lastMsg.sender_id === user?.id ? 'You: ' : ''}{lastMsg.text}</p>}
+                </div>
+                {lastMsg && <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0 }}>{new Date(lastMsg.created_at).toLocaleDateString()}</span>}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Chat Screen (DM or Group) ───
+function ChatScreen({ user, conversation, otherUser, group, onBack }) {
+  const [messages, setMessages] = useState([]);
+  const [newMsg, setNewMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const messagesEndRef = useRef(null);
+  const [keyboardOffset, setKeyboardOffset] = useState(0);
+
+  const isGroup = !!group;
+  const chatTitle = isGroup ? (group.emoji + ' ' + group.name) : (otherUser?.full_name || 'Chat');
+
+  // Keyboard handling
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => {
+      const offset = window.innerHeight - vv.height;
+      setKeyboardOffset(offset > 50 ? offset : 0);
+    };
+    vv.addEventListener('resize', onResize);
+    return () => vv.removeEventListener('resize', onResize);
+  }, []);
+
+  // Load messages
+  useEffect(() => {
+    const loadMsgs = async () => {
+      let query = supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(100);
+      if (isGroup) {
+        query = query.eq('group_id', group.id);
+      } else {
+        query = query.eq('conversation_id', conversation.id);
+      }
+      const { data } = await query;
+      if (data) { setMessages(data); setLoaded(true); }
+    };
+    loadMsgs();
+    const poll = setInterval(loadMsgs, 3000);
+    return () => clearInterval(poll);
+  }, [conversation?.id, group?.id]);
+
+  // Scroll to bottom on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: loaded ? 'smooth' : 'auto' });
+  }, [messages.length]);
+
+  const handleSend = async () => {
+    if (!newMsg.trim() || sending) return;
+    setSending(true);
+    const msgData = {
+      sender_id: user.id,
+      sender_name: user.full_name || 'A mom',
+      text: newMsg.trim(),
+    };
+    if (isGroup) {
+      msgData.group_id = group.id;
+    } else {
+      msgData.conversation_id = conversation.id;
+      // Update last_message_at
+      await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversation.id);
+    }
+    const { error } = await supabase.from('messages').insert(msgData);
+    if (error) { alert('Error sending message'); setSending(false); return; }
+    setMessages(prev => [...prev, { ...msgData, id: Date.now(), created_at: new Date().toISOString() }]);
+    setNewMsg("");
+    setSending(false);
+    haptic('Light');
+  };
+
+  return (
+    <div style={styles.detailScreen}>
+      <div style={styles.detailHeader}>
+        <button style={styles.backBtn} onClick={onBack}>{Icons.back}</button>
+        <h2 style={styles.detailTitle}>{chatTitle}</h2>
+        <div style={{ width: 40 }} />
+      </div>
+      <div style={{ flex: 1, overflow: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
+        {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
+        {loaded && messages.length === 0 && (
+          <div style={{ textAlign: "center", padding: 40 }}>
+            <span style={{ fontSize: 40 }}>💬</span>
+            <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>{isGroup ? 'No messages yet. Start the conversation!' : `Say hi to ${otherUser?.full_name || 'your new friend'}!`}</p>
+          </div>
+        )}
+        {messages.map(msg => {
+          const isMe = msg.sender_id === user?.id;
+          return (
+            <div key={msg.id} style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginBottom: 2 }}>
+              <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isMe ? "#6B2C3B" : "white", color: isMe ? "white" : "#2D2D2D", border: isMe ? "none" : "1px solid #f0f0f0" }}>
+                {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: isMe ? "rgba(255,255,255,0.7)" : "#6B2C3B", marginBottom: 2 }}>{msg.sender_name}</p>}
+                <p style={{ fontSize: 14, lineHeight: 1.4 }}>{msg.text}</p>
+                <p style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.5)" : "#bbb", marginTop: 4, textAlign: "right" }}>
+                  {new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          );
+        })}
+        <div ref={messagesEndRef} />
+      </div>
+      <div style={{ position: "fixed", bottom: keyboardOffset || 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "white", borderTop: "1px solid #f0f0f0", padding: keyboardOffset ? "10px 18px" : "10px 18px calc(10px + env(safe-area-inset-bottom, 20px))", display: "flex", gap: 8, zIndex: 60, transition: "bottom 0.15s ease" }}>
+        <input
+          style={{ ...styles.msgInput, flex: 1 }}
+          placeholder={isGroup ? "Message the group..." : "Type a message..."}
+          value={newMsg}
+          onChange={e => setNewMsg(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && handleSend()}
+        />
+        <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>
+      </div>
+    </div>
+  );
+}
+
+function BottomNav({ tab, setTab, unreadNotifications, unreadMessages }) {
   const tabs = [
     { id: "home", icon: Icons.home, label: "Home" },
     { id: "groups", icon: Icons.group, label: "Groups" },
-    { id: "create", icon: Icons.plus, label: "Create" },
+    { id: "messages", icon: Icons.chat, label: "Chat", badge: unreadMessages || 0 },
     { id: "notifications", icon: Icons.bell, label: "Alerts", badge: unreadNotifications || 0 },
     { id: "discover", icon: Icons.compass, label: "Discover" },
   ];
