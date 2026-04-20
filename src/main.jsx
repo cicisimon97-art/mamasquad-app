@@ -1496,6 +1496,12 @@ function MamaSquadsApp() {
         />
       </div>
     );
+    if (selectedConversation) return (
+      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} />
+    );
+    if (selectedGroupChat) return (
+      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} />
+    );
     if (selectedEvent) return (
       <EventDetail event={selectedEvent} onBack={() => popNav()} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
@@ -1520,12 +1526,6 @@ function MamaSquadsApp() {
           />
         </div>
       </div>
-    );
-    if (selectedConversation) return (
-      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} />
-    );
-    if (selectedGroupChat) return (
-      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} />
     );
     if (selectedGroup) return (
       <GroupDetailScreen
