@@ -1273,6 +1273,31 @@ function MamaSquadsApp() {
     }
   };
 
+  // ─── Start a DM with a user ───
+  const handleStartDM = async (p) => {
+    try {
+      const { data: all, error: findErr } = await supabase.from('conversations').select('*');
+      if (findErr) { alert('Error: ' + findErr.message); return; }
+      let convo = (all || []).find(c =>
+        (c.participant_1 === user.id && c.participant_2 === p.id) ||
+        (c.participant_1 === p.id && c.participant_2 === user.id)
+      );
+      if (!convo) {
+        const { data: newConvo, error: createErr } = await supabase.from('conversations')
+          .insert({ participant_1: user.id, participant_2: p.id })
+          .select().single();
+        if (createErr) { alert('Error: ' + createErr.message); return; }
+        convo = newConvo;
+      }
+      if (convo) {
+        pushNav({});
+        setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
+      }
+    } catch (e) {
+      alert('Error: ' + e.message);
+    }
+  };
+
   // ─── Get connection status with a user ───
   const getConnectionStatus = (otherId) => {
     const conn = connections.find(c =>
@@ -1469,32 +1494,7 @@ function MamaSquadsApp() {
       <EventDetail event={selectedEvent} onBack={() => popNav()} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
     );
     if (selectedProfile) return (
-      <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} onMessage={async (p) => {
-        try {
-          // Find existing conversation
-          const { data: all, error: findErr } = await supabase.from('conversations').select('*');
-          if (findErr) { alert('Error loading conversations: ' + findErr.message); return; }
-          let convo = (all || []).find(c =>
-            (c.participant_1 === user.id && c.participant_2 === p.id) ||
-            (c.participant_1 === p.id && c.participant_2 === user.id)
-          );
-          if (!convo) {
-            const { data: newConvo, error: createErr } = await supabase.from('conversations')
-              .insert({ participant_1: user.id, participant_2: p.id })
-              .select().single();
-            if (createErr) { alert('Error creating conversation: ' + createErr.message); return; }
-            convo = newConvo;
-          }
-          if (convo) {
-            pushNav({});
-            setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
-          } else {
-            alert('Could not open conversation. Please try again.');
-          }
-        } catch (e) {
-          alert('Error: ' + e.message);
-        }
-      }} />
+      <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} onMessage={handleStartDM} />
     );
     if (tab === "create") return <CreateEventScreen onBack={() => setTab("home")} onSubmit={async (data) => { const result = await handleCreateEvent(data); if (!result.error) setTab("home"); return result; }} user={user} fadeIn={fadeIn} />;
     if (showAdminApply) return <AdminApplyScreen onBack={() => popNav()} user={user} fadeIn={fadeIn} />;
@@ -3939,25 +3939,19 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
         })()}
 
         {localStatus === 'connected' ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 20 }}>
-            <div
-              role="button"
-              tabIndex={0}
-              style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", WebkitTapHighlightColor: "transparent", userSelect: "none" }}
-              onTouchEnd={async (e) => { e.preventDefault(); if (onMessage) await onMessage(profile); }}
-              onClick={async () => { if (onMessage) await onMessage(profile); }}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              style={{ ...styles.primaryBtn, width: "100%" }}
+              onClick={() => onMessage && onMessage(profile)}
             >
               💬 Send Message
-            </div>
-            <div
-              role="button"
-              tabIndex={0}
-              style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#E8F5E9", color: "#2E7D32", fontSize: 14, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onTouchEnd={(e) => { e.preventDefault(); setShowDisconnectConfirm(true); }}
+            </button>
+            <button
+              style={{ ...styles.secondaryBtn, width: "100%", background: "#E8F5E9", color: "#2E7D32", border: "none" }}
               onClick={() => setShowDisconnectConfirm(true)}
             >
-              ✓ Connected — Tap to Disconnect
-            </div>
+              ✓ Connected
+            </button>
           </div>
         ) : localStatus === 'received' ? (
           <button
@@ -8130,7 +8124,7 @@ const styles = {
   emptyText: { fontSize: 14, color: gray400 },
 
   // Detail screens
-  detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", overflow: "hidden", position: "relative", zIndex: 50 },
+  detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", overflow: "hidden", position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 50 },
   detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 19, fontWeight: 700, color: gray800 },
