@@ -1694,8 +1694,8 @@ function VerificationBlockedScreen({ onVerify, user }) {
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      if (!res.ok) { setError(`Server error (${res.status}). Please try again.`); setLoading(false); return; }
       const data = await res.json();
+      if (!res.ok) { setError(data.error || `Server error (${res.status}). Please try again.`); setLoading(false); return; }
       if (data.error) { setError(data.error); setLoading(false); return; }
       if (data.url) {
         window.location.href = data.url;
