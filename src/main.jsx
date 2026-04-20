@@ -3939,22 +3939,25 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
         })()}
 
         {localStatus === 'connected' ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <button
-              style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onClick={async () => {
-                if (!onMessage) return;
-                await onMessage(profile);
-              }}
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, position: "relative", zIndex: 20 }}>
+            <div
+              role="button"
+              tabIndex={0}
+              style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", WebkitTapHighlightColor: "transparent", userSelect: "none" }}
+              onTouchEnd={async (e) => { e.preventDefault(); if (onMessage) await onMessage(profile); }}
+              onClick={async () => { if (onMessage) await onMessage(profile); }}
             >
               💬 Send Message
-            </button>
-            <button
-              style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#E8F5E9", color: "#2E7D32", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+            </div>
+            <div
+              role="button"
+              tabIndex={0}
+              style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#E8F5E9", color: "#2E7D32", fontSize: 14, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onTouchEnd={(e) => { e.preventDefault(); setShowDisconnectConfirm(true); }}
               onClick={() => setShowDisconnectConfirm(true)}
             >
               ✓ Connected — Tap to Disconnect
-            </button>
+            </div>
           </div>
         ) : localStatus === 'received' ? (
           <button
