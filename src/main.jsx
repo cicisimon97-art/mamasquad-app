@@ -1688,6 +1688,7 @@ function VerificationBlockedScreen({ onVerify, user }) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authSession.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ userId: user?.id, email: user?.email }),
         signal: controller.signal,
@@ -1718,6 +1719,7 @@ function VerificationBlockedScreen({ onVerify, user }) {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${authSession?.access_token}`,
+          'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ userId: user?.id }),
       });
