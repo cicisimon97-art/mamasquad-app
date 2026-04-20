@@ -1673,6 +1673,7 @@ function VerificationBlockedScreen({ onVerify, user }) {
   useEffect(() => {
     if (user?.verification_status === 'pending') setStatus('pending');
     if (user?.verification_status === 'paid') setStatus('paid');
+    if (user?.verification_status === 'failed') setStatus('failed');
   }, [user]);
 
   const handlePayAndVerify = async () => {
@@ -1772,6 +1773,21 @@ function VerificationBlockedScreen({ onVerify, user }) {
               onClick={handleStartIdentity}
             >
               {loading ? "Loading..." : "Verify My Identity"}
+            </button>
+          </>
+        ) : status === 'failed' ? (
+          <>
+            <div style={{ width: "100%", background: "#FFEBEE", borderRadius: 12, padding: 16 }}>
+              <span style={{ fontSize: 32 }}>❌</span>
+              <h3 style={{ fontSize: 16, fontWeight: 700, color: "#C62828", marginTop: 8 }}>Verification Failed</h3>
+              <p style={{ fontSize: 13, color: "#666", marginTop: 6, lineHeight: 1.5 }}>We couldn't verify your identity. This may be due to an unclear photo or a mismatch. Please try again.</p>
+            </div>
+            <button
+              style={{ ...styles.primaryBtn, background: "linear-gradient(135deg, #4CAF50, #388E3C)", boxShadow: "0 4px 16px rgba(76,175,80,0.3)", width: "100%", opacity: loading ? 0.6 : 1 }}
+              disabled={loading}
+              onClick={handleStartIdentity}
+            >
+              {loading ? "Loading..." : "Try Again"}
             </button>
           </>
         ) : (
