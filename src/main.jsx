@@ -3939,18 +3939,21 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
         })()}
 
         {localStatus === 'connected' ? (
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <button
-              style={{ ...styles.primaryBtn, flex: 1, background: "#6B2C3B" }}
-              onClick={async () => { try { if (onMessage) await onMessage(profile); else alert('onMessage not passed'); } catch(e) { alert('Button error: ' + e.message); } }}
+              style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={async () => {
+                if (!onMessage) return;
+                await onMessage(profile);
+              }}
             >
-              💬 Message
+              💬 Send Message
             </button>
             <button
-              style={{ ...styles.secondaryBtn, flex: 1, background: "#E8F5E9", color: "#2E7D32", border: "none" }}
+              style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#E8F5E9", color: "#2E7D32", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
               onClick={() => setShowDisconnectConfirm(true)}
             >
-              ✓ Connected
+              ✓ Connected — Tap to Disconnect
             </button>
           </div>
         ) : localStatus === 'received' ? (
