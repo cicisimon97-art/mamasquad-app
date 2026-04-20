@@ -661,7 +661,7 @@ function MamaSquadsApp() {
       setIsBetaMember(true);
       navigate("screen", "main");
     } else {
-      navigate("screen", "verify");
+      navigate("screen", "main");
     }
   };
 
