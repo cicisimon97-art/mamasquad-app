@@ -1471,16 +1471,14 @@ function MamaSquadsApp() {
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} onMessage={async (p) => {
         try {
-          // Find or create conversation
-          const { data: existing, error: findErr } = await supabase.from('conversations')
-            .select('*')
-            .or(`and(participant_1.eq.${user.id},participant_2.eq.${p.id}),and(participant_1.eq.${p.id},participant_2.eq.${user.id})`)
-            .limit(1);
-          if (findErr) { alert('Error finding conversation: ' + findErr.message); return; }
-          let convo;
-          if (existing && existing.length > 0) {
-            convo = existing[0];
-          } else {
+          // Find existing conversation
+          const { data: all, error: findErr } = await supabase.from('conversations').select('*');
+          if (findErr) { alert('Error loading conversations: ' + findErr.message); return; }
+          let convo = (all || []).find(c =>
+            (c.participant_1 === user.id && c.participant_2 === p.id) ||
+            (c.participant_1 === p.id && c.participant_2 === user.id)
+          );
+          if (!convo) {
             const { data: newConvo, error: createErr } = await supabase.from('conversations')
               .insert({ participant_1: user.id, participant_2: p.id })
               .select().single();
@@ -1490,6 +1488,8 @@ function MamaSquadsApp() {
           if (convo) {
             pushNav({});
             setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
+          } else {
+            alert('Could not open conversation. Please try again.');
           }
         } catch (e) {
           alert('Error: ' + e.message);
