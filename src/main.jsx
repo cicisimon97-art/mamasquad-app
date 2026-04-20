@@ -1679,24 +1679,31 @@ function VerificationBlockedScreen({ onVerify, user }) {
     setLoading(true);
     setError(null);
     try {
-      // Step 1: Create Stripe Checkout session via Edge Function
       const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) { setError('Not logged in. Please sign out and sign in again.'); setLoading(false); return; }
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
       const res = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authSession?.access_token}`,
+          'Authorization': `Bearer ${authSession.access_token}`,
         },
         body: JSON.stringify({ userId: user?.id, email: user?.email }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
+      if (!res.ok) { setError(`Server error (${res.status}). Please try again.`); setLoading(false); return; }
       const data = await res.json();
       if (data.error) { setError(data.error); setLoading(false); return; }
       if (data.url) {
-        // Redirect to Stripe Checkout
         window.location.href = data.url;
+      } else {
+        setError('No checkout URL returned. Please try again.');
+        setLoading(false);
       }
     } catch (e) {
-      setError('Something went wrong. Please try again.');
+      setError(e.name === 'AbortError' ? 'Request timed out. Please try again.' : 'Something went wrong. Please try again.');
       setLoading(false);
     }
   };
@@ -1805,7 +1812,7 @@ function VerificationBlockedScreen({ onVerify, user }) {
         )}
         {error && <p style={{ fontSize: 13, color: "#C62828" }}>{error}</p>}
         <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? <a href="mailto:mama.squads1@gmail.com" style={{ color: "#6B2C3B", textDecoration: "none" }}>mama.squads1@gmail.com</a></p>
-        <button style={{ background: "none", border: "none", fontSize: 12, color: "#999", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 8 }} onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}>Sign Out</button>
+        <button style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "none", border: "1.5px solid #ddd", color: "#666", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 12 }} onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}>Sign Out</button>
       </div>
       <style>{keyframes}</style>
     </div>
