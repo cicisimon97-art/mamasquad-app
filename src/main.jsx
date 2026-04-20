@@ -8130,7 +8130,7 @@ const styles = {
   emptyText: { fontSize: 14, color: gray400 },
 
   // Detail screens
-  detailScreen: { fontFamily: font, maxWidth: 430, width: "100%", height: "100dvh", minHeight: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", overflow: "hidden", position: "fixed", top: 0, left: "50%", transform: "translateX(-50%)", zIndex: 50 },
+  detailScreen: { fontFamily: font, maxWidth: 430, margin: "0 auto", height: "100vh", display: "flex", flexDirection: "column", background: "#FFFBFC", overflow: "hidden", position: "relative", zIndex: 50 },
   detailHeader: { display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 16px 14px", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))", borderBottom: `1px solid ${gray100}`, background: "white", flexShrink: 0, zIndex: 10 },
   backBtn: { width: 40, height: 40, borderRadius: 20, background: gray50, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: gray800 },
   detailTitle: { fontSize: 19, fontWeight: 700, color: gray800 },
