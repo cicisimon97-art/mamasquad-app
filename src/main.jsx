@@ -3942,7 +3942,7 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
           <div style={{ display: "flex", gap: 8 }}>
             <button
               style={{ ...styles.primaryBtn, flex: 1, background: "#6B2C3B" }}
-              onClick={() => onMessage && onMessage(profile)}
+              onClick={async () => { try { if (onMessage) await onMessage(profile); else alert('onMessage not passed'); } catch(e) { alert('Button error: ' + e.message); } }}
             >
               💬 Message
             </button>
