@@ -1470,23 +1470,29 @@ function MamaSquadsApp() {
     );
     if (selectedProfile) return (
       <ProfileDetail profile={selectedProfile} onBack={() => popNav()} onConnect={sendConnectionRequest} onAccept={respondToConnection} onDisconnect={disconnectUser} onUnsend={unsendConnectionRequest} connectionStatus={selectedProfile ? getConnectionStatus(selectedProfile.id) : 'none'} connections={connections} user={user} fadeIn={fadeIn} onMessage={async (p) => {
-        // Find or create conversation
-        const { data: existing } = await supabase.from('conversations')
-          .select('*')
-          .or(`and(participant_1.eq.${user.id},participant_2.eq.${p.id}),and(participant_1.eq.${p.id},participant_2.eq.${user.id})`)
-          .limit(1);
-        let convo;
-        if (existing && existing.length > 0) {
-          convo = existing[0];
-        } else {
-          const { data: newConvo } = await supabase.from('conversations')
-            .insert({ participant_1: user.id, participant_2: p.id })
-            .select().single();
-          convo = newConvo;
-        }
-        if (convo) {
-          pushNav({});
-          setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
+        try {
+          // Find or create conversation
+          const { data: existing, error: findErr } = await supabase.from('conversations')
+            .select('*')
+            .or(`and(participant_1.eq.${user.id},participant_2.eq.${p.id}),and(participant_1.eq.${p.id},participant_2.eq.${user.id})`)
+            .limit(1);
+          if (findErr) { alert('Error finding conversation: ' + findErr.message); return; }
+          let convo;
+          if (existing && existing.length > 0) {
+            convo = existing[0];
+          } else {
+            const { data: newConvo, error: createErr } = await supabase.from('conversations')
+              .insert({ participant_1: user.id, participant_2: p.id })
+              .select().single();
+            if (createErr) { alert('Error creating conversation: ' + createErr.message); return; }
+            convo = newConvo;
+          }
+          if (convo) {
+            pushNav({});
+            setSelectedConversation({ convo, other: { id: p.id, full_name: p.name, avatar_url: p.avatar_url } });
+          }
+        } catch (e) {
+          alert('Error: ' + e.message);
         }
       }} />
     );
