@@ -1805,6 +1805,7 @@ function VerificationBlockedScreen({ onVerify, user }) {
         )}
         {error && <p style={{ fontSize: 13, color: "#C62828" }}>{error}</p>}
         <p style={{ fontSize: 11, color: "#ACACAC" }}>Need help? <a href="mailto:mama.squads1@gmail.com" style={{ color: "#6B2C3B", textDecoration: "none" }}>mama.squads1@gmail.com</a></p>
+        <button style={{ background: "none", border: "none", fontSize: 12, color: "#999", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", marginTop: 8 }} onClick={async () => { await supabase.auth.signOut(); window.location.reload(); }}>Sign Out</button>
       </div>
       <style>{keyframes}</style>
     </div>
