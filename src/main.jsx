@@ -3938,11 +3938,13 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
           );
         })()}
 
+        {/* Debug: show connection status */}
+        <p style={{ fontSize: 10, color: "#ccc", textAlign: "center" }}>Status: {localStatus}</p>
         {localStatus === 'connected' ? (
           <div style={{ display: "flex", gap: 8 }}>
             <button
               style={{ ...styles.primaryBtn, flex: 1, background: "#6B2C3B" }}
-              onClick={() => onMessage && onMessage(profile)}
+              onClick={() => { alert('Message clicked'); onMessage && onMessage(profile); }}
             >
               💬 Message
             </button>
