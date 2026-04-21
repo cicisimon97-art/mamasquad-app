@@ -798,6 +798,9 @@ function MamaSquadsApp() {
           acceptingMembers: g.accepting_members !== false,
           isHidden: g.is_hidden || false,
           inviteCode: g.invite_code || '',
+          announcement: g.announcement || '',
+          announcementBy: g.announcement_by || '',
+          announcementAt: g.announcement_at || '',
           recentActivity: 'New group',
           color: g.color || '#6B2C3B',
           pendingRequests: [],
@@ -6125,6 +6128,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
   const [showInlinePoll, setShowInlinePoll] = useState(false);
   const [autoConnectEnabled, setAutoConnectEnabled] = useState(false);
+  const [showAnnouncementEdit, setShowAnnouncementEdit] = useState(false);
+  const [announcementText, setAnnouncementText] = useState(group.announcement || "");
 
   // Check if auto-connect is already enabled
   useEffect(() => {
@@ -6951,6 +6956,49 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                 setDeletingGroup(false); onBack();
               }}>{deletingGroup ? "Deleting..." : "Yes, Delete"}</button>
               <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "white", color: "#666", fontSize: 13, fontWeight: 600, border: "1.5px solid #ddd", cursor: "pointer" }} onClick={() => { setShowDeleteGroup(false); setDeletePassword(""); setDeleteError(null); }}>Cancel</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── PINNED ANNOUNCEMENT ── */}
+        {isMember && group.announcement && !showAnnouncementEdit && (
+          <div style={{ background: "#FFF8E1", borderRadius: 12, padding: 14, border: "1.5px solid #FFE082" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#F57F17" }}>📌 Announcement</span>
+              {isAdmin && <button style={{ background: "none", border: "none", fontSize: 11, color: "#6B2C3B", cursor: "pointer", fontWeight: 600, fontFamily: "'DM Sans', sans-serif" }} onClick={() => { setAnnouncementText(group.announcement); setShowAnnouncementEdit(true); }}>✏️ Edit</button>}
+            </div>
+            <p style={{ fontSize: 14, color: "#2D2D2D", lineHeight: 1.5 }}>{group.announcement}</p>
+            {group.announcementBy && <p style={{ fontSize: 11, color: "#999", marginTop: 6 }}>— {group.announcementBy}{group.announcementAt ? ', ' + new Date(group.announcementAt).toLocaleDateString() : ''}</p>}
+          </div>
+        )}
+        {isAdmin && !group.announcement && !showAnnouncementEdit && (
+          <button style={{ width: "100%", padding: "10px 0", borderRadius: 10, background: "#FFF8E1", border: "1.5px dashed #FFE082", fontSize: 12, fontWeight: 600, color: "#F57F17", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setShowAnnouncementEdit(true)}>
+            📌 Add Announcement
+          </button>
+        )}
+        {showAnnouncementEdit && isAdmin && (
+          <div style={{ background: "#FFF8E1", borderRadius: 12, padding: 14 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <strong style={{ fontSize: 14, color: "#F57F17" }}>📌 Edit Announcement</strong>
+              <button style={{ background: "none", border: "none", fontSize: 16, color: "#999", cursor: "pointer" }} onClick={() => setShowAnnouncementEdit(false)}>✕</button>
+            </div>
+            <textarea style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid #FFE082", fontSize: 14, fontFamily: "'DM Sans', sans-serif", minHeight: 80, resize: "vertical", marginBottom: 8 }} placeholder="Write an announcement for the group..." value={announcementText} onChange={e => setAnnouncementText(e.target.value)} />
+            <div style={{ display: "flex", gap: 8 }}>
+              <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "#F57F17", color: "white", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={async () => {
+                const updates = {
+                  announcement: announcementText.trim() || null,
+                  announcement_by: announcementText.trim() ? (user.full_name || 'Admin') : null,
+                  announcement_at: announcementText.trim() ? new Date().toISOString() : null,
+                };
+                await supabase.from('groups').update(updates).eq('id', group.id);
+                group.announcement = updates.announcement;
+                group.announcementBy = updates.announcement_by;
+                group.announcementAt = updates.announcement_at;
+                setShowAnnouncementEdit(false);
+              }}>
+                {announcementText.trim() ? 'Save' : 'Remove Announcement'}
+              </button>
+              <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "white", color: "#666", fontSize: 13, fontWeight: 600, border: "1.5px solid #ddd", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setShowAnnouncementEdit(false)}>Cancel</button>
             </div>
           </div>
         )}
