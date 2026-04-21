@@ -4136,9 +4136,21 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
                 await supabase.from('blocked_users').delete().eq('blocker_id', user.id).eq('blocked_id', profile.id);
                 setBlocked(false);
               } else {
-                if (!confirm(`Block ${profile.name}? You won't see their profile, messages, or activity.`)) return;
+                if (!confirm(`Block ${profile.name}? You won't see their profile, messages, or activity. This will also disconnect you.`)) return;
                 await supabase.from('blocked_users').insert({ blocker_id: user.id, blocked_id: profile.id });
+                // Remove connection
+                await supabase.from('connections').delete().or(`and(requester_id.eq.${user.id},recipient_id.eq.${profile.id}),and(requester_id.eq.${profile.id},recipient_id.eq.${user.id})`);
+                // Delete DM conversation
+                const { data: convos } = await supabase.from('conversations').select('id').or(`and(participant_1.eq.${user.id},participant_2.eq.${profile.id}),and(participant_1.eq.${profile.id},participant_2.eq.${user.id})`);
+                if (convos) {
+                  for (const c of convos) {
+                    await supabase.from('messages').delete().eq('conversation_id', c.id);
+                    await supabase.from('conversations').delete().eq('id', c.id);
+                  }
+                }
                 setBlocked(true);
+                setLocalStatus('none');
+                setManualOverride(true);
               }
             }}>
               {blocked ? '🚫 Unblock' : '🚫 Block'}
