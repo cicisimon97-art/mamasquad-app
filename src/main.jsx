@@ -438,11 +438,19 @@ function MamaSquadsApp() {
   const [selectedGroupChat, setSelectedGroupChat] = useState(null);
   const [blockedIds, setBlockedIds] = useState([]);
 
-  // Load blocked users
+  // Load blocked users (both directions — people I blocked + people who blocked me)
   useEffect(() => {
     if (!user) return;
-    supabase.from('blocked_users').select('blocked_id').eq('blocker_id', user.id)
-      .then(({ data }) => { if (data) setBlockedIds(data.map(b => b.blocked_id)); });
+    const loadBlocked = async () => {
+      const { data: iBlocked } = await supabase.from('blocked_users').select('blocked_id').eq('blocker_id', user.id);
+      const { data: blockedMe } = await supabase.from('blocked_users').select('blocker_id').eq('blocked_id', user.id);
+      const ids = [
+        ...(iBlocked || []).map(b => b.blocked_id),
+        ...(blockedMe || []).map(b => b.blocker_id),
+      ];
+      setBlockedIds([...new Set(ids)]);
+    };
+    loadBlocked();
   }, [user]);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_v2'));
   const [tutorialStep, setTutorialStep] = useState(0);
