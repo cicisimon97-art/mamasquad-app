@@ -6124,6 +6124,14 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
   const [showPostPlaydate, setShowPostPlaydate] = useState(false);
   const [showProposeMeetup, setShowProposeMeetup] = useState(false);
   const [showInlinePoll, setShowInlinePoll] = useState(false);
+  const [autoConnectEnabled, setAutoConnectEnabled] = useState(false);
+
+  // Check if auto-connect is already enabled
+  useEffect(() => {
+    if (!user || !group.fromSupabase) return;
+    supabase.from('group_members').select('auto_connect').eq('group_id', group.id).eq('user_id', user.id).single()
+      .then(({ data }) => { if (data?.auto_connect) setAutoConnectEnabled(true); });
+  }, [user, group.id]);
   const [groupPhotos, setGroupPhotos] = useState([]);
   const [photoUploading, setPhotoUploading] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState(null);
@@ -6601,41 +6609,40 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {/* Connect with all members */}
         {isMember && (
           <div style={{ display: "flex", gap: 8 }}>
-            <button
-              id="connect-all-btn"
-              style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "white", border: "1.5px solid #6B2C3B", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onClick={async (e) => {
-                const btn = e.target;
-                if (btn.dataset.sent === 'true') return;
-                if (!confirm('Connect with all members in this group? This will also auto-connect you with future members.')) return;
-                btn.textContent = '⏳ Connecting...';
-                btn.style.opacity = '0.6';
-                const { data: members } = await supabase.from('group_members').select('user_id').eq('group_id', group.id).neq('user_id', user.id);
-                if (!members) { btn.textContent = '🤝 Connect with All Members'; btn.style.opacity = '1'; return; }
-                let count = 0;
-                for (const m of members) {
-                  const existing = (connections || []).find(c =>
-                    (c.requester_id === user.id && c.recipient_id === m.user_id) ||
-                    (c.requester_id === m.user_id && c.recipient_id === user.id)
-                  );
-                  if (existing) continue;
-                  if ((blockedIds || []).includes(m.user_id)) continue;
-                  await supabase.from('connections').insert({ requester_id: user.id, recipient_id: m.user_id, status: 'pending' });
-                  await supabase.from('notifications').insert({ user_id: m.user_id, type: 'connection_request', title: 'New Connection Request', body: `${user.full_name || 'A mom'} wants to connect with you!`, sender_id: user.id, is_read: false });
-                  count++;
-                }
-                await supabase.from('group_members').update({ auto_connect: true }).eq('group_id', group.id).eq('user_id', user.id);
-                btn.textContent = `✅ ${count} Connection${count !== 1 ? 's' : ''} Sent!`;
-                btn.style.background = '#E8F5E9';
-                btn.style.color = '#2E7D32';
-                btn.style.border = '1.5px solid #2E7D32';
-                btn.style.opacity = '1';
-                btn.dataset.sent = 'true';
-                hapticSuccess();
-              }}
-            >
-              🤝 Connect with All Members
-            </button>
+            {autoConnectEnabled ? (
+              <div style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "#E8F5E9", border: "1.5px solid #2E7D32", fontSize: 12, fontWeight: 600, color: "#2E7D32", textAlign: "center", fontFamily: "'DM Sans', sans-serif" }}>
+                ✅ Connected with All Members
+              </div>
+            ) : (
+              <button
+                style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "white", border: "1.5px solid #6B2C3B", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+                onClick={async (e) => {
+                  const btn = e.target;
+                  if (!confirm('Connect with all members in this group? This will also auto-connect you with future members.')) return;
+                  btn.textContent = '⏳ Connecting...';
+                  btn.style.opacity = '0.6';
+                  const { data: members } = await supabase.from('group_members').select('user_id').eq('group_id', group.id).neq('user_id', user.id);
+                  if (!members) { btn.textContent = '🤝 Connect with All Members'; btn.style.opacity = '1'; return; }
+                  let count = 0;
+                  for (const m of members) {
+                    const existing = (connections || []).find(c =>
+                      (c.requester_id === user.id && c.recipient_id === m.user_id) ||
+                      (c.requester_id === m.user_id && c.recipient_id === user.id)
+                    );
+                    if (existing) continue;
+                    if ((blockedIds || []).includes(m.user_id)) continue;
+                    await supabase.from('connections').insert({ requester_id: user.id, recipient_id: m.user_id, status: 'pending' });
+                    await supabase.from('notifications').insert({ user_id: m.user_id, type: 'connection_request', title: 'New Connection Request', body: `${user.full_name || 'A mom'} wants to connect with you!`, sender_id: user.id, is_read: false });
+                    count++;
+                  }
+                  await supabase.from('group_members').update({ auto_connect: true }).eq('group_id', group.id).eq('user_id', user.id);
+                  setAutoConnectEnabled(true);
+                  hapticSuccess();
+                }}
+              >
+                🤝 Connect with All Members
+              </button>
+            )}
           </div>
         )}
 
