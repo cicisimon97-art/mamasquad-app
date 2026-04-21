@@ -8238,7 +8238,7 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }
       await supabase.from('conversations').update({ last_message_at: new Date().toISOString() }).eq('id', conversation.id);
     }
     const { error } = await supabase.from('messages').insert(msgData);
-    if (error) { alert('Error sending message'); setSending(false); return; }
+    if (error) { alert('Error sending message: ' + error.message); setSending(false); return; }
     setMessages(prev => [...prev, { ...msgData, id: Date.now(), created_at: new Date().toISOString() }]);
     setNewMsg("");
     setSending(false);
