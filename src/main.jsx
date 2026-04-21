@@ -956,6 +956,25 @@ function MamaSquadsApp() {
       group_id: groupId,
       is_read: false,
     });
+
+    // Auto-connect with members who have auto_connect enabled
+    const { data: autoConnectors } = await supabase.from('group_members')
+      .select('user_id')
+      .eq('group_id', groupId)
+      .eq('auto_connect', true)
+      .neq('user_id', userId);
+    if (autoConnectors) {
+      for (const ac of autoConnectors) {
+        // Check if already connected
+        const { data: existing } = await supabase.from('connections')
+          .select('id')
+          .or(`and(requester_id.eq.${ac.user_id},recipient_id.eq.${userId}),and(requester_id.eq.${userId},recipient_id.eq.${ac.user_id})`)
+          .limit(1);
+        if (existing && existing.length > 0) continue;
+        await supabase.from('connections').insert({ requester_id: ac.user_id, recipient_id: userId, status: 'pending' });
+        await supabase.from('notifications').insert({ user_id: userId, type: 'connection_request', title: 'New Connection Request', body: `A member of ${group?.name || 'your group'} wants to connect!`, sender_id: ac.user_id, is_read: false });
+      }
+    }
   };
 
   // ─── Deny join request handler ───
@@ -1622,6 +1641,8 @@ function MamaSquadsApp() {
         joinedEvents={joinedEvents}
         onEventSelect={(e) => { pushNav({}); setSelectedEvent(e); }}
         onViewProfile={(req) => { pushNav({}); setSelectedProfile({ id: req.userId, name: req.name, avatar: req.avatar, bio: req.bio, ages: req.ages, area: '', interests: [], isVerified: true, fromSupabase: true }); }}
+        connections={connections}
+        blockedIds={blockedIds}
         fadeIn={fadeIn}
       />
     );
@@ -6079,7 +6100,7 @@ function GroupsTab({ groups, onGroupSelect, onCreateGroup, onAdminApply, joinedG
 }
 
 // ─── Group Detail Screen ───
-function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, events, joinedEvents, onEventSelect, onViewProfile, fadeIn }) {
+function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendingJoins, setPendingJoins, groupRequests, setGroupRequests, user, onJoinRequest, onApproveRequest, onDenyRequest, onCreateEvent, onSaveAvailability, loadGroupAvailability, loadMyAvailability, onProposeMeetup, loadMeetupProposals, onVote, events, joinedEvents, onEventSelect, onViewProfile, connections, blockedIds, fadeIn }) {
   const isMember = joinedGroups.includes(group.id);
   const isPending = pendingJoins.includes(group.id);
   const isAdmin = user ? (group.adminId === user.id || group.admin === user.full_name) : group.admin === "Sarah Mitchell";
@@ -6574,6 +6595,40 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
             {isAdmin && group.fromSupabase && (
               <button style={{ padding: "10px 14px", borderRadius: 10, background: "#FAF0F2", border: "none", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => { setEditingGroup(true); setTimeout(() => document.getElementById('edit-group-form')?.scrollIntoView({ behavior: 'smooth' }), 100); }}>✏️ Edit</button>
             )}
+          </div>
+        )}
+
+        {/* Connect with all members */}
+        {isMember && (
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "white", border: "1.5px solid #6B2C3B", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={async () => {
+                if (!confirm('Connect with all members in this group? This will also auto-connect you with future members.')) return;
+                const { data: members } = await supabase.from('group_members').select('user_id').eq('group_id', group.id).neq('user_id', user.id);
+                if (!members) return;
+                let count = 0;
+                for (const m of members) {
+                  // Check if already connected or pending
+                  const existing = (connections || []).find(c =>
+                    (c.requester_id === user.id && c.recipient_id === m.user_id) ||
+                    (c.requester_id === m.user_id && c.recipient_id === user.id)
+                  );
+                  if (existing) continue;
+                  // Check if blocked
+                  if ((blockedIds || []).includes(m.user_id)) continue;
+                  await supabase.from('connections').insert({ requester_id: user.id, recipient_id: m.user_id, status: 'pending' });
+                  await supabase.from('notifications').insert({ user_id: m.user_id, type: 'connection_request', title: 'New Connection Request', body: `${user.full_name || 'A mom'} wants to connect with you!`, sender_id: user.id, is_read: false });
+                  count++;
+                }
+                // Enable auto-connect for future members
+                await supabase.from('group_members').update({ auto_connect: true }).eq('group_id', group.id).eq('user_id', user.id);
+                alert(`Connection requests sent to ${count} member${count !== 1 ? 's' : ''}! You'll also auto-connect with future members.`);
+                hapticSuccess();
+              }}
+            >
+              🤝 Connect with All Members
+            </button>
           </div>
         )}
 
