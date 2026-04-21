@@ -7982,7 +7982,7 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
         <div style={{ width: 36, height: 36, borderRadius: 18, background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onBack}>{Icons.back}</div>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", flex: 1 }}>{chatTitle}</h2>
       </div>
-      <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: "calc(120px + env(safe-area-inset-bottom, 50px))", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: 200, display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
         {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
         {loaded && messages.length === 0 && (
           <div style={{ textAlign: "center", padding: 40 }}>
