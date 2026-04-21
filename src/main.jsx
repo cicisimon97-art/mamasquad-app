@@ -6602,28 +6602,35 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {isMember && (
           <div style={{ display: "flex", gap: 8 }}>
             <button
+              id="connect-all-btn"
               style={{ flex: 1, padding: "10px 14px", borderRadius: 10, background: "white", border: "1.5px solid #6B2C3B", fontSize: 12, fontWeight: 600, color: "#6B2C3B", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
-              onClick={async () => {
+              onClick={async (e) => {
+                const btn = e.target;
+                if (btn.dataset.sent === 'true') return;
                 if (!confirm('Connect with all members in this group? This will also auto-connect you with future members.')) return;
+                btn.textContent = '⏳ Connecting...';
+                btn.style.opacity = '0.6';
                 const { data: members } = await supabase.from('group_members').select('user_id').eq('group_id', group.id).neq('user_id', user.id);
-                if (!members) return;
+                if (!members) { btn.textContent = '🤝 Connect with All Members'; btn.style.opacity = '1'; return; }
                 let count = 0;
                 for (const m of members) {
-                  // Check if already connected or pending
                   const existing = (connections || []).find(c =>
                     (c.requester_id === user.id && c.recipient_id === m.user_id) ||
                     (c.requester_id === m.user_id && c.recipient_id === user.id)
                   );
                   if (existing) continue;
-                  // Check if blocked
                   if ((blockedIds || []).includes(m.user_id)) continue;
                   await supabase.from('connections').insert({ requester_id: user.id, recipient_id: m.user_id, status: 'pending' });
                   await supabase.from('notifications').insert({ user_id: m.user_id, type: 'connection_request', title: 'New Connection Request', body: `${user.full_name || 'A mom'} wants to connect with you!`, sender_id: user.id, is_read: false });
                   count++;
                 }
-                // Enable auto-connect for future members
                 await supabase.from('group_members').update({ auto_connect: true }).eq('group_id', group.id).eq('user_id', user.id);
-                alert(`Connection requests sent to ${count} member${count !== 1 ? 's' : ''}! You'll also auto-connect with future members.`);
+                btn.textContent = `✅ ${count} Connection${count !== 1 ? 's' : ''} Sent!`;
+                btn.style.background = '#E8F5E9';
+                btn.style.color = '#2E7D32';
+                btn.style.border = '1.5px solid #2E7D32';
+                btn.style.opacity = '1';
+                btn.dataset.sent = 'true';
                 hapticSuccess();
               }}
             >
