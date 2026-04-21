@@ -4153,7 +4153,7 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
               <h3 style={{ fontSize: 18, fontWeight: 700, color: "#2D2D2D", marginBottom: 12 }}>Report {profile.name}</h3>
               <p style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>Why are you reporting this person?</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
-                {["Inappropriate behavior", "Spam or fake profile", "Harassment or bullying", "Safety concern", "Other"].map(r => (
+                {["Inappropriate behavior", "Spam", "Harassment or bullying", "Safety concern", "Other"].map(r => (
                   <button key={r} style={{ padding: "10px 14px", borderRadius: 10, fontSize: 13, textAlign: "left", cursor: "pointer", border: reportReason === r ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: reportReason === r ? "#FAF0F2" : "white", color: reportReason === r ? "#6B2C3B" : "#555", fontWeight: reportReason === r ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setReportReason(r)}>{r}</button>
                 ))}
               </div>
@@ -4161,6 +4161,18 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
               <button style={{ ...styles.primaryBtn, width: "100%", background: "#C62828", opacity: !reportReason || reporting ? 0.5 : 1 }} disabled={!reportReason || reporting} onClick={async () => {
                 setReporting(true);
                 await supabase.from('reports').insert({ reporter_id: user.id, reported_id: profile.id, reason: reportReason, details: reportDetails.trim() });
+                // Notify founder(s) about the report
+                const { data: founders } = await supabase.from('users').select('id').eq('role', 'founder');
+                if (founders) {
+                  await supabase.from('notifications').insert(founders.map(f => ({
+                    user_id: f.id,
+                    type: 'user_report',
+                    title: 'User Report',
+                    body: `${user.full_name || 'A member'} reported ${profile.name}: ${reportReason}${reportDetails.trim() ? ' — ' + reportDetails.trim().slice(0, 80) : ''}`,
+                    sender_id: user.id,
+                    is_read: false,
+                  })));
+                }
                 setReporting(false);
                 setShowReportMenu(false);
                 setReportReason("");
@@ -7859,7 +7871,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 22 }}>
-                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : '🔔'}
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : notif.type === 'user_report' ? '🚨' : '🔔'}
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
