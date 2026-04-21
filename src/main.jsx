@@ -1639,6 +1639,17 @@ function MamaSquadsApp() {
 
               pushNav({});
 
+              // New message → go to chat
+              if (notif.type === 'new_message') {
+                if (notif.group_id) {
+                  const group = (groups || []).find(g => g.id === notif.group_id);
+                  if (group) { setSelectedGroupChat(group); return; }
+                } else if (notif.sender_id) {
+                  await handleStartDM({ id: notif.sender_id, name: notif.title?.replace('New Message', '').trim() || 'Chat' });
+                  return;
+                }
+              }
+
               // Join request → go to the group
               if (notif.type === 'join_request' && notif.group_id) {
                 const group = (groups || []).find(g => g.id === notif.group_id);
@@ -7912,6 +7923,35 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
     setNewMsg("");
     setSending(false);
     haptic('Light');
+
+    // Send notification
+    if (isGroup) {
+      // Notify group members (except sender)
+      const { data: members } = await supabase.from('group_members').select('user_id').eq('group_id', group.id).neq('user_id', user.id);
+      if (members) {
+        const notifs = members.map(m => ({
+          user_id: m.user_id,
+          type: 'new_message',
+          title: `New message in ${group.name}`,
+          body: `${user.full_name || 'A mom'}: ${msgData.text.slice(0, 60)}`,
+          group_id: group.id,
+          sender_id: user.id,
+          is_read: false,
+        }));
+        await supabase.from('notifications').insert(notifs);
+      }
+    } else {
+      // Notify the other person
+      const otherId = conversation.participant_1 === user.id ? conversation.participant_2 : conversation.participant_1;
+      await supabase.from('notifications').insert({
+        user_id: otherId,
+        type: 'new_message',
+        title: 'New Message',
+        body: `${user.full_name || 'A mom'}: ${msgData.text.slice(0, 60)}`,
+        sender_id: user.id,
+        is_read: false,
+      });
+    }
   };
 
   return (
@@ -7921,7 +7961,7 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
         <h2 style={styles.detailTitle}>{chatTitle}</h2>
         <div style={{ width: 40 }} />
       </div>
-      <div style={{ flex: 1, overflow: "auto", padding: "12px 18px", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 34px))", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
         {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
         {loaded && messages.length === 0 && (
           <div style={{ textAlign: "center", padding: 40 }}>
