@@ -4540,6 +4540,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "Discover Moms", icon: "🔍", action: () => onShowDiscover && onShowDiscover() },
           { label: `Notifications${(notifications || []).filter(n => !n.is_read).length > 0 ? ` (${(notifications || []).filter(n => !n.is_read).length})` : ''}`, icon: "🔔", action: () => setMenuView("notifications") },
           { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
+          { label: "Blocked & Reports", icon: "🚫", action: () => setMenuView("blocked") },
           ...(isAppFounder ? [{ label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") }] : []),
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Terms of Service", icon: "📄", action: () => setMenuView("terms") },
@@ -4770,6 +4771,19 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       )}
 
       {/* ── Privacy & Safety Sub-screen ── */}
+      {menuView === "blocked" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#2D2D2D" }}>Blocked & Reports</h2>
+            </div>
+
+            <BlockedReportsView user={user} />
+          </div>
+        </div>
+      )}
+
       {menuView === "privacy" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
@@ -7915,6 +7929,102 @@ function PageFooter() {
   return (
     <div style={{ textAlign: "center", padding: "24px 0 16px", marginTop: 16 }}>
       <p style={{ fontSize: 10, color: "#ccc", letterSpacing: 0.5 }}>© {new Date().getFullYear()} MamaSquads. All rights reserved.</p>
+    </div>
+  );
+}
+
+// ─── Blocked & Reports View ───
+function BlockedReportsView({ user }) {
+  const [blockedUsers, setBlockedUsers] = useState([]);
+  const [reports, setReports] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+  const [tab, setTab] = useState("blocked");
+
+  useEffect(() => {
+    if (!user || loaded) return;
+    const load = async () => {
+      const { data: blocks } = await supabase.from('blocked_users').select('*, users!blocked_id(id, full_name, avatar_url)').eq('blocker_id', user.id);
+      if (blocks) setBlockedUsers(blocks);
+      const { data: reps } = await supabase.from('reports').select('*, users!reported_id(id, full_name, avatar_url)').eq('reporter_id', user.id).order('created_at', { ascending: false });
+      if (reps) setReports(reps);
+      setLoaded(true);
+    };
+    load();
+  }, [user, loaded]);
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: "pointer", border: tab === "blocked" ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: tab === "blocked" ? "#FAF0F2" : "white", color: tab === "blocked" ? "#6B2C3B" : "#666", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setTab("blocked")}>Blocked ({blockedUsers.length})</button>
+        <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, fontSize: 13, fontWeight: 600, cursor: "pointer", border: tab === "reports" ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: tab === "reports" ? "#FAF0F2" : "white", color: tab === "reports" ? "#6B2C3B" : "#666", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setTab("reports")}>Reports ({reports.length})</button>
+      </div>
+
+      {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
+
+      {tab === "blocked" && loaded && (
+        blockedUsers.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 30 }}>
+            <span style={{ fontSize: 32 }}>✅</span>
+            <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>You haven't blocked anyone.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {blockedUsers.map(b => (
+              <div key={b.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "white", borderRadius: 12, border: "1px solid #f0f0f0" }}>
+                {b.users?.avatar_url ? (
+                  <img src={b.users.avatar_url} alt="" style={{ width: 40, height: 40, borderRadius: 20, objectFit: "cover" }} />
+                ) : (
+                  <div style={{ width: 40, height: 40, borderRadius: 20, background: "#6B2C3B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 13, fontWeight: 700 }}>
+                    {(b.users?.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                )}
+                <div style={{ flex: 1 }}>
+                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{b.users?.full_name || 'Unknown'}</strong>
+                  <p style={{ fontSize: 11, color: "#999" }}>Blocked {new Date(b.created_at).toLocaleDateString()}</p>
+                </div>
+                <button style={{ padding: "6px 14px", borderRadius: 50, background: "none", border: "1.5px solid #6B2C3B", color: "#6B2C3B", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={async () => {
+                  await supabase.from('blocked_users').delete().eq('id', b.id);
+                  setBlockedUsers(prev => prev.filter(x => x.id !== b.id));
+                }}>Unblock</button>
+              </div>
+            ))}
+          </div>
+        )
+      )}
+
+      {tab === "reports" && loaded && (
+        reports.length === 0 ? (
+          <div style={{ textAlign: "center", padding: 30 }}>
+            <span style={{ fontSize: 32 }}>📋</span>
+            <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No reports submitted.</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {reports.map(r => (
+              <div key={r.id} style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  {r.users?.avatar_url ? (
+                    <img src={r.users.avatar_url} alt="" style={{ width: 36, height: 36, borderRadius: 18, objectFit: "cover" }} />
+                  ) : (
+                    <div style={{ width: 36, height: 36, borderRadius: 18, background: "#C62828", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 12, fontWeight: 700 }}>
+                      {(r.users?.full_name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{r.users?.full_name || 'Unknown'}</strong>
+                    <p style={{ fontSize: 11, color: "#999" }}>Reported {new Date(r.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 10px", borderRadius: 50, background: r.status === 'resolved' ? '#E8F5E9' : r.status === 'reviewed' ? '#FFF8E1' : '#FFF3E0', color: r.status === 'resolved' ? '#2E7D32' : r.status === 'reviewed' ? '#F57F17' : '#E65100' }}>
+                    {r.status === 'resolved' ? '✅ Resolved' : r.status === 'reviewed' ? '👀 Reviewed' : '⏳ Pending'}
+                  </span>
+                </div>
+                <p style={{ fontSize: 13, color: "#555" }}><strong>Reason:</strong> {r.reason}</p>
+                {r.details && <p style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{r.details}</p>}
+              </div>
+            ))}
+          </div>
+        )
+      )}
     </div>
   );
 }
