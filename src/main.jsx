@@ -8269,14 +8269,6 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }
               <div
                 style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isMe ? "#6B2C3B" : "white", color: isMe ? "white" : "#2D2D2D", border: isMe ? "none" : "1px solid #f0f0f0", position: "relative" }}
                 onClick={() => setShowReactions(showReactions === msg.id ? null : msg.id)}
-                onDoubleClick={() => {
-                  if (isMe && confirm('Delete this message?')) {
-                    supabase.from('messages').delete().eq('id', msg.id).then(({ error }) => {
-                      if (error) { alert('Error deleting message'); return; }
-                      setMessages(prev => prev.filter(m => m.id !== msg.id));
-                    });
-                  }
-                }}
               >
                 {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginBottom: 2 }}>{msg.sender_name}</p>}
                 <p style={{ fontSize: 14, lineHeight: 1.4 }}>{msg.text}</p>
@@ -8291,9 +8283,9 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }
                   )}
                 </div>
               </div>
-              {/* Reaction picker */}
+              {/* Reaction picker + delete */}
               {showReactions === msg.id && (
-                <div style={{ display: "flex", gap: 4, padding: "4px 8px", background: "white", borderRadius: 20, boxShadow: "0 2px 10px rgba(0,0,0,0.12)", marginTop: 4 }}>
+                <div style={{ display: "flex", gap: 4, padding: "4px 8px", background: "white", borderRadius: 20, boxShadow: "0 2px 10px rgba(0,0,0,0.12)", marginTop: 4, alignItems: "center" }}>
                   {REACTIONS.map(emoji => (
                     <span key={emoji} style={{ fontSize: 20, cursor: "pointer", padding: "2px 4px" }} onClick={async (e) => {
                       e.stopPropagation();
@@ -8313,6 +8305,19 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }
                       haptic('Light');
                     }}>{emoji}</span>
                   ))}
+                  {isMe && (
+                    <>
+                      <span style={{ width: 1, height: 24, background: "#eee", margin: "0 2px" }} />
+                      <span style={{ fontSize: 16, cursor: "pointer", padding: "2px 4px" }} onClick={async (e) => {
+                        e.stopPropagation();
+                        if (!confirm('Delete this message?')) return;
+                        const { error } = await supabase.from('messages').delete().eq('id', msg.id);
+                        if (error) { alert('Error deleting'); return; }
+                        setMessages(prev => prev.filter(m => m.id !== msg.id));
+                        setShowReactions(null);
+                      }}>🗑️</span>
+                    </>
+                  )}
                 </div>
               )}
               {/* Show reactions */}
