@@ -4020,7 +4020,11 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
           );
         })()}
 
-        {localStatus === 'connected' ? (
+        {blocked ? (
+          <div style={{ background: "#FFEBEE", borderRadius: 12, padding: 14, textAlign: "center" }}>
+            <p style={{ fontSize: 13, color: "#C62828", fontWeight: 600 }}>🚫 You have blocked this user</p>
+          </div>
+        ) : localStatus === 'connected' ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div
               style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, textAlign: "center", cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
