@@ -1721,8 +1721,8 @@ function MamaSquadsApp() {
               groups={groups}
               joinedGroups={joinedGroups}
               lastChatOpen={lastChatOpen.current}
-              onOpenConvo={(convo, other) => { pushNav({}); setSelectedConversation({ convo, other }); }}
-              onOpenGroupChat={(g) => { pushNav({}); setSelectedGroupChat(g); }}
+              onOpenConvo={(convo, other) => { const now = new Date().toISOString(); lastChatOpen.current = now; localStorage.setItem('lastChatOpen', now); setUnreadMsgCount(0); pushNav({}); setSelectedConversation({ convo, other }); }}
+              onOpenGroupChat={(g) => { const now = new Date().toISOString(); lastChatOpen.current = now; localStorage.setItem('lastChatOpen', now); setUnreadMsgCount(0); pushNav({}); setSelectedGroupChat(g); }}
             />
           )}
         </div>
