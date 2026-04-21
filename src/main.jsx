@@ -1559,10 +1559,10 @@ function MamaSquadsApp() {
       </div>
     );
     if (selectedConversation) return (
-      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} />
+      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} blockedIds={blockedIds} />
     );
     if (selectedGroupChat) return (
-      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} />
+      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} blockedIds={blockedIds} />
     );
     if (selectedEvent) return (
       <EventDetail event={selectedEvent} onBack={() => popNav()} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
@@ -1761,6 +1761,7 @@ function MamaSquadsApp() {
               lastChatOpen={lastChatOpen.current}
               onOpenConvo={(convo, other) => { const now = new Date().toISOString(); lastChatOpen.current = now; localStorage.setItem('lastChatOpen', now); setUnreadMsgCount(0); pushNav({}); setSelectedConversation({ convo, other }); }}
               onOpenGroupChat={(g) => { const now = new Date().toISOString(); lastChatOpen.current = now; localStorage.setItem('lastChatOpen', now); setUnreadMsgCount(0); pushNav({}); setSelectedGroupChat(g); }}
+              blockedIds={blockedIds}
             />
           )}
         </div>
@@ -8030,7 +8031,7 @@ function BlockedReportsView({ user }) {
 }
 
 // ─── Messages Inbox ───
-function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, onOpenConvo, onOpenGroupChat }) {
+function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, onOpenConvo, onOpenGroupChat, blockedIds }) {
   const [search, setSearch] = useState("");
 
   // Get other participant's info for each DM
@@ -8111,7 +8112,10 @@ function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, 
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {conversations.map(c => {
+          {conversations.filter(c => {
+            const otherId = c.participant_1 === user?.id ? c.participant_2 : c.participant_1;
+            return !(blockedIds || []).includes(otherId);
+          }).map(c => {
             const otherId = c.participant_1 === user?.id ? c.participant_2 : c.participant_1;
             const other = userNames[otherId] || {};
             const lastMsg = (c.messages || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
@@ -8145,7 +8149,7 @@ function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, 
 }
 
 // ─── Chat Screen (DM or Group) ───
-function ChatScreen({ user, conversation, otherUser, group, onBack }) {
+function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }) {
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -8181,7 +8185,9 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
       }
       const { data } = await query;
       if (data) {
-        setMessages(data);
+        // Filter out messages from blocked users in group chats
+        const filtered = isGroup ? data.filter(m => !(blockedIds || []).includes(m.sender_id)) : data;
+        setMessages(filtered);
         setLoaded(true);
         // Mark unread messages from others as read (DM only)
         if (!isGroup) {
@@ -8205,8 +8211,11 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
     messagesEndRef.current?.scrollIntoView({ behavior: loaded ? 'smooth' : 'auto' });
   }, [messages.length]);
 
+  // Check if DM recipient is blocked
+  const isDMBlocked = !isGroup && otherUser && (blockedIds || []).includes(otherUser.id);
+
   const handleSend = async () => {
-    if (!newMsg.trim() || sending) return;
+    if (!newMsg.trim() || sending || isDMBlocked) return;
     setSending(true);
     const msgData = {
       sender_id: user.id,
@@ -8314,14 +8323,16 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
         <div ref={messagesEndRef} />
       </div>
       <div style={{ position: "fixed", bottom: keyboardOffset || 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 430, background: "white", borderTop: "1px solid #f0f0f0", padding: keyboardOffset ? "10px 18px" : "10px 18px calc(10px + env(safe-area-inset-bottom, 20px))", display: "flex", gap: 8, zIndex: 60, transition: "bottom 0.15s ease" }}>
-        <input
+        {isDMBlocked ? (
+          <p style={{ flex: 1, fontSize: 13, color: "#C62828", textAlign: "center", padding: "10px 0" }}>🚫 You have blocked this user</p>
+        ) : <input
           style={{ ...styles.msgInput, flex: 1 }}
           placeholder={isGroup ? "Message the group..." : "Type a message..."}
           value={newMsg}
           onChange={e => setNewMsg(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleSend()}
-        />
-        <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>
+        />}
+        {!isDMBlocked && <button style={{ ...styles.sendBtn, opacity: sending ? 0.5 : 1 }} onClick={handleSend} disabled={sending}>{Icons.send}</button>}
       </div>
     </div>
   );
