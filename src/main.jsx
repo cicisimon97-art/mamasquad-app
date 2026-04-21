@@ -1567,10 +1567,10 @@ function MamaSquadsApp() {
       </div>
     );
     if (selectedConversation) return (
-      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} blockedIds={blockedIds} />
+      <ChatScreen user={user} conversation={selectedConversation.convo} otherUser={selectedConversation.other} onBack={() => popNav()} blockedIds={blockedIds} onViewProfile={(p) => { pushNav({}); setSelectedProfile(p); }} />
     );
     if (selectedGroupChat) return (
-      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} blockedIds={blockedIds} />
+      <ChatScreen user={user} group={selectedGroupChat} onBack={() => popNav()} blockedIds={blockedIds} onViewProfile={(p) => { pushNav({}); setSelectedProfile(p); }} />
     );
     if (selectedEvent) return (
       <EventDetail event={selectedEvent} onBack={() => popNav()} newComment={newComment} setNewComment={setNewComment} joinedEvents={joinedEvents} setJoinedEvents={setJoinedEvents} onRsvp={handleRsvp} onPostComment={handlePostComment} user={user} onDelete={handleDeleteEvent} fadeIn={fadeIn} />
@@ -8157,7 +8157,7 @@ function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, 
 }
 
 // ─── Chat Screen (DM or Group) ───
-function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }) {
+function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds, onViewProfile }) {
   const [messages, setMessages] = useState([]);
   const [newMsg, setNewMsg] = useState("");
   const [sending, setSending] = useState(false);
@@ -8250,7 +8250,9 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }
     <div style={styles.detailScreen}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", paddingTop: "max(12px, env(safe-area-inset-top, 12px))", background: "white", borderBottom: "1px solid #f0f0f0", flexShrink: 0 }}>
         <div style={{ width: 36, height: 36, borderRadius: 18, background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onBack}>{Icons.back}</div>
-        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", flex: 1 }}>{chatTitle}</h2>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#6B2C3B", flex: 1, cursor: !isGroup ? "pointer" : "default", textDecoration: !isGroup ? "none" : "none" }} onClick={() => {
+          if (!isGroup && otherUser && onViewProfile) onViewProfile(otherUser);
+        }}>{chatTitle} {!isGroup && <span style={{ fontSize: 11, color: "#999", fontWeight: 400 }}>› view profile</span>}</h2>
       </div>
       <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: 200, display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
         {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
@@ -8270,7 +8272,16 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds }
                 style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isMe ? "#6B2C3B" : "white", color: isMe ? "white" : "#2D2D2D", border: isMe ? "none" : "1px solid #f0f0f0", position: "relative" }}
                 onClick={() => setShowReactions(showReactions === msg.id ? null : msg.id)}
               >
-                {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginBottom: 2 }}>{msg.sender_name}</p>}
+                {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginBottom: 2, cursor: "pointer", textDecoration: "underline" }} onClick={async (e) => {
+                  e.stopPropagation();
+                  if (!onViewProfile || !msg.sender_id) return;
+                  const { data: p } = await supabase.from('users').select('id, full_name, area, bio, kids, interests, is_verified, role, avatar_url, quick_answers').eq('id', msg.sender_id).single();
+                  if (p) {
+                    const name = p.full_name || 'A mom';
+                    const kidAges = (p.kids || []).map(k => formatAge(k.birthday)).filter(Boolean);
+                    onViewProfile({ id: p.id, name, bio: p.bio || '', ages: kidAges.map(a => a.includes('mo') || a === 'Newborn' ? a : a + ' yrs').join(', '), interests: p.interests || [], area: p.area || '', isVerified: p.is_verified, role: p.role, avatar_url: p.avatar_url, quick_answers: p.quick_answers || {} });
+                  }
+                }}>{msg.sender_name}</p>}
                 <p style={{ fontSize: 14, lineHeight: 1.4 }}>{msg.text}</p>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
                   <p style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.5)" : "#bbb" }}>
