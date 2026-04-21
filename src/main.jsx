@@ -602,6 +602,35 @@ function MamaSquadsApp() {
     }
   }, [user]);
 
+  // ─── Event reminders — notify day before ───
+  useEffect(() => {
+    if (!user || !events || events.length === 0 || !joinedEvents || joinedEvents.length === 0) return;
+    const lastReminder = localStorage.getItem('lastReminderCheck');
+    const today = new Date().toDateString();
+    if (lastReminder === today) return; // Only check once per day
+    localStorage.setItem('lastReminderCheck', today);
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toDateString();
+
+    events.forEach(event => {
+      if (!joinedEvents.includes(event.id)) return;
+      const eventDate = parseEventToDate(event.date);
+      if (!eventDate) return;
+      if (eventDate.toDateString() === tomorrowStr) {
+        // Send a notification for tomorrow's event
+        supabase.from('notifications').insert({
+          user_id: user.id,
+          type: 'event_reminder',
+          title: 'Playdate Tomorrow!',
+          body: `"${event.title}" is tomorrow${event.time ? ' at ' + event.time : ''}${event.location ? ' — ' + event.location.split(',')[0] : ''}`,
+          is_read: false,
+        });
+      }
+    });
+  }, [user, events, joinedEvents]);
+
   // ─── Forgot password handler ───
   const siteUrl = import.meta.env.VITE_SITE_URL || window.location.origin;
   const handleForgotPassword = async (email) => {
@@ -7830,7 +7859,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 22 }}>
-                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : '🔔'}
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : '🔔'}
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -7985,6 +8014,8 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
   const [loaded, setLoaded] = useState(false);
   const messagesEndRef = useRef(null);
   const [keyboardOffset, setKeyboardOffset] = useState(0);
+  const [showReactions, setShowReactions] = useState(null);
+  const REACTIONS = ['❤️', '😂', '👍', '🥰', '😮', '😢'];
 
   const isGroup = !!group;
   const chatTitle = isGroup ? (group.emoji + ' ' + group.name) : (otherUser?.full_name || 'Chat');
@@ -8001,7 +8032,7 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
     return () => vv.removeEventListener('resize', onResize);
   }, []);
 
-  // Load messages
+  // Load messages + mark as read
   useEffect(() => {
     const loadMsgs = async () => {
       let query = supabase.from('messages').select('*').order('created_at', { ascending: true }).limit(100);
@@ -8011,7 +8042,20 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
         query = query.eq('conversation_id', conversation.id);
       }
       const { data } = await query;
-      if (data) { setMessages(data); setLoaded(true); }
+      if (data) {
+        setMessages(data);
+        setLoaded(true);
+        // Mark unread messages from others as read (DM only)
+        if (!isGroup) {
+          const unread = data.filter(m => m.sender_id !== user?.id && !m.is_read);
+          if (unread.length > 0) {
+            await supabase.from('messages').update({ is_read: true })
+              .eq('conversation_id', conversation.id)
+              .neq('sender_id', user.id)
+              .eq('is_read', false);
+          }
+        }
+      }
     };
     loadMsgs();
     const poll = setInterval(loadMsgs, 3000);
@@ -8063,11 +8107,14 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
         )}
         {messages.map(msg => {
           const isMe = msg.sender_id === user?.id;
+          const reactions = msg.reactions || {};
+          const reactionEntries = Object.entries(reactions);
           return (
-            <div key={msg.id} style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginBottom: 2 }}>
+            <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isMe ? "flex-end" : "flex-start", marginBottom: 4 }}>
               <div
                 style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isMe ? "#6B2C3B" : "white", color: isMe ? "white" : "#2D2D2D", border: isMe ? "none" : "1px solid #f0f0f0", position: "relative" }}
-                onClick={() => {
+                onClick={() => setShowReactions(showReactions === msg.id ? null : msg.id)}
+                onDoubleClick={() => {
                   if (isMe && confirm('Delete this message?')) {
                     supabase.from('messages').delete().eq('id', msg.id).then(({ error }) => {
                       if (error) { alert('Error deleting message'); return; }
@@ -8078,10 +8125,51 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
               >
                 {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginBottom: 2 }}>{msg.sender_name}</p>}
                 <p style={{ fontSize: 14, lineHeight: 1.4 }}>{msg.text}</p>
-                <p style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.5)" : "#bbb", marginTop: 4, textAlign: "right" }}>
-                  {new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 4 }}>
+                  <p style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.5)" : "#bbb" }}>
+                    {new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                  </p>
+                  {isMe && !isGroup && (
+                    <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", marginLeft: 6 }}>
+                      {msg.is_read ? '✓✓ Read' : '✓ Sent'}
+                    </span>
+                  )}
+                </div>
               </div>
+              {/* Reaction picker */}
+              {showReactions === msg.id && (
+                <div style={{ display: "flex", gap: 4, padding: "4px 8px", background: "white", borderRadius: 20, boxShadow: "0 2px 10px rgba(0,0,0,0.12)", marginTop: 4 }}>
+                  {REACTIONS.map(emoji => (
+                    <span key={emoji} style={{ fontSize: 20, cursor: "pointer", padding: "2px 4px" }} onClick={async (e) => {
+                      e.stopPropagation();
+                      const updated = { ...(msg.reactions || {}) };
+                      const key = emoji;
+                      if (!updated[key]) updated[key] = [];
+                      const userName = user?.full_name || 'You';
+                      if (updated[key].includes(userName)) {
+                        updated[key] = updated[key].filter(n => n !== userName);
+                        if (updated[key].length === 0) delete updated[key];
+                      } else {
+                        updated[key].push(userName);
+                      }
+                      await supabase.from('messages').update({ reactions: updated }).eq('id', msg.id);
+                      setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, reactions: updated } : m));
+                      setShowReactions(null);
+                      haptic('Light');
+                    }}>{emoji}</span>
+                  ))}
+                </div>
+              )}
+              {/* Show reactions */}
+              {reactionEntries.length > 0 && (
+                <div style={{ display: "flex", gap: 4, marginTop: 2, flexWrap: "wrap" }}>
+                  {reactionEntries.map(([emoji, users]) => (
+                    <span key={emoji} style={{ fontSize: 12, background: "#f0f0f0", borderRadius: 10, padding: "2px 6px", cursor: "default" }} title={(users || []).join(', ')}>
+                      {emoji} {(users || []).length}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
