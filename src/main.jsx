@@ -1720,6 +1720,7 @@ function MamaSquadsApp() {
               conversations={conversations}
               groups={groups}
               joinedGroups={joinedGroups}
+              lastChatOpen={lastChatOpen.current}
               onOpenConvo={(convo, other) => { pushNav({}); setSelectedConversation({ convo, other }); }}
               onOpenGroupChat={(g) => { pushNav({}); setSelectedGroupChat(g); }}
             />
@@ -7791,7 +7792,7 @@ function PageFooter() {
 }
 
 // ─── Messages Inbox ───
-function MessagesTab({ user, conversations, groups, joinedGroups, onOpenConvo, onOpenGroupChat }) {
+function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, onOpenConvo, onOpenGroupChat }) {
   const [search, setSearch] = useState("");
 
   // Get other participant's info for each DM
@@ -7852,19 +7853,23 @@ function MessagesTab({ user, conversations, groups, joinedGroups, onOpenConvo, o
             const other = userNames[otherId] || {};
             const lastMsg = (c.messages || []).sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
             const name = other.full_name || 'A mom';
+            const hasUnread = (c.messages || []).some(m => m.sender_id !== user?.id && m.created_at > lastChatOpen);
             if (search && !name.toLowerCase().includes(search.toLowerCase())) return null;
             return (
-              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "white", borderRadius: 12, cursor: "pointer", border: "1px solid #f0f0f0" }} onClick={() => onOpenConvo(c, other)}>
-                {other.avatar_url ? (
-                  <img src={other.avatar_url} alt="" style={{ width: 44, height: 44, borderRadius: 22, objectFit: "cover" }} />
-                ) : (
-                  <div style={{ width: 44, height: 44, borderRadius: 22, background: "#6B2C3B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 14, fontWeight: 700 }}>
-                    {name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
-                  </div>
-                )}
+              <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: hasUnread ? "#FFF8F9" : "white", borderRadius: 12, cursor: "pointer", border: hasUnread ? "1.5px solid #6B2C3B" : "1px solid #f0f0f0" }} onClick={() => onOpenConvo(c, other)}>
+                <div style={{ position: "relative" }}>
+                  {other.avatar_url ? (
+                    <img src={other.avatar_url} alt="" style={{ width: 44, height: 44, borderRadius: 22, objectFit: "cover" }} />
+                  ) : (
+                    <div style={{ width: 44, height: 44, borderRadius: 22, background: "#6B2C3B", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontSize: 14, fontWeight: 700 }}>
+                      {name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()}
+                    </div>
+                  )}
+                  {hasUnread && <div style={{ position: "absolute", top: 0, right: 0, width: 12, height: 12, borderRadius: 6, background: "#6B2C3B", border: "2px solid white" }} />}
+                </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{name}</strong>
-                  {lastMsg && <p style={{ fontSize: 12, color: "#888", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lastMsg.sender_id === user?.id ? 'You: ' : ''}{lastMsg.text}</p>}
+                  <strong style={{ fontSize: 14, color: "#2D2D2D", fontWeight: hasUnread ? 800 : 600 }}>{name}</strong>
+                  {lastMsg && <p style={{ fontSize: 12, color: hasUnread ? "#2D2D2D" : "#888", fontWeight: hasUnread ? 600 : 400, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{lastMsg.sender_id === user?.id ? 'You: ' : ''}{lastMsg.text}</p>}
                 </div>
                 {lastMsg && <span style={{ fontSize: 10, color: "#bbb", flexShrink: 0 }}>{new Date(lastMsg.created_at).toLocaleDateString()}</span>}
               </div>
