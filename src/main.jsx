@@ -436,6 +436,14 @@ function MamaSquadsApp() {
   const lastChatOpen = useRef(localStorage.getItem('lastChatOpen') || '2020-01-01T00:00:00.000Z');
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [selectedGroupChat, setSelectedGroupChat] = useState(null);
+  const [blockedIds, setBlockedIds] = useState([]);
+
+  // Load blocked users
+  useEffect(() => {
+    if (!user) return;
+    supabase.from('blocked_users').select('blocked_id').eq('blocker_id', user.id)
+      .then(({ data }) => { if (data) setBlockedIds(data.map(b => b.blocked_id)); });
+  }, [user]);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_v2'));
   const [tutorialStep, setTutorialStep] = useState(0);
 
@@ -1637,6 +1645,7 @@ function MamaSquadsApp() {
               onUploadPhoto={uploadProfilePhoto}
               onProfileSelect={(p) => { pushNav({}); navigate("profile", p); }}
               onAdminApply={() => { pushNav({}); setShowAdminApply(true); }}
+              blockedIds={blockedIds}
             />
           )}
           {tab === "groups" && (
@@ -3656,7 +3665,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 }
 
 // ─── Discover Tab ───
-function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply }) {
+function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply, blockedIds }) {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
   const [zipSearch, setZipSearch] = useState("");
@@ -3771,6 +3780,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
   });
 
   const filtered = allMoms.filter(m => {
+    if ((blockedIds || []).includes(m.id)) return false;
     const matchesSearch = !search || m.name.toLowerCase().includes(search.toLowerCase()) ||
       (m.interests || []).some(i => i.toLowerCase().includes(search.toLowerCase())) ||
       m.area.toLowerCase().includes(search.toLowerCase());
@@ -3894,6 +3904,18 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
   const [showConnectedPopup, setShowConnectedPopup] = useState(false);
   const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
   const [manualOverride, setManualOverride] = useState(false);
+  const [showReportMenu, setShowReportMenu] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reportDetails, setReportDetails] = useState("");
+  const [reporting, setReporting] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+
+  // Check if already blocked
+  useEffect(() => {
+    if (!user || !profile) return;
+    supabase.from('blocked_users').select('id').eq('blocker_id', user.id).eq('blocked_id', profile.id).limit(1)
+      .then(({ data }) => { if (data && data.length > 0) setBlocked(true); });
+  }, [user, profile]);
 
   // Sync localStatus when connectionStatus changes, unless user manually changed it
   useEffect(() => {
@@ -4070,6 +4092,55 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
               <button style={{ ...styles.secondaryBtn, width: "100%" }} onClick={() => setShowDisconnectConfirm(false)}>
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Report & Block */}
+        {user?.id !== profile.id && (
+          <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+            <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "none", border: "1px solid #ddd", color: "#888", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={() => setShowReportMenu(true)}>
+              ⚠️ Report
+            </button>
+            <button style={{ flex: 1, padding: "10px 0", borderRadius: 50, background: "none", border: "1px solid #ddd", color: blocked ? "#C62828" : "#888", fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }} onClick={async () => {
+              if (blocked) {
+                await supabase.from('blocked_users').delete().eq('blocker_id', user.id).eq('blocked_id', profile.id);
+                setBlocked(false);
+              } else {
+                if (!confirm(`Block ${profile.name}? You won't see their profile, messages, or activity.`)) return;
+                await supabase.from('blocked_users').insert({ blocker_id: user.id, blocked_id: profile.id });
+                setBlocked(true);
+              }
+            }}>
+              {blocked ? '🚫 Unblock' : '🚫 Block'}
+            </button>
+          </div>
+        )}
+
+        {/* Report modal */}
+        {showReportMenu && (
+          <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999 }} onClick={() => setShowReportMenu(false)}>
+            <div style={{ background: "white", borderRadius: 20, padding: 24, maxWidth: 340, width: "90%" }} onClick={e => e.stopPropagation()}>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: "#2D2D2D", marginBottom: 12 }}>Report {profile.name}</h3>
+              <p style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>Why are you reporting this person?</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                {["Inappropriate behavior", "Spam or fake profile", "Harassment or bullying", "Safety concern", "Other"].map(r => (
+                  <button key={r} style={{ padding: "10px 14px", borderRadius: 10, fontSize: 13, textAlign: "left", cursor: "pointer", border: reportReason === r ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: reportReason === r ? "#FAF0F2" : "white", color: reportReason === r ? "#6B2C3B" : "#555", fontWeight: reportReason === r ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setReportReason(r)}>{r}</button>
+                ))}
+              </div>
+              <textarea style={{ width: "100%", padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 13, fontFamily: "'DM Sans', sans-serif", minHeight: 60, resize: "vertical", marginBottom: 12 }} placeholder="Add details (optional)..." value={reportDetails} onChange={e => setReportDetails(e.target.value)} />
+              <button style={{ ...styles.primaryBtn, width: "100%", background: "#C62828", opacity: !reportReason || reporting ? 0.5 : 1 }} disabled={!reportReason || reporting} onClick={async () => {
+                setReporting(true);
+                await supabase.from('reports').insert({ reporter_id: user.id, reported_id: profile.id, reason: reportReason, details: reportDetails.trim() });
+                setReporting(false);
+                setShowReportMenu(false);
+                setReportReason("");
+                setReportDetails("");
+                alert('Report submitted. Our team will review it within 24 hours.');
+              }}>
+                {reporting ? "Submitting..." : "Submit Report"}
+              </button>
+              <button style={{ ...styles.secondaryBtn, width: "100%", marginTop: 8 }} onClick={() => setShowReportMenu(false)}>Cancel</button>
             </div>
           </div>
         )}
