@@ -7994,8 +7994,18 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
           const isMe = msg.sender_id === user?.id;
           return (
             <div key={msg.id} style={{ display: "flex", justifyContent: isMe ? "flex-end" : "flex-start", marginBottom: 2 }}>
-              <div style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isMe ? "#6B2C3B" : "white", color: isMe ? "white" : "#2D2D2D", border: isMe ? "none" : "1px solid #f0f0f0" }}>
-                {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: isMe ? "rgba(255,255,255,0.7)" : "#6B2C3B", marginBottom: 2 }}>{msg.sender_name}</p>}
+              <div
+                style={{ maxWidth: "75%", padding: "10px 14px", borderRadius: isMe ? "16px 16px 4px 16px" : "16px 16px 16px 4px", background: isMe ? "#6B2C3B" : "white", color: isMe ? "white" : "#2D2D2D", border: isMe ? "none" : "1px solid #f0f0f0", position: "relative" }}
+                onClick={() => {
+                  if (isMe && confirm('Delete this message?')) {
+                    supabase.from('messages').delete().eq('id', msg.id).then(({ error }) => {
+                      if (error) { alert('Error deleting message'); return; }
+                      setMessages(prev => prev.filter(m => m.id !== msg.id));
+                    });
+                  }
+                }}
+              >
+                {isGroup && !isMe && <p style={{ fontSize: 11, fontWeight: 600, color: "#6B2C3B", marginBottom: 2 }}>{msg.sender_name}</p>}
                 <p style={{ fontSize: 14, lineHeight: 1.4 }}>{msg.text}</p>
                 <p style={{ fontSize: 10, color: isMe ? "rgba(255,255,255,0.5)" : "#bbb", marginTop: 4, textAlign: "right" }}>
                   {new Date(msg.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
