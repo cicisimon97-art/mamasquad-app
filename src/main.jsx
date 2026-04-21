@@ -7917,10 +7917,9 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
 
   return (
     <div style={styles.detailScreen}>
-      <div style={styles.detailHeader}>
-        <button style={styles.backBtn} onClick={onBack}>{Icons.back}</button>
-        <h2 style={styles.detailTitle}>{chatTitle}</h2>
-        <div style={{ width: 40 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", paddingTop: "max(12px, env(safe-area-inset-top, 12px))", background: "white", borderBottom: "1px solid #f0f0f0", flexShrink: 0 }}>
+        <div style={{ width: 36, height: 36, borderRadius: 18, background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onBack}>{Icons.back}</div>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", flex: 1 }}>{chatTitle}</h2>
       </div>
       <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 34px))", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
         {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
