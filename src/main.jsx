@@ -369,7 +369,16 @@ function MamaSquadsApp() {
   const [showResetPassword, setShowResetPassword] = useState(false);
   const [tab, setTabRaw] = useState("home");
   const mainContentRef = useRef(null);
-  const setTab = (t) => { setTabRaw(t); if (mainContentRef.current) mainContentRef.current.scrollTop = 0; };
+  const setTab = (t) => {
+    setTabRaw(t);
+    if (mainContentRef.current) mainContentRef.current.scrollTop = 0;
+    if (t === 'messages') {
+      const now = new Date().toISOString();
+      lastChatOpen.current = now;
+      localStorage.setItem('lastChatOpen', now);
+      setUnreadMsgCount(0);
+    }
+  };
   const [pullRefreshing, setPullRefreshing] = useState(false);
   const pullStartY = useRef(0);
   const pullDist = useRef(0);
@@ -424,6 +433,7 @@ function MamaSquadsApp() {
   const [fadeIn, setFadeIn] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const lastChatOpen = useRef(localStorage.getItem('lastChatOpen') || new Date().toISOString());
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [selectedGroupChat, setSelectedGroupChat] = useState(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_v2'));
@@ -533,7 +543,7 @@ function MamaSquadsApp() {
   // ─── Init push notifications on native ───
   useEffect(() => { setupPushNotifications(); }, []);
 
-  // ─── Load conversations ───
+  // ─── Load conversations + count unread ───
   useEffect(() => {
     if (!user) return;
     const loadConvos = async () => {
@@ -541,12 +551,33 @@ function MamaSquadsApp() {
         .select('*, messages(id, text, sender_id, sender_name, created_at)')
         .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
         .order('last_message_at', { ascending: false });
-      if (data) setConversations(data);
+      if (data) {
+        setConversations(data);
+        // Count unread DMs
+        const lastOpen = lastChatOpen.current;
+        let unread = 0;
+        data.forEach(c => {
+          (c.messages || []).forEach(m => {
+            if (m.sender_id !== user.id && m.created_at > lastOpen) unread++;
+          });
+        });
+        // Also count unread group messages
+        const groupIds = (joinedGroups || []);
+        if (groupIds.length > 0) {
+          const { data: groupMsgs } = await supabase.from('messages')
+            .select('id, sender_id, created_at')
+            .in('group_id', groupIds)
+            .neq('sender_id', user.id)
+            .gt('created_at', lastOpen);
+          if (groupMsgs) unread += groupMsgs.length;
+        }
+        setUnreadMsgCount(unread);
+      }
     };
     loadConvos();
     const poll = setInterval(loadConvos, 5000);
     return () => clearInterval(poll);
-  }, [user]);
+  }, [user, joinedGroups]);
 
   // ─── Check for Stripe return (payment success) ───
   useEffect(() => {
