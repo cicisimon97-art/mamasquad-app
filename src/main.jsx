@@ -7811,6 +7811,25 @@ function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, 
   }, [conversations, user]);
 
   const myGroups = (groups || []).filter(g => (joinedGroups || []).includes(g.id));
+  const [groupUnreads, setGroupUnreads] = useState({});
+
+  useEffect(() => {
+    if (myGroups.length === 0 || !user) return;
+    const loadGroupUnreads = async () => {
+      const unreads = {};
+      for (const g of myGroups) {
+        const { data } = await supabase.from('messages')
+          .select('id')
+          .eq('group_id', g.id)
+          .neq('sender_id', user.id)
+          .gt('created_at', lastChatOpen)
+          .limit(1);
+        if (data && data.length > 0) unreads[g.id] = true;
+      }
+      setGroupUnreads(unreads);
+    };
+    loadGroupUnreads();
+  }, [myGroups.length, lastChatOpen, user]);
 
   return (
     <div style={styles.tabContent}>
@@ -7825,16 +7844,22 @@ function MessagesTab({ user, conversations, groups, joinedGroups, lastChatOpen, 
         <div style={{ marginBottom: 16 }}>
           <p style={{ fontSize: 12, fontWeight: 600, color: "#888", marginBottom: 8 }}>GROUP CHATS</p>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {myGroups.filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase())).map(g => (
-              <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: "white", borderRadius: 12, cursor: "pointer", border: "1px solid #f0f0f0" }} onClick={() => onOpenGroupChat(g)}>
-                <span style={{ fontSize: 28 }}>{g.emoji || '👥'}</span>
-                <div style={{ flex: 1 }}>
-                  <strong style={{ fontSize: 14, color: "#2D2D2D" }}>{g.name}</strong>
-                  <p style={{ fontSize: 12, color: "#888" }}>{g.members} members</p>
+            {myGroups.filter(g => !search || g.name.toLowerCase().includes(search.toLowerCase())).map(g => {
+              const hasUnread = groupUnreads[g.id];
+              return (
+                <div key={g.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", background: hasUnread ? "#FFF8F9" : "white", borderRadius: 12, cursor: "pointer", border: hasUnread ? "1.5px solid #6B2C3B" : "1px solid #f0f0f0" }} onClick={() => onOpenGroupChat(g)}>
+                  <div style={{ position: "relative" }}>
+                    <span style={{ fontSize: 28 }}>{g.emoji || '👥'}</span>
+                    {hasUnread && <div style={{ position: "absolute", top: -2, right: -2, width: 12, height: 12, borderRadius: 6, background: "#6B2C3B", border: "2px solid white" }} />}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 14, color: "#2D2D2D", fontWeight: hasUnread ? 800 : 600 }}>{g.name}</strong>
+                    <p style={{ fontSize: 12, color: "#888" }}>{g.members} members</p>
+                  </div>
+                  <span style={{ color: "#ccc" }}>›</span>
                 </div>
-                <span style={{ color: "#ccc" }}>›</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
