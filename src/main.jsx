@@ -433,7 +433,7 @@ function MamaSquadsApp() {
   const [fadeIn, setFadeIn] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
-  const lastChatOpen = useRef(localStorage.getItem('lastChatOpen') || new Date().toISOString());
+  const lastChatOpen = useRef(localStorage.getItem('lastChatOpen') || '2020-01-01T00:00:00.000Z');
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [selectedGroupChat, setSelectedGroupChat] = useState(null);
   const [showTutorial, setShowTutorial] = useState(() => !localStorage.getItem('mamasquads_tutorial_v2'));
@@ -7957,7 +7957,7 @@ function ChatScreen({ user, conversation, otherUser, group, onBack }) {
         <div style={{ width: 36, height: 36, borderRadius: 18, background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onBack}>{Icons.back}</div>
         <h2 style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D", flex: 1 }}>{chatTitle}</h2>
       </div>
-      <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: "calc(80px + env(safe-area-inset-bottom, 34px))", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
+      <div style={{ flex: 1, overflow: "auto", overflowY: "scroll", padding: "12px 18px", paddingBottom: "calc(120px + env(safe-area-inset-bottom, 50px))", display: "flex", flexDirection: "column", gap: 6, WebkitOverflowScrolling: "touch" }}>
         {!loaded && <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>}
         {loaded && messages.length === 0 && (
           <div style={{ textAlign: "center", padding: 40 }}>
