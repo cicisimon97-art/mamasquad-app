@@ -3869,13 +3869,8 @@ function ProfileDetail({ profile, onBack, onConnect, onAccept, onDisconnect, onU
   }, [connectionStatus]);
   return (
     <div style={styles.detailScreen}>
-      <div style={styles.detailHeader}>
-        <button style={styles.backBtn} onClick={onBack}>{Icons.back}</button>
-        <h2 style={styles.detailTitle}>Profile</h2>
-        <div style={{ width: 40 }} />
-      </div>
       <div style={styles.detailBody}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, paddingTop: "env(safe-area-inset-top, 12px)" }}>
           <div style={{ width: 36, height: 36, borderRadius: 18, background: "#f0f0f0", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }} onClick={onBack}>{Icons.back}</div>
           <span style={{ fontSize: 16, fontWeight: 700, color: "#2D2D2D" }}>Profile</span>
         </div>
