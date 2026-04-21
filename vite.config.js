@@ -5,13 +5,5 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     extensions: ['.js', '.jsx', '.json']
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        entryFileNames: `assets/[name]-${Date.now()}.js`,
-        chunkFileNames: `assets/[name]-${Date.now()}.js`,
-      }
-    }
   }
 })
