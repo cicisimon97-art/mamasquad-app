@@ -4347,6 +4347,18 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
   const avatar = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
   const isVerified = user?.is_verified;
   const isFoundingMember = user?.is_founding_member || isBetaMember;
+  const [unreadFeedback, setUnreadFeedback] = useState(0);
+  const [unreadReports, setUnreadReports] = useState(0);
+
+  useEffect(() => {
+    if (!isAppFounder || !user) return;
+    supabase.from('notifications').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('type', 'feedback').eq('is_read', false)
+      .then(({ count }) => setUnreadFeedback(count || 0));
+    supabase.from('notifications').select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id).eq('type', 'user_report').eq('is_read', false)
+      .then(({ count }) => setUnreadReports(count || 0));
+  }, [isAppFounder, user, notifications]);
 
   const handleSave = async () => {
     if (!user) return;
@@ -4651,7 +4663,8 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "Blocked & Reports", icon: "🚫", action: () => setMenuView("blocked") },
           ...(isAppFounder ? [
             { label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") },
-            { label: "Feedback Received", icon: "📋", action: () => setMenuView("feedback-received") },
+            { label: `Feedback Received${unreadFeedback > 0 ? ` (${unreadFeedback})` : ''}`, icon: "📋", action: () => setMenuView("feedback-received") },
+            { label: `Reports${unreadReports > 0 ? ` (${unreadReports})` : ''}`, icon: "🚨", action: () => setMenuView("blocked") },
           ] : [
             { label: "Send Feedback", icon: "💬", action: () => setMenuView("feedback") },
           ]),
