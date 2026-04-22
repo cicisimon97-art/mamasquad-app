@@ -1447,7 +1447,7 @@ function MamaSquadsApp() {
   const loadMeetupProposals = async (groupId) => {
     const { data } = await supabase
       .from('meetup_proposals')
-      .select('*, votes(id, user_id, vote_type, option_index, users!user_id(full_name)), users!created_by(full_name)')
+      .select('*, votes(id, user_id, vote_type, option_index), users!created_by(full_name)')
       .eq('group_id', groupId)
       .order('created_at', { ascending: false });
     return data || [];
