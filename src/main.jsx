@@ -1740,6 +1740,12 @@ function MamaSquadsApp() {
 
               pushNav({});
 
+              // New poll → go to the group
+              if (notif.type === 'new_poll' && notif.group_id) {
+                const group = (groups || []).find(g => g.id === notif.group_id);
+                if (group) { setSelectedGroup(group); return; }
+              }
+
               // Join request → go to the group
               if (notif.type === 'join_request' && notif.group_id) {
                 const group = (groups || []).find(g => g.id === notif.group_id);
@@ -7048,8 +7054,6 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
         {isMember && (() => {
           const groupEvents = (events || []).filter(e => e.groupId === group.id);
           const activePolls = (meetups || []).filter(p => p.status === 'voting');
-          const hasContent = groupEvents.length > 0 || activePolls.length > 0 || groupPhotos.length > 0;
-          if (!hasContent) return null;
 
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
