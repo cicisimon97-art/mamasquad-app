@@ -4904,6 +4904,23 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
               })}
             </div>
 
+            {/* Read Receipts Toggle */}
+            <div style={{ background: "white", borderRadius: 16, padding: 18, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0", marginBottom: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: "#2D2D2D" }}>Read Receipts</h4>
+                  <p style={{ fontSize: 12, color: "#888", marginTop: 4 }}>{user?.read_receipts_on !== false ? "Others can see when you've read their messages" : "Others won't know when you've read their messages"}</p>
+                </div>
+                <div style={{ width: 44, height: 24, borderRadius: 12, cursor: "pointer", position: "relative", background: user?.read_receipts_on !== false ? "#4CAF50" : "#E8E8E8", transition: "background 0.2s ease" }} onClick={async () => {
+                  const newVal = user?.read_receipts_on === false ? true : false;
+                  await supabase.from('users').update({ read_receipts_on: newVal }).eq('id', user.id);
+                  setUser(prev => ({ ...prev, read_receipts_on: newVal }));
+                }}>
+                  <div style={{ width: 20, height: 20, borderRadius: 10, background: "white", position: "absolute", top: 2, transition: "transform 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.2)", transform: user?.read_receipts_on !== false ? "translateX(20px)" : "translateX(2px)" }} />
+                </div>
+              </div>
+            </div>
+
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {[
                 { icon: "🔒", title: "Verified Community", desc: "Every member is identity-verified to keep our community safe for moms and kids." },
@@ -8367,8 +8384,8 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds, 
         const filtered = isGroup ? data.filter(m => !(blockedIds || []).includes(m.sender_id)) : data;
         setMessages(filtered);
         setLoaded(true);
-        // Mark unread messages from others as read (DM only)
-        if (!isGroup) {
+        // Mark unread messages from others as read (DM only, if read receipts enabled)
+        if (!isGroup && user?.read_receipts_on !== false) {
           const unread = data.filter(m => m.sender_id !== user?.id && !m.is_read);
           if (unread.length > 0) {
             await supabase.from('messages').update({ is_read: true })
