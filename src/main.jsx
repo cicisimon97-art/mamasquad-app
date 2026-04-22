@@ -3732,6 +3732,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
   const [areaFilter, setAreaFilter] = useState("all");
   const [zipSearch, setZipSearch] = useState("");
   const [distanceFilter, setDistanceFilter] = useState(15);
+  const [ageFilter, setAgeFilter] = useState("all");
   const [realMoms, setRealMoms] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -3799,6 +3800,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
               isVerified: m.is_verified,
               avatar_url: m.avatar_url,
               quick_answers: m.quick_answers || {},
+              kids: m.kids || [],
               fromSupabase: true,
             };
           });
@@ -3850,7 +3852,15 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
     if (areaFilter === "nearby") {
       const dist = momDistances[m.id];
       if (dist === undefined) return false;
-      return dist <= distanceFilter;
+      if (dist > distanceFilter) return false;
+    }
+    // Kids age filter
+    if (ageFilter !== "all") {
+      const kidAgeNums = (m.kids || []).map(k => calcAge(k.birthday)).filter(a => a !== null);
+      if (kidAgeNums.length === 0) return false;
+      const ranges = { baby: [0, 1], toddler: [1, 3], preschool: [3, 5], school: [5, 8], older: [8, 99] };
+      const [min, max] = ranges[ageFilter] || [0, 99];
+      if (!kidAgeNums.some(a => a >= min && a < max)) return false;
     }
     return true;
   });
@@ -3895,6 +3905,24 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
           </div>
         </div>
       )}
+
+      {/* Kids age filter */}
+      <div style={styles.filterRow}>
+        {[
+          { id: "all", label: "All Ages" },
+          { id: "baby", label: "👶 0-1" },
+          { id: "toddler", label: "🧒 1-3" },
+          { id: "preschool", label: "👧 3-5" },
+          { id: "school", label: "🎒 5-8" },
+          { id: "older", label: "📚 8+" },
+        ].map(f => (
+          <button
+            key={f.id}
+            style={{ ...styles.dayChip, ...(ageFilter === f.id ? styles.dayChipActive : {}) }}
+            onClick={() => setAgeFilter(f.id)}
+          >{f.label}</button>
+        ))}
+      </div>
 
       {!loaded ? (
         <div style={{ textAlign: "center", padding: 40 }}>
