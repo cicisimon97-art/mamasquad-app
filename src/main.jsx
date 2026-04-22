@@ -3732,7 +3732,7 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
   const [areaFilter, setAreaFilter] = useState("all");
   const [zipSearch, setZipSearch] = useState("");
   const [distanceFilter, setDistanceFilter] = useState(15);
-  const [ageFilter, setAgeFilter] = useState("all");
+  const [ageFilters, setAgeFilters] = useState([]);
   const [realMoms, setRealMoms] = useState([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -3854,13 +3854,16 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
       if (dist === undefined) return false;
       if (dist > distanceFilter) return false;
     }
-    // Kids age filter
-    if (ageFilter !== "all") {
+    // Kids age filter (multi-select)
+    if (ageFilters.length > 0) {
       const kidAgeNums = (m.kids || []).map(k => calcAge(k.birthday)).filter(a => a !== null);
       if (kidAgeNums.length === 0) return false;
       const ranges = { baby: [0, 1], toddler: [1, 3], preschool: [3, 5], school: [5, 8], older: [8, 99] };
-      const [min, max] = ranges[ageFilter] || [0, 99];
-      if (!kidAgeNums.some(a => a >= min && a < max)) return false;
+      const matchesAny = ageFilters.some(f => {
+        const [min, max] = ranges[f] || [0, 99];
+        return kidAgeNums.some(a => a >= min && a < max);
+      });
+      if (!matchesAny) return false;
     }
     return true;
   });
@@ -3906,10 +3909,13 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
         </div>
       )}
 
-      {/* Kids age filter */}
+      {/* Kids age filter — multi-select */}
       <div style={styles.filterRow}>
+        <button
+          style={{ ...styles.dayChip, ...(ageFilters.length === 0 ? styles.dayChipActive : {}) }}
+          onClick={() => setAgeFilters([])}
+        >All Ages</button>
         {[
-          { id: "all", label: "All Ages" },
           { id: "baby", label: "👶 0-1" },
           { id: "toddler", label: "🧒 1-3" },
           { id: "preschool", label: "👧 3-5" },
@@ -3918,8 +3924,8 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
         ].map(f => (
           <button
             key={f.id}
-            style={{ ...styles.dayChip, ...(ageFilter === f.id ? styles.dayChipActive : {}) }}
-            onClick={() => setAgeFilter(f.id)}
+            style={{ ...styles.dayChip, ...(ageFilters.includes(f.id) ? styles.dayChipActive : {}) }}
+            onClick={() => setAgeFilters(prev => prev.includes(f.id) ? prev.filter(x => x !== f.id) : [...prev, f.id])}
           >{f.label}</button>
         ))}
       </div>
