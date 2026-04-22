@@ -39,19 +39,19 @@ const setupPushNotifications = async () => {
       await PushNotifications.register();
     }
     PushNotifications.addListener('registration', token => {
-      console.log('Push token:', token.value);
+      // Push token received
     });
     PushNotifications.addListener('registrationError', err => {
       console.error('Push registration error:', err);
     });
     PushNotifications.addListener('pushNotificationReceived', notification => {
-      console.log('Push received:', notification);
+      // Push received
     });
     PushNotifications.addListener('pushNotificationActionPerformed', notification => {
-      console.log('Push action:', notification);
+      // Push action
     });
   } catch (e) {
-    console.log('Push notifications not available:', e);
+    // Push not available
   }
 };
 
@@ -1418,7 +1418,6 @@ function MamaSquadsApp() {
   // ─── Propose meetup handler ───
   const handleProposeMeetup = async (groupId, proposal) => {
     if (!user) return { error: 'Not logged in' };
-    console.log('Creating proposal:', { groupId, userId: user.id, title: proposal.title });
     const { data, error } = await supabase.from('meetup_proposals').insert({
       group_id: groupId,
       created_by: user.id,
@@ -1434,7 +1433,6 @@ function MamaSquadsApp() {
       alert('Error creating poll: ' + error.message);
       return { error: error.message };
     }
-    console.log('Proposal created:', data);
 
     // Notify group members about new poll
     const groupName = (groups || []).find(g => g.id === groupId)?.name || 'your group';
@@ -1653,6 +1651,21 @@ function MamaSquadsApp() {
     return (
       <div style={styles.app}>
         {/* Profile avatar button — top right, Home tab only */}
+        {/* Floating create button */}
+        {tab === "home" && (
+          <button
+            onClick={() => setTab("create")}
+            style={{
+              position: "fixed", bottom: "calc(90px + env(safe-area-inset-bottom, 20px))", right: "calc(50% - 190px)",
+              zIndex: 110, background: "#6B2C3B", border: "none", borderRadius: "50%",
+              width: 52, height: 52, padding: 0, cursor: "pointer",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              boxShadow: "0 4px 16px rgba(107,44,59,0.4)",
+            }}
+          >
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="white" strokeWidth="2.5"><path d="M12 5v14M5 12h14"/></svg>
+          </button>
+        )}
         {tab === "home" && (
           <button
             onClick={() => { pushNav({}); setShowMyProfile(true); }}
