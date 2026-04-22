@@ -3172,7 +3172,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
       <div style={styles.homeHeader}>
         <div>
           <p style={styles.greeting}>Good morning! ☀️</p>
-          <h1 style={styles.pageTitle}>This Week's Playdates</h1>
+          <h1 style={styles.pageTitle}>Upcoming Playdates</h1>
         </div>
       </div>
 
@@ -3205,7 +3205,7 @@ function HomeTab({ events, groups, joinedGroups, selectedDay, setSelectedDay, se
         {(() => {
           const today = new Date();
           const days = [];
-          for (let i = 1; i <= 13; i++) {
+          for (let i = 1; i <= 30; i++) {
             const d = new Date(today);
             d.setDate(today.getDate() + i);
             const label = SHORT_DAYS[d.getDay()] + ' ' + (d.getMonth() + 1) + '/' + d.getDate();
@@ -5488,6 +5488,8 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
                 <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: pollDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: pollDay === d ? "#FAF0F2" : "white", color: pollDay === d ? "#6B2C3B" : "#666", fontWeight: pollDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setPollDay(d)}>{d}</button>
               ))}
             </div>
+            <p style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Or pick a specific date:</p>
+            <input type="date" style={{ ...gs?.formInput || { padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif" }, color: "#2D2D2D" }} min={new Date().toISOString().split('T')[0]} value={pollDay?.includes('-') ? pollDay : ''} onChange={e => setPollDay(e.target.value)} />
             <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D", marginTop: 4 }}>Locations (optional — add options for members to vote on)</p>
             {pollLocations.map((loc, i) => (
               <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
@@ -6761,15 +6763,17 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
               <AddressInput inputStyle={gs.formInput} placeholder="Search for a location..." value={pdLocation} onChange={setPdLocation} userArea={user?.area || group.area} />
               <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Date</p>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${new Date().getFullYear()}`); }}>
+                <select style={{ ...gs.formInput, flex: 2 }} value={pdDate.split('/')[0] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${e.target.value}/${parts[1] || ''}/${parts[2] || new Date().getFullYear()}`); }}>
                   <option value="">Month</option>
                   {MONTHS.map((m, i) => <option key={i} value={m}>{m}</option>)}
                 </select>
-                <select style={{ ...gs.formInput, flex: 1 }} value={pdDate.split('/')[1] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${e.target.value}/${new Date().getFullYear()}`); }}>
+                <select style={{ ...gs.formInput, flex: 1 }} value={pdDate.split('/')[1] || ''} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${e.target.value}/${parts[2] || new Date().getFullYear()}`); }}>
                   <option value="">Day</option>
                   {Array.from({ length: 31 }, (_, i) => i + 1).map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#2D2D2D", padding: "0 8px" }}>{new Date().getFullYear()}</span>
+                <select style={{ ...gs.formInput, flex: 1 }} value={pdDate.split('/')[2] || new Date().getFullYear()} onChange={e => { const parts = pdDate.split('/'); setPdDate(`${parts[0] || ''}/${parts[1] || ''}/${e.target.value}`); }}>
+                  {[new Date().getFullYear(), new Date().getFullYear() + 1].map(y => <option key={y} value={y}>{y}</option>)}
+                </select>
               </div>
               <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Time</p>
               <select style={gs.formInput} value={pdTime} onChange={e => setPdTime(e.target.value)}>
@@ -6825,6 +6829,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: mtDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: mtDay === d ? "#FAF0F2" : "white", color: mtDay === d ? "#6B2C3B" : "#666", fontWeight: mtDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setMtDay(d)}>{d}</button>
                 ))}
               </div>
+              <p style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Or pick a specific date:</p>
+              <input type="date" style={{ padding: "10px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", color: "#2D2D2D" }} min={new Date().toISOString().split('T')[0]} value={mtDay?.includes('-') ? mtDay : ''} onChange={e => setMtDay(e.target.value)} />
               <button
                 style={{ ...styles.primaryBtn, marginTop: 4, opacity: mtSubmitting || !mtTitle.trim() || !mtDay ? 0.5 : 1 }}
                 disabled={mtSubmitting || !mtTitle.trim() || !mtDay}
@@ -6869,6 +6875,8 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
                   <button key={d} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: ipDay === d ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: ipDay === d ? "#FAF0F2" : "white", color: ipDay === d ? "#6B2C3B" : "#666", fontWeight: ipDay === d ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setIpDay(d)}>{d}</button>
                 ))}
               </div>
+              <p style={{ fontSize: 11, color: "#888", marginTop: 4 }}>Or pick a specific date:</p>
+              <input type="date" style={gs.formInput} min={new Date().toISOString().split('T')[0]} value={ipDay?.includes('-') ? ipDay : ''} onChange={e => setIpDay(e.target.value)} />
               <p style={{ fontSize: 12, fontWeight: 600, color: "#888" }}>Location options (optional)</p>
               {ipLocations.map((loc, i) => (
                 <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
