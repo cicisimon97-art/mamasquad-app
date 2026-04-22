@@ -4672,6 +4672,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
           { label: "Blocked & Reports", icon: "🚫", action: () => setMenuView("blocked") },
           ...(isAppFounder ? [{ label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") }] : []),
+          { label: "Send Feedback", icon: "💬", action: () => setMenuView("feedback") },
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Terms of Service", icon: "📄", action: () => setMenuView("terms") },
           { label: "Privacy Policy", icon: "🔐", action: () => setMenuView("privacy-policy") },
@@ -4901,6 +4902,19 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       )}
 
       {/* ── Privacy & Safety Sub-screen ── */}
+      {menuView === "feedback" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#2D2D2D" }}>Send Feedback</h2>
+            </div>
+            <p style={{ fontSize: 13, color: "#888", marginBottom: 16, lineHeight: 1.5 }}>We'd love to hear from you! Tell us what's working, what's not, or what you'd like to see next.</p>
+            <FeedbackForm user={user} onDone={() => setMenuView(null)} />
+          </div>
+        </div>
+      )}
+
       {menuView === "blocked" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
@@ -8154,7 +8168,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 22 }}>
-                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : notif.type === 'user_report' ? '🚨' : notif.type === 'arrived' ? '📍' : '🔔'}
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : notif.type === 'user_report' ? '🚨' : notif.type === 'arrived' ? '📍' : notif.type === 'feedback' ? '💬' : '🔔'}
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -8182,6 +8196,54 @@ function PageFooter() {
   return (
     <div style={{ textAlign: "center", padding: "24px 0 16px", marginTop: 16 }}>
       <p style={{ fontSize: 10, color: "#ccc", letterSpacing: 0.5 }}>© {new Date().getFullYear()} MamaSquads. All rights reserved.</p>
+    </div>
+  );
+}
+
+// ─── Feedback Form ───
+function FeedbackForm({ user, onDone }) {
+  const [category, setCategory] = useState("");
+  const [message, setMessage] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <p style={{ fontSize: 13, fontWeight: 600, color: "#2D2D2D" }}>What's this about?</p>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {["Bug / Issue", "Feature Request", "Compliment", "General Feedback"].map(c => (
+          <button key={c} style={{ padding: "8px 14px", borderRadius: 50, fontSize: 13, cursor: "pointer", border: category === c ? "2px solid #6B2C3B" : "1.5px solid #E8E8E8", background: category === c ? "#FAF0F2" : "white", color: category === c ? "#6B2C3B" : "#666", fontWeight: category === c ? 600 : 400, fontFamily: "'DM Sans', sans-serif" }} onClick={() => setCategory(c)}>{c}</button>
+        ))}
+      </div>
+      <textarea
+        style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #E8E8E8", fontSize: 14, fontFamily: "'DM Sans', sans-serif", minHeight: 120, resize: "vertical" }}
+        placeholder="Tell us what's on your mind..."
+        value={message}
+        onChange={e => setMessage(e.target.value)}
+      />
+      <button
+        style={{ width: "100%", padding: "14px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 15, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: !category || !message.trim() || submitting ? 0.5 : 1 }}
+        disabled={!category || !message.trim() || submitting}
+        onClick={async () => {
+          setSubmitting(true);
+          // Send as notification to founder(s)
+          const { data: founders } = await supabase.from('users').select('id').eq('role', 'founder');
+          if (founders) {
+            await supabase.from('notifications').insert(founders.map(f => ({
+              user_id: f.id,
+              type: 'feedback',
+              title: `Feedback: ${category}`,
+              body: `${user?.full_name || 'A member'}: ${message.trim().slice(0, 200)}`,
+              sender_id: user?.id,
+              is_read: false,
+            })));
+          }
+          setSubmitting(false);
+          alert('Thank you for your feedback! 💛');
+          onDone();
+        }}
+      >
+        {submitting ? "Sending..." : "Submit Feedback"}
+      </button>
     </div>
   );
 }
