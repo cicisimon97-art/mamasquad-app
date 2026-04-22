@@ -6282,24 +6282,30 @@ function GroupDetailScreen({ group, onBack, joinedGroups, setJoinedGroups, pendi
 
   // Load meetup proposals from Supabase
   useEffect(() => {
-    if (!group.fromSupabase || !loadMeetupProposals || meetupsLoaded) return;
-    loadMeetupProposals(group.id).then(data => {
-      setMeetups(data);
-      // Extract my existing votes
-      if (user && data.length > 0) {
-        const votes = {};
-        data.forEach(p => {
-          (p.votes || []).forEach(v => {
-            if (v.user_id === user.id) {
-              votes[`${p.id}_${v.vote_type}`] = v.option_index;
-            }
-          });
-        });
-        setMyVotes(votes);
-      }
-      setMeetupsLoaded(true);
-    });
-  }, [group.fromSupabase, group.id, meetupsLoaded]);
+    if (!group.fromSupabase || !loadMeetupProposals) return;
+    const loadData = () => {
+      loadMeetupProposals(group.id).then(data => {
+        if (data) {
+          setMeetups(data);
+          if (user && data.length > 0) {
+            const votes = {};
+            data.forEach(p => {
+              (p.votes || []).forEach(v => {
+                if (v.user_id === user.id) {
+                  votes[`${p.id}_${v.vote_type}`] = v.option_index;
+                }
+              });
+            });
+            setMyVotes(votes);
+          }
+          setMeetupsLoaded(true);
+        }
+      });
+    };
+    loadData();
+    const poll = setInterval(loadData, 10000);
+    return () => clearInterval(poll);
+  }, [group.fromSupabase, group.id]);
 
   // Merge sample pending requests with Supabase requests
   const approvedRequests = groupRequests[group.id]?.approved || [];
