@@ -5412,6 +5412,8 @@ function GroupPollsTab({ group, user, onProposeMeetup, loadMeetupProposals, onVo
     setDeleting(pollId);
     await supabase.from('votes').delete().eq('proposal_id', pollId);
     await supabase.from('meetup_proposals').delete().eq('id', pollId);
+    // Clean up notifications for this poll
+    await supabase.from('notifications').delete().eq('type', 'new_poll').eq('group_id', group.id);
     setPolls(prev => prev.filter(p => p.id !== pollId));
     setConfirmDelete(null);
     setDeleting(null);
