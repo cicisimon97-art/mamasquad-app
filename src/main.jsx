@@ -3790,7 +3790,7 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
 }
 
 // ─── Discover Tab ───
-function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, onAdminApply, blockedIds }) {
+function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, connections, notifications, setNotifications, onUploadPhoto, onProfileSelect, blockedIds }) {
   const [search, setSearch] = useState("");
   const [areaFilter, setAreaFilter] = useState("all");
   const [zipSearch, setZipSearch] = useState("");
@@ -4028,28 +4028,6 @@ function DiscoverTab({ user, setUser, isBetaMember, joinedEvents, joinedGroups, 
         </div>
       )}
 
-      {/* Apply to Be an Admin - Gated */}
-      <div style={styles.adminApplyBanner}>
-        <div style={styles.adminApplyLeft}>
-          <div style={styles.adminApplyIconWrap}>{Icons.shield}</div>
-          <div>
-            <h3 style={styles.adminApplyTitle}>Want to lead playdates in your area?</h3>
-            <p style={styles.adminApplyDesc}>Admins are hand-selected community leaders. Applications are reviewed by our team.</p>
-          </div>
-        </div>
-        <button style={styles.adminApplyBtn} onClick={onAdminApply}>
-          {Icons.shield} Apply to Be an Admin
-        </button>
-        <div style={styles.adminRequirements}>
-          <p style={styles.adminReqLabel}>Requirements to apply:</p>
-          <div style={styles.adminReqList}>
-            <span style={styles.adminReqItem}>✓ Active member for 30+ days</span>
-            <span style={styles.adminReqItem}>✓ Attended 3+ playdates</span>
-            <span style={styles.adminReqItem}>✓ Background check consent</span>
-            <span style={styles.adminReqItem}>✓ Community guidelines agreement</span>
-          </div>
-        </div>
-      </div>
       <PageFooter />
       <style>{keyframes}</style>
     </div>
