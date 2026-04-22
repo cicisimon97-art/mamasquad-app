@@ -3524,6 +3524,50 @@ function EventDetail({ event, onBack, newComment, setNewComment, joinedEvents, s
             >
               ✓ You're Going! (tap to leave)
             </button>
+            <button
+              style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "white", border: "1.5px solid #6B2C3B", color: "#6B2C3B", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans', sans-serif" }}
+              onClick={() => {
+                const eventDate = parseEventToDate(event.date);
+                const startDate = eventDate || new Date();
+                const endDate = new Date(startDate);
+                endDate.setHours(endDate.getHours() + 2);
+                const pad = (n) => String(n).padStart(2, '0');
+                const formatICS = (d) => `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+                // Parse time like "10:00 AM" into hours
+                if (event.time) {
+                  const match = event.time.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                  if (match) {
+                    let h = parseInt(match[1]);
+                    const m = parseInt(match[2]);
+                    if (match[3].toUpperCase() === 'PM' && h !== 12) h += 12;
+                    if (match[3].toUpperCase() === 'AM' && h === 12) h = 0;
+                    startDate.setHours(h, m, 0);
+                    endDate.setTime(startDate.getTime() + 2 * 60 * 60 * 1000);
+                  }
+                }
+                const ics = [
+                  'BEGIN:VCALENDAR',
+                  'VERSION:2.0',
+                  'BEGIN:VEVENT',
+                  `DTSTART:${formatICS(startDate)}`,
+                  `DTEND:${formatICS(endDate)}`,
+                  `SUMMARY:${event.title}`,
+                  `LOCATION:${event.location || ''}`,
+                  `DESCRIPTION:${event.description || 'MamaSquads Playdate'}`,
+                  'END:VEVENT',
+                  'END:VCALENDAR',
+                ].join('\r\n');
+                const blob = new Blob([ics], { type: 'text/calendar' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${event.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics`;
+                a.click();
+                URL.revokeObjectURL(url);
+              }}
+            >
+              📅 Add to Calendar
+            </button>
             {!arrived ? (
               <button
                 style={{ width: "100%", padding: "12px 0", borderRadius: 50, background: "#6B2C3B", color: "white", fontSize: 14, fontWeight: 600, border: "none", cursor: "pointer", fontFamily: "'DM Sans', sans-serif", opacity: arrivingNotif ? 0.6 : 1 }}
