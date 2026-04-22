@@ -8141,7 +8141,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
             >
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                 <span style={{ fontSize: 22 }}>
-                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : notif.type === 'user_report' ? '🚨' : '🔔'}
+                  {notif.type === 'new_poll' ? '🗳️' : notif.type === 'poll_confirmed' ? '✅' : notif.type === 'connection_request' ? '👋' : notif.type === 'connection_accepted' ? '🎉' : notif.type === 'new_message' ? '💬' : notif.type === 'group_accepted' ? '🎉' : notif.type === 'new_event' ? '📅' : notif.type === 'join_request' ? '📬' : notif.type === 'admin_application' ? '🛡️' : notif.type === 'event_reminder' ? '⏰' : notif.type === 'user_report' ? '🚨' : notif.type === 'arrived' ? '📍' : '🔔'}
                 </span>
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
