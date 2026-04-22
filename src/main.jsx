@@ -4671,7 +4671,10 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: `Notifications${(notifications || []).filter(n => !n.is_read).length > 0 ? ` (${(notifications || []).filter(n => !n.is_read).length})` : ''}`, icon: "🔔", action: () => setMenuView("notifications") },
           { label: "Privacy & Safety", icon: "🔒", action: () => setMenuView("privacy") },
           { label: "Blocked & Reports", icon: "🚫", action: () => setMenuView("blocked") },
-          ...(isAppFounder ? [{ label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") }] : []),
+          ...(isAppFounder ? [
+            { label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") },
+            { label: "Feedback Received", icon: "📋", action: () => setMenuView("feedback-received") },
+          ] : []),
           { label: "Send Feedback", icon: "💬", action: () => setMenuView("feedback") },
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Terms of Service", icon: "📄", action: () => setMenuView("terms") },
@@ -4902,6 +4905,18 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       )}
 
       {/* ── Privacy & Safety Sub-screen ── */}
+      {menuView === "feedback-received" && isAppFounder && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => setMenuView(null)}>{Icons.back}</button>
+              <h2 style={{ fontSize: 20, fontWeight: 700, color: "#2D2D2D" }}>Feedback Received</h2>
+            </div>
+            <FeedbackReceivedList user={user} />
+          </div>
+        </div>
+      )}
+
       {menuView === "feedback" && (
         <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
           <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
@@ -8196,6 +8211,49 @@ function PageFooter() {
   return (
     <div style={{ textAlign: "center", padding: "24px 0 16px", marginTop: 16 }}>
       <p style={{ fontSize: 10, color: "#ccc", letterSpacing: 0.5 }}>© {new Date().getFullYear()} MamaSquads. All rights reserved.</p>
+    </div>
+  );
+}
+
+// ─── Feedback Received List (Founder only) ───
+function FeedbackReceivedList({ user }) {
+  const [feedbacks, setFeedbacks] = useState([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    if (loaded) return;
+    supabase.from('notifications')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('type', 'feedback')
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        if (data) setFeedbacks(data);
+        setLoaded(true);
+      });
+  }, [loaded]);
+
+  if (!loaded) return <p style={{ textAlign: "center", color: "#888", fontSize: 13, padding: 20 }}>Loading...</p>;
+
+  if (feedbacks.length === 0) return (
+    <div style={{ textAlign: "center", padding: 30 }}>
+      <span style={{ fontSize: 32 }}>📋</span>
+      <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>No feedback received yet.</p>
+    </div>
+  );
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {feedbacks.map(f => (
+        <div key={f.id} style={{ background: "white", borderRadius: 12, padding: 14, border: "1px solid #f0f0f0" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#6B2C3B", background: "#FAF0F2", padding: "3px 10px", borderRadius: 50 }}>{f.title?.replace('Feedback: ', '') || 'Feedback'}</span>
+            <span style={{ fontSize: 11, color: "#bbb" }}>{new Date(f.created_at).toLocaleDateString()}</span>
+          </div>
+          <p style={{ fontSize: 14, color: "#2D2D2D", lineHeight: 1.5 }}>{f.body}</p>
+          {!f.is_read && <span style={{ fontSize: 11, fontWeight: 600, color: "#E65100", marginTop: 6, display: "inline-block" }}>New</span>}
+        </div>
+      ))}
     </div>
   );
 }
