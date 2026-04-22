@@ -4674,8 +4674,9 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           ...(isAppFounder ? [
             { label: "Admin Panel", icon: "👑", action: () => setMenuView("admin-panel") },
             { label: "Feedback Received", icon: "📋", action: () => setMenuView("feedback-received") },
-          ] : []),
-          { label: "Send Feedback", icon: "💬", action: () => setMenuView("feedback") },
+          ] : [
+            { label: "Send Feedback", icon: "💬", action: () => setMenuView("feedback") },
+          ]),
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Terms of Service", icon: "📄", action: () => setMenuView("terms") },
           { label: "Privacy Policy", icon: "🔐", action: () => setMenuView("privacy-policy") },
