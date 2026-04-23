@@ -1523,14 +1523,15 @@ function MamaSquadsApp() {
   if (screen === "main" && isVerified && showTutorial) {
     const tutorialSlides = [
       { emoji: "👋", title: "Welcome to MamaSquads!", desc: "Here's a quick tour of how everything works." },
-      { emoji: "🏠", title: "Home", desc: "See upcoming playdates from your groups. Filter by day or age group. Tap any playdate to RSVP, comment, or see who's going." },
-      { emoji: "👥", title: "Groups", desc: "Join groups to connect with local moms. Inside each group you can post playdates, propose meetups, create polls, share photos, and see other members." },
-      { emoji: "➕", title: "Create", desc: "Tap the + button to create a new playdate. Pick a date, time, location, and age group. Other moms in your groups will be notified." },
-      { emoji: "🔔", title: "Alerts", desc: "Get notified when someone posts a playdate, creates a poll, requests to join your group, or wants to connect. Tap any notification to go there." },
-      { emoji: "👤", title: "Me", desc: "Your profile, availability, and settings are all here. Other moms can see your Quick Q's, interests, and kids' ages. Tap Discover to find and connect with moms near you." },
-      { emoji: "🗳️", title: "Polls", desc: "Inside groups, propose a meetup by picking a day. Members vote on the best time. The winning time can become a playdate with one tap." },
-      { emoji: "📲", title: "Add to Home Screen", desc: "For the best experience, add MamaSquads to your home screen!\n\niPhone: Tap the share button (□↑) at the bottom of Safari, then tap \"Add to Home Screen.\"\n\nAndroid: Tap the menu (⋮) in Chrome, then tap \"Add to Home screen.\"" },
-      { emoji: "🎉", title: "You're all set!", desc: "Start by exploring groups or creating your first playdate. The more you engage, the more moms you'll meet!" },
+      { emoji: "🏠", title: "Home", desc: "See upcoming playdates from all your groups. Filter by day, age group, or group. Tap any playdate to RSVP, comment, add to your calendar, or see who's going." },
+      { emoji: "👥", title: "Groups", desc: "Join or create groups for local moms. Post playdates, propose meetups, create polls, share photos, and pin announcements. Use invite codes for private groups." },
+      { emoji: "💬", title: "Chat", desc: "Message moms directly or chat with your whole group. React to messages with emojis, see read receipts, and tap names to view profiles." },
+      { emoji: "🔍", title: "Discover", desc: "Find moms near you. Filter by distance, zip code, or kids' ages. Connect with moms you'd like to get to know — then message them directly." },
+      { emoji: "➕", title: "Create", desc: "Tap the + button on the home screen to create a new playdate. Pick any date, time, and location. Schedule weeks or months in advance." },
+      { emoji: "🗳️", title: "Polls & Meetups", desc: "Propose a meetup inside any group. Pick a day, add location options, and let members vote on the best time and place." },
+      { emoji: "🔔", title: "Alerts", desc: "Get notified about new playdates, connection requests, group activity, event reminders, and when someone arrives at a playdate." },
+      { emoji: "🛡️", title: "Safety", desc: "Block or report anyone. Your blocked users can't see you or message you. All reports are reviewed by our team within 24 hours." },
+      { emoji: "🎉", title: "You're all set!", desc: "Start by joining a group or connecting with moms near you. Less Chaos. More Playdates. 💛" },
     ];
     const slide = tutorialSlides[tutorialStep];
     return (
