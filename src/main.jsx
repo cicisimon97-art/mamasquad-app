@@ -1834,7 +1834,7 @@ function WelcomeScreen({ onContinue, fadeIn }) {
         <img src="/logo.png" alt="MamaSquads" style={{ width: "100%", maxWidth: 500, objectFit: "contain", marginBottom: 20 }} />
         <p style={{ ...styles.welcomeSubtitle, marginTop: 0, color: "#6B2C3B" }}>The verified, moms-only community<br />where kids play & friendships bloom</p>
         <div style={{ ...styles.welcomeFeatures, opacity: show ? 1 : 0, transition: "opacity 1s ease 0.4s" }}>
-          {["Verified moms only", "ID + background checked", "Safe, trusted playdates"].map((f, i) => (
+          {["Verified moms only", "ID verified", "Safe, trusted playdates"].map((f, i) => (
             <div key={i} style={{ ...styles.welcomeFeature, color: "#6B2C3B", animationDelay: `${0.6 + i * 0.15}s` }}>
               <span style={{ ...styles.featureDot, background: "#6B2C3B" }} />{f}
             </div>
@@ -1984,7 +1984,7 @@ function VerificationBlockedScreen({ onVerify, user }) {
                 {[
                   "Government-issued photo ID verification",
                   "Live selfie facial matching",
-                  "Background check screening",
+                  "Identity verification screening",
                   "Lifetime access to MamaSquads",
                 ].map((r, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -2270,7 +2270,7 @@ function AccessGateScreen({ onInviteCode, onPublicSignup, onSignIn, onForgotPass
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, padding: "8px 12px", background: "#FFF8E1", borderRadius: 8 }}>
                 <span style={{ fontSize: 14 }}>💡</span>
-                <p style={{ fontSize: 11, color: "#888", lineHeight: 1.3 }}>One-time $9.99 safety verification fee. Background checks will be available soon as an optional premium upgrade.</p>
+                <p style={{ fontSize: 11, color: "#888", lineHeight: 1.3 }}>One-time $9.99 identity verification fee.</p>
               </div>
               <button style={{ ...styles.primaryBtn, marginTop: 12, background: "#6B2C3B", boxShadow: "0 4px 16px rgba(107,44,59,0.3)" }} onClick={onPublicSignup}>
                 Continue to Sign Up
@@ -2469,7 +2469,7 @@ function AboutScreen({ onContinue, fadeIn }) {
         <div style={styles.aboutValues}>
           {[
             { icon: "🪪", title: "ID Verified", desc: "Every mom is identity checked" },
-            { icon: "🛡️", title: "Background Checked", desc: "National database screening" },
+            { icon: "🛡️", title: "ID Verified", desc: "Government ID + selfie match" },
             { icon: "🔒", title: "Moms Only", desc: "No exceptions, no workarounds" },
           ].map((v, i) => (
             <div key={i} style={styles.valueCard}>
@@ -2772,7 +2772,7 @@ function VerificationScreen({ onComplete, fadeIn }) {
               {[
                 { num: "1", icon: "🪪", title: "Photo ID Upload", desc: "Government-issued ID to confirm your identity" },
                 { num: "2", icon: "🤳", title: "Live Selfie Match", desc: "Real-time photo matched against your ID" },
-                { num: "3", icon: "🛡️", title: "Background Check", desc: "National database screening for sex offender registry & criminal history" },
+                { num: "3", icon: "🛡️", title: "Identity Match", desc: "Your selfie is matched against your ID to confirm you are who you say you are" },
               ].map((s, i) => (
                 <div key={i} style={vs.safetyStep}>
                   <div style={vs.stepNum}>{s.icon}</div>
