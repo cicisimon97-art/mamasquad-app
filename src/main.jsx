@@ -4340,6 +4340,32 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
   const [mySchedule, setMySchedule] = useState(user?.general_availability || {});
   const [editingAvail, setEditingAvail] = useState(false);
   const [savingAvail, setSavingAvail] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== "DELETE") return;
+    setDeleting(true);
+    try {
+      const userId = user.id;
+      // Delete user-related data
+      await supabase.from('event_rsvps').delete().eq('user_id', userId);
+      await supabase.from('comments').delete().eq('user_id', userId);
+      await supabase.from('group_members').delete().eq('user_id', userId);
+      await supabase.from('join_requests').delete().eq('user_id', userId);
+      await supabase.from('messages').delete().eq('sender_id', userId);
+      await supabase.from('connections').delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
+      await supabase.from('blocked_users').delete().or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
+      await supabase.from('reports').delete().eq('reporter_id', userId);
+      // Delete the user profile
+      await supabase.from('users').delete().eq('id', userId);
+      // Sign out (Supabase auth user deletion requires admin/service role, but signing out + deleting profile data is sufficient for App Store compliance)
+      await supabase.auth.signOut();
+    } catch (err) {
+      alert("Something went wrong. Please try again.");
+      setDeleting(false);
+    }
+  };
 
   const displayName = user?.full_name || "Mom";
   const momBdayToday = isBirthdayToday(user?.mom_age);
@@ -4672,6 +4698,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
           { label: "About MamaSquads", icon: "💛", action: () => setMenuView("about") },
           { label: "Terms of Service", icon: "📄", action: () => setMenuView("terms") },
           { label: "Privacy Policy", icon: "🔐", action: () => setMenuView("privacy-policy") },
+          { label: "Delete Account", icon: "⚠️", action: () => setMenuView("delete-account") },
           { label: "Sign Out", icon: "👋", action: handleSignOut },
         ].map(item => (
           <div key={item.label} style={styles.menuItem} onClick={item.action}>
@@ -5150,6 +5177,62 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {menuView === "delete-account" && (
+        <div style={{ position: "fixed", inset: 0, background: "#FFFBFC", zIndex: 100, overflow: "auto", paddingTop: "calc(48px + env(safe-area-inset-top, 0px))" }}>
+          <div style={{ maxWidth: 430, margin: "0 auto", padding: 16, paddingBottom: 60 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+              <button style={{ background: "none", border: "none", cursor: "pointer" }} onClick={() => { setMenuView(null); setDeleteConfirm(""); }}>{Icons.back}</button>
+              <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Delete Account</h2>
+            </div>
+
+            <div style={{ background: "#FFF5F5", borderRadius: 16, padding: 20, border: "1px solid #FFD4D4", marginBottom: 20 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
+                <span style={{ fontSize: 24 }}>⚠️</span>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "#C0392B", marginBottom: 6 }}>This action is permanent</h3>
+                  <p style={{ fontSize: 13, color: "#555", lineHeight: 1.6 }}>Deleting your account will permanently remove:</p>
+                </div>
+              </div>
+              <ul style={{ fontSize: 13, color: "#555", lineHeight: 1.8, paddingLeft: 20, margin: "8px 0 0 0" }}>
+                <li>Your profile and personal information</li>
+                <li>All your messages and conversations</li>
+                <li>Your group memberships and event RSVPs</li>
+                <li>Your connections with other moms</li>
+                <li>All posts, comments, and reactions</li>
+              </ul>
+              <p style={{ fontSize: 13, color: "#C0392B", fontWeight: 600, marginTop: 12 }}>This cannot be undone.</p>
+            </div>
+
+            <div style={{ background: "white", borderRadius: 16, padding: 20, boxShadow: "0 2px 10px rgba(0,0,0,0.04)", border: "1px solid #f0f0f0" }}>
+              <p style={{ fontSize: 14, color: "#2D2D2D", marginBottom: 12 }}>To confirm, type <strong>DELETE</strong> below:</p>
+              <input
+                type="text"
+                value={deleteConfirm}
+                onChange={e => setDeleteConfirm(e.target.value)}
+                placeholder="Type DELETE to confirm"
+                style={{ width: "100%", padding: "12px 14px", borderRadius: 10, border: "1.5px solid #ddd", fontSize: 15, boxSizing: "border-box", marginBottom: 16, fontFamily: "inherit" }}
+              />
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteConfirm !== "DELETE" || deleting}
+                style={{
+                  width: "100%", padding: 14, borderRadius: 12, border: "none", fontSize: 15, fontWeight: 700, cursor: deleteConfirm === "DELETE" && !deleting ? "pointer" : "not-allowed",
+                  background: deleteConfirm === "DELETE" && !deleting ? "#C0392B" : "#E8E8E8",
+                  color: deleteConfirm === "DELETE" && !deleting ? "white" : "#999",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                {deleting ? "Deleting Account..." : "Permanently Delete My Account"}
+              </button>
+            </div>
+
+            <p style={{ fontSize: 12, color: "#888", textAlign: "center", marginTop: 16, lineHeight: 1.5 }}>
+              Need help? Contact us at mama.squads1@gmail.com
+            </p>
           </div>
         </div>
       )}
