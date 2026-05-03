@@ -433,7 +433,7 @@ function MamaSquadsApp() {
   const [fadeIn, setFadeIn] = useState(true);
   const [conversations, setConversations] = useState([]);
   const [unreadMsgCount, setUnreadMsgCount] = useState(0);
-  const lastChatOpen = useRef(localStorage.getItem('lastChatOpen') || '2020-01-01T00:00:00.000Z');
+  const lastChatOpen = useRef((() => { try { return localStorage.getItem('lastChatOpen') || '2020-01-01T00:00:00.000Z'; } catch { return '2020-01-01T00:00:00.000Z'; } })());
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [selectedGroupChat, setSelectedGroupChat] = useState(null);
   const [blockedIds, setBlockedIds] = useState([]);
@@ -4357,6 +4357,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
       await supabase.from('connections').delete().or(`sender_id.eq.${userId},receiver_id.eq.${userId}`);
       await supabase.from('blocked_users').delete().or(`blocker_id.eq.${userId},blocked_id.eq.${userId}`);
       await supabase.from('reports').delete().eq('reporter_id', userId);
+      await supabase.from('notifications').delete().eq('user_id', userId);
       // Delete the user profile
       await supabase.from('users').delete().eq('id', userId);
       // Sign out (Supabase auth user deletion requires admin/service role, but signing out + deleting profile data is sufficient for App Store compliance)
@@ -4770,43 +4771,49 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
                 disabled={photoUploading}
                 onClick={async () => {
                   setPhotoUploading(true);
-                  // Crop using canvas
-                  const canvas = document.createElement('canvas');
-                  const size = 400;
-                  canvas.width = size;
-                  canvas.height = size;
-                  const ctx = canvas.getContext('2d');
-                  const img = new Image();
-                  img.crossOrigin = 'anonymous';
-                  img.src = photoPreviewUrl;
-                  await new Promise(resolve => { img.onload = resolve; });
+                  try {
+                    // Crop using canvas
+                    const canvas = document.createElement('canvas');
+                    const size = 400;
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) { alert('Unable to process photo. Please try again.'); setPhotoUploading(false); return; }
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.src = photoPreviewUrl;
+                    await new Promise((resolve, reject) => { img.onload = resolve; img.onerror = () => reject(new Error('Image failed to load')); });
 
-                  // Calculate crop
-                  const scale = photoZoom;
-                  const imgAspect = img.width / img.height;
-                  let drawW, drawH;
-                  if (imgAspect > 1) { drawH = size / scale; drawW = drawH * imgAspect; }
-                  else { drawW = size / scale; drawH = drawW / imgAspect; }
-                  const offsetX = (size - drawW * scale) / 2 + photoPos.x * (size / 240) * scale;
-                  const offsetY = (size - drawH * scale) / 2 + photoPos.y * (size / 240) * scale;
+                    // Calculate crop
+                    const scale = photoZoom;
+                    const imgAspect = img.width / img.height;
+                    let drawW, drawH;
+                    if (imgAspect > 1) { drawH = size / scale; drawW = drawH * imgAspect; }
+                    else { drawW = size / scale; drawH = drawW / imgAspect; }
+                    const offsetX = (size - drawW * scale) / 2 + photoPos.x * (size / 240) * scale;
+                    const offsetY = (size - drawH * scale) / 2 + photoPos.y * (size / 240) * scale;
 
-                  // Clip to circle
-                  ctx.beginPath();
-                  ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
-                  ctx.clip();
-                  ctx.drawImage(img, offsetX, offsetY, drawW * scale, drawH * scale);
+                    // Clip to circle
+                    ctx.beginPath();
+                    ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2);
+                    ctx.clip();
+                    ctx.drawImage(img, offsetX, offsetY, drawW * scale, drawH * scale);
 
-                  canvas.toBlob(async (blob) => {
-                    if (blob && onUploadPhoto) {
-                      const file = new File([blob], 'avatar.png', { type: 'image/png' });
-                      await onUploadPhoto(file);
-                    }
+                    canvas.toBlob(async (blob) => {
+                      if (blob && onUploadPhoto) {
+                        const file = new File([blob], 'avatar.png', { type: 'image/png' });
+                        await onUploadPhoto(file);
+                      }
+                      setPhotoUploading(false);
+                      setPhotoToAdjust(null);
+                      setPhotoPreviewUrl(null);
+                      setPhotoZoom(1);
+                      setPhotoPos({ x: 0, y: 0 });
+                    }, 'image/png', 0.9);
+                  } catch (err) {
+                    alert('Something went wrong with your photo. Please try again.');
                     setPhotoUploading(false);
-                    setPhotoToAdjust(null);
-                    setPhotoPreviewUrl(null);
-                    setPhotoZoom(1);
-                    setPhotoPos({ x: 0, y: 0 });
-                  }, 'image/png', 0.9);
+                  }
                 }}
               >
                 {photoUploading ? "Uploading..." : "Save Photo"}

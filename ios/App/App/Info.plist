@@ -53,5 +53,11 @@
 	<string>MamaSquads needs access to your photo library to choose a profile photo.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>MamaSquads needs permission to save photos to your library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>MamaSquads uses your location to help you discover nearby moms and playdates in your area.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>
