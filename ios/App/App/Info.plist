@@ -47,5 +47,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSCameraUsageDescription</key>
+	<string>MamaSquads needs access to your camera to take a profile photo so other moms can recognize you.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>MamaSquads needs access to your photo library to choose a profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>MamaSquads needs permission to save photos to your library.</string>
 </dict>
 </plist>
