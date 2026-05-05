@@ -5125,7 +5125,7 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Terms of Service</h2>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <p style={{ fontSize: 12, color: "#888" }}>Last updated: March 2026</p>
+              <p style={{ fontSize: 12, color: "#888" }}>Last updated: May 2026</p>
 
               {[
                 { title: "1. Acceptance of Terms", text: "By creating an account or using MamaSquads, you agree to these Terms of Service. If you do not agree, please do not use the app." },
@@ -5161,18 +5161,18 @@ function MyProfileTab({ isBetaMember, user, setUser, joinedEvents, joinedGroups,
               <h2 style={{ fontFamily: "'Playfair Display', Georgia, serif", fontSize: 20, color: "#2D2D2D" }}>Privacy Policy</h2>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <p style={{ fontSize: 12, color: "#888" }}>Last updated: March 2026</p>
+              <p style={{ fontSize: 12, color: "#888" }}>Last updated: May 2026</p>
 
               {[
                 { title: "1. Information We Collect", text: "We collect information you provide during registration: your name, email address, date of birth, area/zip code, bio, children's names and birthdates, interests, and profile photo. We also collect identity verification documents during the verification process." },
                 { title: "2. How We Use Your Information", text: "We use your information to: create and manage your account, verify your identity, match you with nearby moms for playdates, display your profile to other verified members, send notifications about group activity and events, and improve our services." },
                 { title: "3. Information Shared with Other Members", text: "Other verified members can see: your name, area (not exact address), bio, children's ages (not names or birthdates), interests, profile photo, and verification status. Children's names and exact birthdates are never shared publicly." },
-                { title: "4. Identity Verification Data", text: "Government-issued ID and selfie photos submitted for verification are used solely for identity confirmation. This data is processed securely and is not shared with other members or third parties except as required by law." },
+                { title: "4. Identity Verification & Face Data", text: "To verify your identity, we require you to submit a government-issued photo ID and a live selfie through our third-party verification partner, Stripe Identity. Face data collected includes: (a) a selfie photograph of your face, and (b) facial geometry data extracted from the selfie for comparison against your photo ID. This face data is used solely to confirm that you are a real person and that your selfie matches your ID — no other use is made of this data. Face data is processed and stored by Stripe, Inc. on their secure servers. MamaSquads does not store, access, or retain your face data, selfie photos, or ID photos on our own servers. Stripe retains verification data according to their privacy policy and applicable law; you may request deletion of your verification data by contacting us. Face data is never shared with other MamaSquads members, advertisers, or any other third parties. Only your verification status (verified or not verified) is stored by MamaSquads. For more information on how Stripe handles your data, see Stripe's Privacy Policy at stripe.com/privacy." },
                 { title: "5. Data Storage & Security", text: "Your data is stored securely using industry-standard encryption provided by our database partner (Supabase). We use HTTPS for all data transmission. Access to user data is restricted to authorized personnel only." },
                 { title: "6. Children's Privacy", text: "We take children's privacy seriously. Children's names are only visible to their parent/guardian. Only ages are displayed to other members. We do not collect any information directly from children. We comply with COPPA (Children's Online Privacy Protection Act)." },
                 { title: "7. Location Data", text: "We collect your general area or zip code to match you with nearby moms. We do not collect precise GPS location data. Your exact address is never stored or shared." },
                 { title: "8. Cookies & Tracking", text: "We use essential cookies to maintain your login session. We do not use advertising cookies or sell your data to third-party advertisers." },
-                { title: "9. Third-Party Services", text: "We use the following third-party services: Supabase (database and authentication), Vercel (hosting). These services have their own privacy policies and handle data according to industry standards." },
+                { title: "9. Third-Party Services", text: "We use the following third-party services: Supabase (database and authentication), Vercel (hosting), Stripe (payment processing and identity verification). Stripe processes your payment information and identity verification data including face data. These services have their own privacy policies and handle data according to industry standards." },
                 { title: "10. Your Rights", text: "You have the right to: access your personal data, correct inaccurate data, delete your account and associated data, export your data, opt out of non-essential communications. To exercise these rights, contact us at mama.squads1@gmail.com." },
                 { title: "11. Data Retention", text: "We retain your account data for as long as your account is active. If you delete your account, we will delete your personal data within 30 days, except where retention is required by law." },
                 { title: "12. Changes to This Policy", text: "We may update this Privacy Policy periodically. We will notify you of material changes via the app. Continued use after changes constitutes acceptance." },
