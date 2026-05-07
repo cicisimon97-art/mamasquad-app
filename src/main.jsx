@@ -8249,6 +8249,8 @@ const gs = {
 // ─── Bottom Nav ───
 // ─── Notifications Tab ───
 function NotificationsTab({ notifications, setNotifications, user, groups, onNavigate }) {
+  const allNotifications = notifications || [];
+
   return (
     <div style={styles.tabContent}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -8268,7 +8270,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
         )}
       </div>
 
-      {(!notifications || notifications.length === 0) ? (
+      {(allNotifications.length === 0) ? (
         <div style={{ textAlign: "center", padding: 40 }}>
           <span style={{ fontSize: 40 }}>🔔</span>
           <p style={{ fontSize: 16, fontWeight: 600, color: "#2D2D2D", marginTop: 12 }}>You're all caught up!</p>
@@ -8276,7 +8278,7 @@ function NotificationsTab({ notifications, setNotifications, user, groups, onNav
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {notifications.map(notif => (
+          {allNotifications.map(notif => (
             <div
               key={notif.id}
               style={{
