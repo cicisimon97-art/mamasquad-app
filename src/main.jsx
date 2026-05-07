@@ -30,28 +30,50 @@ const hapticSuccess = async () => {
 };
 
 // Push notifications setup — only on native
-const setupPushNotifications = async () => {
-  if (!isNative) return;
+const setupPushNotifications = async (userId) => {
+  if (!isNative || !userId) return;
   try {
     const { PushNotifications } = await import('@capacitor/push-notifications');
     const permResult = await PushNotifications.requestPermissions();
     if (permResult.receive === 'granted') {
       await PushNotifications.register();
     }
-    PushNotifications.addListener('registration', token => {
-      // Push token received
+    PushNotifications.addListener('registration', async (token) => {
+      // Save push token to user's profile in Supabase
+      if (token?.value && userId) {
+        await supabase.from('users').update({ push_token: token.value }).eq('id', userId);
+      }
     });
     PushNotifications.addListener('registrationError', err => {
       console.error('Push registration error:', err);
     });
     PushNotifications.addListener('pushNotificationReceived', notification => {
-      // Push received
+      // Push received while app is open — app handles in-app notifications already
     });
     PushNotifications.addListener('pushNotificationActionPerformed', notification => {
-      // Push action
+      // User tapped the push notification — app will open to main screen
     });
   } catch (e) {
     // Push not available
+  }
+};
+
+// Send a push notification via Supabase Edge Function
+const sendPushNotification = async (recipientUserId, title, body) => {
+  try {
+    const { data: recipient } = await supabase.from('users').select('push_token').eq('id', recipientUserId).single();
+    if (!recipient?.push_token) return;
+    await fetch(`${SUPABASE_URL}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ token: recipient.push_token, title, body }),
+    });
+  } catch (e) {
+    // Push send failed silently — not critical
   }
 };
 
@@ -557,7 +579,7 @@ function MamaSquadsApp() {
   }, []);
 
   // ─── Init push notifications on native ───
-  useEffect(() => { setupPushNotifications(); }, []);
+  useEffect(() => { if (user?.id) setupPushNotifications(user.id); }, [user?.id]);
 
   // ─── Load conversations + count unread ───
   useEffect(() => {
@@ -1100,6 +1122,11 @@ function MamaSquadsApp() {
       setEvents(prev => prev.map(e =>
         e.id === eventId ? { ...e, attendees: (e.attendees || 0) + 1 } : e
       ));
+      // Notify event host
+      const evt = events.find(e => e.id === eventId);
+      if (evt?.host_id && evt.host_id !== user.id) {
+        sendPushNotification(evt.host_id, 'New RSVP!', `${user.full_name || 'A mom'} is coming to ${evt.title}!`);
+      }
     } else {
       await supabase.from('event_rsvps')
         .delete()
@@ -1312,6 +1339,7 @@ function MamaSquadsApp() {
       sender_id: user.id,
       is_read: false,
     });
+    sendPushNotification(recipientId, 'New Connection Request', `${user.full_name || 'A mom'} wants to connect with you!`);
     return { success: true };
   };
 
@@ -1341,6 +1369,7 @@ function MamaSquadsApp() {
         sender_id: user.id,
         is_read: false,
       });
+      sendPushNotification(otherUserId, 'Connection Accepted!', `${user.full_name || 'A mom'} accepted your connection request!`);
     }
   };
 
@@ -8690,7 +8719,10 @@ function ChatScreen({ user, conversation, otherUser, group, onBack, blockedIds, 
     setNewMsg("");
     setSending(false);
     haptic('Light');
-
+    // Send push notification for DMs
+    if (!isGroup && otherUser?.id) {
+      sendPushNotification(otherUser.id, user.full_name || 'MamaSquads', newMsg.trim().slice(0, 100));
+    }
   };
 
   return (
