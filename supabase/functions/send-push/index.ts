@@ -17,6 +17,32 @@ async function getApnsToken(): Promise<string> {
   return jwt;
 }
 
+async function sendToApns(token: string, title: string, body: string, useSandbox: boolean) {
+  const apnsToken = await getApnsToken();
+  const host = useSandbox ? "api.sandbox.push.apple.com" : "api.push.apple.com";
+
+  return await fetch(
+    `https://${host}/3/device/${token}`,
+    {
+      method: "POST",
+      headers: {
+        "authorization": `bearer ${apnsToken}`,
+        "apns-topic": BUNDLE_ID,
+        "apns-push-type": "alert",
+        "apns-priority": "10",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        aps: {
+          alert: { title, body: body || "" },
+          sound: "default",
+          badge: 1,
+        },
+      }),
+    }
+  );
+}
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === "OPTIONS") {
@@ -39,39 +65,20 @@ serve(async (req) => {
       });
     }
 
-    const apnsToken = await getApnsToken();
-
-    // Send to APNs (production URL)
-    const apnsRes = await fetch(
-      `https://api.push.apple.com/3/device/${token}`,
-      {
-        method: "POST",
-        headers: {
-          "authorization": `bearer ${apnsToken}`,
-          "apns-topic": BUNDLE_ID,
-          "apns-push-type": "alert",
-          "apns-priority": "10",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          aps: {
-            alert: {
-              title: title,
-              body: body || "",
-            },
-            sound: "default",
-            badge: 1,
-          },
-        }),
-      }
-    );
+    // Try both environments — sandbox first (TestFlight), then production (App Store)
+    let apnsRes = await sendToApns(token, title, body, true);
 
     if (!apnsRes.ok) {
-      const errText = await apnsRes.text();
-      return new Response(JSON.stringify({ error: errText }), {
-        status: apnsRes.status,
-        headers: { "Content-Type": "application/json" },
-      });
+      const sandboxErr = await apnsRes.text();
+      // Try production
+      apnsRes = await sendToApns(token, title, body, false);
+      if (!apnsRes.ok) {
+        const prodErr = await apnsRes.text();
+        return new Response(JSON.stringify({ error: "sandbox: " + sandboxErr + " | production: " + prodErr }), {
+          status: apnsRes.status,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
     }
 
     return new Response(JSON.stringify({ success: true }), {

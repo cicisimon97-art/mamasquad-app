@@ -34,25 +34,24 @@ const setupPushNotifications = async (userId) => {
   if (!isNative || !userId) return;
   try {
     const { PushNotifications } = await import('@capacitor/push-notifications');
-    const permResult = await PushNotifications.requestPermissions();
-    if (permResult.receive === 'granted') {
-      await PushNotifications.register();
-    }
-    PushNotifications.addListener('registration', async (token) => {
-      // Save push token to user's profile in Supabase
+    await PushNotifications.removeAllListeners();
+
+    await PushNotifications.addListener('registration', async (token) => {
       if (token?.value && userId) {
         await supabase.from('users').update({ push_token: token.value }).eq('id', userId);
       }
     });
-    PushNotifications.addListener('registrationError', err => {
-      console.error('Push registration error:', err);
-    });
-    PushNotifications.addListener('pushNotificationReceived', notification => {
-      // Push received while app is open — app handles in-app notifications already
-    });
-    PushNotifications.addListener('pushNotificationActionPerformed', notification => {
-      // User tapped the push notification — app will open to main screen
-    });
+
+    await PushNotifications.addListener('registrationError', () => {});
+    await PushNotifications.addListener('pushNotificationReceived', () => {});
+    await PushNotifications.addListener('pushNotificationActionPerformed', () => {});
+
+    const permStatus = await PushNotifications.checkPermissions();
+    if (permStatus.receive !== 'granted') {
+      const result = await PushNotifications.requestPermissions();
+      if (result.receive !== 'granted') return;
+    }
+    await PushNotifications.register();
   } catch (e) {
     // Push not available
   }
